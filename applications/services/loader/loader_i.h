@@ -11,7 +11,7 @@
 
 #include "loader.h"
 #include "loader_menu.h"
-#include "loader_applications.h"
+
 #include "loader_queue.h"
 
 typedef struct {
@@ -28,7 +28,7 @@ struct Loader {
     FuriPubSub* pubsub;
     FuriMessageQueue* queue;
     LoaderMenu* loader_menu;
-    LoaderApplications* loader_applications;
+
     LoaderAppData app;
 
     LoaderLaunchQueue launch_queue;
@@ -43,7 +43,7 @@ typedef enum {
     LoaderMessageTypeAppClosed,
     LoaderMessageTypeShowMenu,
     LoaderMessageTypeMenuClosed,
-    LoaderMessageTypeApplicationsClosed,
+
     LoaderMessageTypeLock,
     LoaderMessageTypeUnlock,
     LoaderMessageTypeIsLocked,

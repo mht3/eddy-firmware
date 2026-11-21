@@ -33,7 +33,7 @@ bool infrared_settings_load(InfraredSettings* settings) {
     // Set defaults
     settings->tx_pin = FuriHalInfraredTxPinInternal;
     settings->otg_enabled = false;
-    settings->easy_mode = false;
+    settings->easy_mode = true;
 
     // Try to migrate
     uint8_t magic, version;

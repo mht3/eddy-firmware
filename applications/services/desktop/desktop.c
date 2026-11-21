@@ -1,4 +1,5 @@
 #include "desktop_i.h"
+#include <loader/loader_menu_power_i.h>
 
 #include <cli/cli_vcp.h>
 
@@ -6,6 +7,8 @@
 
 #include <locale/locale.h>
 #include <storage/storage.h>
+#include <toolbox/eddy_remote_shortcut.h>
+#include <toolbox/path.h>
 #include <momentum/settings.h>
 
 #include <assets_icons.h>
@@ -33,6 +36,15 @@ static void desktop_loader_callback(const void* message, void* context) {
     }
 }
 
+static void desktop_refresh_shortcut(Desktop* desktop) {
+    FuriString* path = furi_string_alloc();
+    FuriString* label = furi_string_alloc_set("Apps");
+    if(eddy_remote_shortcut_get(desktop->storage, path)) path_extract_filename(path, label, true);
+    desktop_view_locked_set_shortcut(desktop->locked_view, furi_string_get_cstr(label));
+    furi_string_free(label);
+    furi_string_free(path);
+}
+
 static void desktop_storage_callback(const void* message, void* context) {
     furi_assert(context);
     Desktop* desktop = context;
@@ -40,6 +52,10 @@ static void desktop_storage_callback(const void* message, void* context) {
 
     if(event->type == StorageEventTypeCardMount) {
         view_dispatcher_send_custom_event(desktop->view_dispatcher, DesktopGlobalReloadSettings);
+    } else if(
+        event->type == StorageEventTypeCardUnmount ||
+        event->type == StorageEventTypeCardMountError) {
+        view_dispatcher_send_custom_event(desktop->view_dispatcher, DesktopGlobalRefreshShortcut);
     }
 }
 
@@ -128,6 +144,7 @@ static bool desktop_custom_event_callback(void* context, uint32_t event) {
         furi_semaphore_release(desktop->animation_semaphore);
 
     } else if(event == DesktopGlobalAfterAppFinished) {
+        desktop_refresh_shortcut(desktop);
         animation_manager_load_and_continue_animation(desktop->animation_manager);
         desktop_auto_lock_arm(desktop);
         desktop->app_running = false;
@@ -150,7 +167,10 @@ static bool desktop_custom_event_callback(void* context, uint32_t event) {
         desktop_settings_save(&desktop->settings);
         desktop_apply_settings(desktop);
 
+    } else if(event == DesktopGlobalRefreshShortcut) {
+        desktop_refresh_shortcut(desktop);
     } else if(event == DesktopGlobalReloadSettings) {
+        desktop_refresh_shortcut(desktop);
         desktop_keybinds_migrate(desktop);
         desktop_settings_load(&desktop->settings);
         desktop_apply_settings(desktop);
@@ -249,6 +269,7 @@ static void desktop_apply_settings(Desktop* desktop) {
 }
 
 static void desktop_init_settings(Desktop* desktop) {
+    desktop_refresh_shortcut(desktop);
     furi_pubsub_subscribe(storage_get_pubsub(desktop->storage), desktop_storage_callback, desktop);
 
     if(storage_sd_status(desktop->storage) != FSE_OK) {
@@ -457,27 +478,8 @@ void desktop_unlock(Desktop* desktop) {
 }
 
 int32_t desktop_shutdown(void* context) {
-    // Attempt to launch the app, and if failed offer to shutdown (simpler UI)
-    Desktop* desktop = context;
-    LoaderStatus result = loader_start(desktop->loader, "Power", "off", NULL);
-    if(result != LoaderStatusOk) {
-        // Mimic applications/settings/power_settings_app/scenes/power_settings_scene_power_off.c
-        DialogMessage* message = dialog_message_alloc();
-        dialog_message_set_header(message, "Turn Off Device?", 64, 0, AlignCenter, AlignTop);
-        dialog_message_set_text(
-            message, "   I will be\nwaiting for\n you here...", 78, 14, AlignLeft, AlignTop);
-        dialog_message_set_icon(message, &I_dolph_cry_49x54, 14, 10);
-        dialog_message_set_buttons(message, "Cancel", NULL, "Power Off");
-        DialogMessageButton res = dialog_message_show(furi_record_open(RECORD_DIALOGS), message);
-        furi_record_close(RECORD_DIALOGS);
-        dialog_message_free(message);
-        if(res == DialogMessageButtonRight) {
-            Power* power = furi_record_open(RECORD_POWER);
-            power_off(power);
-            furi_record_close(RECORD_POWER);
-        }
-    }
-    return 0;
+    UNUSED(context);
+    return loader_menu_power("off");
 }
 
 void desktop_set_stealth_mode_state(Desktop* desktop, bool enabled) {

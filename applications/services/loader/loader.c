@@ -339,13 +339,6 @@ static void loader_menu_closed_callback(void* context) {
     furi_message_queue_put(loader->queue, &message, FuriWaitForever);
 }
 
-static void loader_applications_closed_callback(void* context) {
-    Loader* loader = context;
-    LoaderMessage message;
-    message.type = LoaderMessageTypeApplicationsClosed;
-    furi_message_queue_put(loader->queue, &message, FuriWaitForever);
-}
-
 static void
     loader_thread_state_callback(FuriThread* thread, FuriThreadState thread_state, void* context) {
     UNUSED(thread);
@@ -653,10 +646,9 @@ static LoaderMessageLoaderStatusResult loader_start_external_app(
 
 // process messages
 
-static void loader_do_menu_show(Loader* loader, bool settings_only) {
+static void loader_do_menu_show(Loader* loader, LoaderMenuStart start) {
     if(!loader->loader_menu) {
-        loader->loader_menu =
-            loader_menu_alloc(loader_menu_closed_callback, loader, settings_only);
+        loader->loader_menu = loader_menu_alloc(loader_menu_closed_callback, loader, start);
     }
 }
 
@@ -664,20 +656,6 @@ static void loader_do_menu_closed(Loader* loader) {
     if(loader->loader_menu) {
         loader_menu_free(loader->loader_menu);
         loader->loader_menu = NULL;
-    }
-}
-
-static void loader_do_applications_show(Loader* loader) {
-    if(!loader->loader_applications) {
-        loader->loader_applications =
-            loader_applications_alloc(loader_applications_closed_callback, loader);
-    }
-}
-
-static void loader_do_applications_closed(Loader* loader) {
-    if(loader->loader_applications) {
-        loader_applications_free(loader->loader_applications);
-        loader->loader_applications = NULL;
     }
 }
 
@@ -717,9 +695,8 @@ static LoaderMessageLoaderStatusResult loader_do_start_by_name(
 
         // check Applications
         if(strcmp(name, LOADER_APPLICATIONS_NAME) == 0) {
-            loader_do_applications_show(loader);
-            status.value = loader_make_success_status(error_message);
-            break;
+            loader_do_menu_show(loader, LoaderMenuApps);
+            return status;
         }
 
         LoaderEvent event;
@@ -953,10 +930,10 @@ int32_t loader_srv(void* p) {
                 break;
             }
             case LoaderMessageTypeShowMenu:
-                loader_do_menu_show(loader, false);
+                loader_do_menu_show(loader, LoaderMenuHome);
                 break;
             case LoaderMessageTypeShowSettings:
-                loader_do_menu_show(loader, true);
+                loader_do_menu_show(loader, LoaderMenuSettings);
                 break;
             case LoaderMessageTypeMenuClosed:
                 loader_do_menu_closed(loader);
@@ -975,9 +952,7 @@ int32_t loader_srv(void* p) {
             case LoaderMessageTypeUnlock:
                 loader_do_unlock(loader);
                 break;
-            case LoaderMessageTypeApplicationsClosed:
-                loader_do_applications_closed(loader);
-                break;
+
             case LoaderMessageTypeSignal:
                 message.bool_value->value =
                     loader_do_signal(loader, message.signal.signal, message.signal.arg);

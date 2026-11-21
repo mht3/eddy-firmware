@@ -20,12 +20,17 @@ void desktop_settings_scene_keybinds_key_on_enter(void* context) {
         desktop_settings_scene_keybinds_key_submenu_callback,
         app);
 
-    submenu_add_item(
+    bool short_press =
+        scene_manager_get_scene_state(app->scene_manager, DesktopSettingsAppSceneKeybindsType) ==
+        DesktopKeybindTypePress;
+    submenu_add_lockable_item(
         submenu,
-        "Down",
+        short_press ? "Down: Home shortcut" : "Down",
         DesktopKeybindKeyDown,
         desktop_settings_scene_keybinds_key_submenu_callback,
-        app);
+        app,
+        short_press,
+        "Down opens Apps or\nyour pinned remote.");
 
     submenu_add_item(
         submenu,

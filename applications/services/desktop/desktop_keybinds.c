@@ -41,7 +41,7 @@ void desktop_keybinds_migrate(Desktop* desktop) {
                     } else if(furi_string_equal(keybind, EXT_PATH("apps/Misc/nightstand.fap"))) {
                         furi_string_set(keybind, "Clock");
                     } else if(furi_string_equal(keybind, "RFID")) {
-                        furi_string_set(keybind, "125 kHz RFID");
+                        furi_string_set(keybind, "RFID");
                     } else if(furi_string_equal(keybind, "SubGHz")) {
                         furi_string_set(keybind, "Sub-GHz");
                     } else if(furi_string_equal(keybind, "Xtreme")) {
@@ -61,8 +61,8 @@ void desktop_keybinds_migrate(Desktop* desktop) {
 const char* desktop_keybinds_defaults[DesktopKeybindTypeMAX][DesktopKeybindKeyMAX] = {
     [DesktopKeybindTypePress] =
         {
-            [DesktopKeybindKeyUp] = "Lock Menu",
-            [DesktopKeybindKeyDown] = "Archive",
+            [DesktopKeybindKeyUp] = "Quick Settings",
+            [DesktopKeybindKeyDown] = "Apps Menu",
             [DesktopKeybindKeyRight] = "Passport",
             [DesktopKeybindKeyLeft] = "Clock",
         },
@@ -203,15 +203,20 @@ void desktop_run_keybind(Desktop* desktop, InputType _type, InputKey _key) {
     FuriString* keybind = desktop_keybinds_load_one(desktop, type, key);
 
     if(furi_string_equal(keybind, "_")) {
-    } else if(furi_string_equal(keybind, "Apps Menu")) {
+    } else if(furi_string_equal(keybind, "Apps Menu") || furi_string_equal(keybind, "Archive")) {
         loader_start_detached_with_gui_error(desktop->loader, LOADER_APPLICATIONS_NAME, NULL);
-    } else if(furi_string_equal(keybind, "Archive")) {
-        desktop_launch_archive(desktop, NULL);
     } else if(furi_string_equal(keybind, "Clock")) {
-        loader_start_detached_with_gui_error(
-            desktop->loader, EXT_PATH("apps/Tools/nightstand.fap"), "");
+        loader_start_detached_with_gui_error(desktop->loader, "Clock & Alarm", NULL);
     } else if(furi_string_equal(keybind, "Device Info")) {
         loader_start_detached_with_gui_error(desktop->loader, "Power", "about_battery");
+    } else if(
+        furi_string_equal(keybind, "Quick Settings") ||
+        furi_string_equal(keybind, "Eddy Settings") ||
+        (key == DesktopKeybindKeyUp && type == DesktopKeybindTypePress &&
+         furi_string_equal(keybind, "Lock Menu"))) {
+        loader_show_settings(desktop->loader);
+    } else if(furi_string_equal(keybind, "125 kHz RFID")) {
+        loader_start_detached_with_gui_error(desktop->loader, "RFID", NULL);
     } else if(furi_string_equal(keybind, "Lock Menu")) {
         view_dispatcher_send_custom_event(desktop->view_dispatcher, DesktopMainEventOpenLockMenu);
     } else if(furi_string_equal(keybind, "Lock Keypad")) {

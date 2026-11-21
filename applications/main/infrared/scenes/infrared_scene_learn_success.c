@@ -79,7 +79,10 @@ bool infrared_scene_learn_success_on_event(void* context, SceneManagerEvent even
             consumed = true;
         } else if(event.event == DialogExResultRight) {
             if(is_transmitter_idle) {
-                scene_manager_next_scene(scene_manager, InfraredSceneLearnEnterName);
+                scene_manager_next_scene(
+                    scene_manager,
+                    infrared->app_state.is_learning_new_remote ? InfraredSceneLearnRemoteName :
+                                                                 InfraredSceneLearnEnterName);
             }
             consumed = true;
         } else if(event.event == DialogExPressCenter) {

@@ -28,7 +28,5 @@ The live renderer is models/renderer.js. The enlarged dolphin in home-screen.js
 redraws the Eddy firmware sprite with scalable paths for high-density displays.
 
 Launcher preview
-The Wii-style tile layout and icons come from the Momentum-derived firmware
-in this repository (applications/services/gui/modules/menu.c and
-assets/icons/MainMenu). The labels use the firmware's HaxrCorp 4089
-bitmap font, copyright sahwar 2009, as included in lib/u8g2/u8g2_fonts.c.
+The grid uses the same launcher icons as the device, from assets/icons in this
+repository. The web preview uses a sample charge and simulated peripherals.

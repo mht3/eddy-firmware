@@ -95,14 +95,16 @@ LOADER_AUTOSTART = ""
 FIRMWARE_APPS = {
     "eddy": [
         "basic_services",
-        "archive",
+        "archive",  # Internal archive helpers are part of the firmware SDK.
         "updater_app",
         "settings_apps",
-        "momentum_app",
+        "eddy_rfid",
+        "eddy_nfc",
+        "eddy_ibutton",
+        "eddy_pomodoro",
         "eddy_signal",
         "infrared",
         "gpio",
-        "u2f",
         "cli_src",
     ],
     "default": [

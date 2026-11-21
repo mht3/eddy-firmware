@@ -1,6 +1,7 @@
 #include "loader_menu_storage_i.h"
 
 #include <core/thread.h>
+#include <dialogs/dialogs.h>
 #include <storage/storage.h>
 #include <gui/modules/dialog_ex.h>
 #include <gui/view_holder.h>
@@ -26,13 +27,37 @@ static void loader_menu_storage_settings_back(void* context) {
     furi_thread_flags_set(furi_thread_get_id(thread), FormatFlagCancel);
 }
 
-int32_t loader_menu_storage_settings(void* context) {
-    Storage* storage = context;
-    Loader* loader = furi_record_open(RECORD_LOADER);
-    LoaderStatus result = loader_start(loader, "Storage", NULL, NULL);
-    furi_record_close(RECORD_LOADER);
+static void storage_notice(const char* title, const char* text) {
+    DialogsApp* dialogs = furi_record_open(RECORD_DIALOGS);
+    DialogMessage* message = dialog_message_alloc();
+    dialog_message_set_header(message, title, 64, 3, AlignCenter, AlignTop);
+    dialog_message_set_text(message, text, 64, 31, AlignCenter, AlignCenter);
+    dialog_message_set_buttons(message, NULL, "OK", NULL);
+    dialog_message_show(dialogs, message);
+    dialog_message_free(message);
+    furi_record_close(RECORD_DIALOGS);
+}
 
-    if(result != LoaderStatusOk) {
+int32_t loader_menu_storage_settings(void* context) {
+    UNUSED(context);
+    Storage* storage = furi_record_open(RECORD_STORAGE);
+    FS_Error card = storage_sd_status(storage);
+    if(card == FSE_OK) {
+        Loader* loader = furi_record_open(RECORD_LOADER);
+        LoaderStatus result = loader_start(loader, "Storage", NULL, NULL);
+        furi_record_close(RECORD_LOADER);
+        if(result != LoaderStatusErrorUnknownApp && result != LoaderStatusErrorInternal) {
+            furi_record_close(RECORD_STORAGE);
+            return 0;
+        }
+        card = storage_sd_status(storage);
+    }
+
+    if(card == FSE_NOT_READY) {
+        storage_notice("No microSD card", "Insert or reinsert a card,\nthen open Storage again.");
+    } else if(card == FSE_OK) {
+        storage_notice("Storage unavailable", "Restore Eddy's apps at\neddy-fw.dev/update");
+    } else {
         DialogEx* dialog_ex = dialog_ex_alloc();
         Gui* gui = furi_record_open(RECORD_GUI);
         ViewHolder* view_holder = view_holder_alloc();
@@ -43,18 +68,10 @@ int32_t loader_menu_storage_settings(void* context) {
         view_holder_set_back_callback(
             view_holder, loader_menu_storage_settings_back, furi_thread_get_current());
 
-        dialog_ex_set_header(dialog_ex, "Update needed", 64, 0, AlignCenter, AlignTop);
+        dialog_ex_set_header(dialog_ex, "Card unreadable", 64, 0, AlignCenter, AlignTop);
         dialog_ex_set_text(
-            dialog_ex,
-            "Reinstall firmware\n"
-            "to run this app.\n"
-            "Can format SD\n"
-            "here if needed.",
-            3,
-            17,
-            AlignLeft,
-            AlignTop);
-        dialog_ex_set_icon(dialog_ex, 83, 11, &I_WarningDolphinFlip_45x42);
+            dialog_ex, "Try reinserting your card.", 64, 25, AlignCenter, AlignCenter);
+        dialog_ex_set_left_button_text(dialog_ex, "Back");
         dialog_ex_set_right_button_text(dialog_ex, "Format SD");
 
         FormatFlag flag = furi_thread_flags_wait(FormatFlagAll, FuriFlagWaitAny, FuriWaitForever);
@@ -105,5 +122,6 @@ int32_t loader_menu_storage_settings(void* context) {
         furi_record_close(RECORD_GUI);
         dialog_ex_free(dialog_ex);
     }
+    furi_record_close(RECORD_STORAGE);
     return 0;
 }

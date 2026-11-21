@@ -43,14 +43,14 @@
 #define INFRARED_TEXT_STORE_NUM  2
 #define INFRARED_TEXT_STORE_SIZE 128
 
+#define INFRARED_REMOTES_PER_PAGE       12
 #define INFRARED_MAX_BUTTON_NAME_LENGTH 23
 #define INFRARED_MAX_REMOTE_NAME_LENGTH 23
 
 #define INFRARED_APP_FOLDER    EXT_PATH("infrared")
 #define INFRARED_APP_EXTENSION ".ir"
 
-#define INFRARED_DEFAULT_REMOTE_NAME "Remote"
-#define INFRARED_LOG_TAG             "InfraredApp"
+#define INFRARED_LOG_TAG "InfraredApp"
 
 /* Button names for easy mode */
 extern const char* const easy_mode_button_names[];
@@ -134,6 +134,11 @@ struct InfraredApp {
 
     FuriThread* task_thread; /**< Pointer to a FuriThread instance for concurrent tasks. */
     FuriString* file_path; /**< Full path to the currently loaded file. */
+    FuriEventFlag* tester_flags;
+    FuriString* remote_paths[INFRARED_REMOTES_PER_PAGE];
+    FuriString* remote_page_start;
+    size_t remote_count;
+    char remote_name[INFRARED_MAX_REMOTE_NAME_LENGTH];
     FuriString* button_name; /**< Name of the button requested in RPC mode. */
     /** Arbitrary text storage for various inputs. */
     char text_store[INFRARED_TEXT_STORE_NUM][INFRARED_TEXT_STORE_SIZE + 1];
@@ -173,21 +178,8 @@ typedef enum {
     InfraredNotificationMessageCount, /**< Special value equal to the message type count. */
 } InfraredNotificationMessage;
 
-/**
- * @brief Add a new remote with a single signal.
- *
- * The filename will be automatically generated depending on
- * the names and number of other files in the infrared data directory.
- *
- * @param[in] infrared pointer to the application instance.
- * @param[in] name pointer to a zero-terminated string containing the signal name.
- * @param[in] signal pointer to the signal to be added.
- * @return InfraredErrorCodeNone if the remote was successfully created, otherwise error code.
- */
-InfraredErrorCode infrared_add_remote_with_button(
-    const InfraredApp* infrared,
-    const char* name,
-    const InfraredSignal* signal);
+bool infrared_remote_is_pinned(const InfraredApp* infrared);
+bool infrared_validate_remote_name(const char* name, FuriString* error, void* context);
 
 /**
  * @brief Rename the currently loaded remote.
@@ -196,8 +188,7 @@ InfraredErrorCode infrared_add_remote_with_button(
  * @param[in] new_name pointer to a zero-terminated string containing the new remote name.
  * @return InfraredErrorCodeNone if the remote was successfully renamed, otherwise error code.
  */
-InfraredErrorCode
-    infrared_rename_current_remote(const InfraredApp* infrared, const char* new_name);
+InfraredErrorCode infrared_rename_current_remote(InfraredApp* infrared, const char* new_name);
 
 /**
  * @brief Begin transmission of the currently loaded signal.

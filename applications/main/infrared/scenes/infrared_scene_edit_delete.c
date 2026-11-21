@@ -1,4 +1,5 @@
 #include "../infrared_app_i.h"
+#include <toolbox/eddy_remote_shortcut.h>
 
 static void
     infrared_scene_edit_delete_dialog_result_callback(DialogExResult result, void* context) {
@@ -16,7 +17,12 @@ static int32_t infrared_scene_edit_delete_task_callback(void* context) {
         furi_assert(app_state->current_button_index != InfraredButtonIndexNone);
         error = infrared_remote_delete_signal(infrared->remote, app_state->current_button_index);
     } else if(edit_target == InfraredEditTargetRemote) {
+        bool pinned = infrared_remote_is_pinned(infrared);
         error = infrared_remote_remove(infrared->remote);
+        if(!INFRARED_ERROR_PRESENT(error) && pinned &&
+           !eddy_remote_shortcut_set(infrared->storage, NULL)) {
+            infrared_show_error_message(infrared, "Deleted. Could not clear\nthe saved shortcut.");
+        }
     } else {
         furi_crash();
     }

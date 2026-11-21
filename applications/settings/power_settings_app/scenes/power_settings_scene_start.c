@@ -3,9 +3,9 @@
 #include <lib/toolbox/value_index.h>
 
 enum PowerSettingsSubmenuIndex {
-    PowerSettingsSubmenuIndexBatteryInfo,
-    PowerSettingsSubmenuIndexReboot,
     PowerSettingsSubmenuIndexOff,
+    PowerSettingsSubmenuIndexReboot,
+    PowerSettingsSubmenuIndexBatteryInfo,
     PowerSettingsSubmenuIndexAutoPowerOff,
 };
 
@@ -51,6 +51,7 @@ static void power_settings_scene_start_charge_supress_percent_changed(VariableIt
 
     variable_item_set_current_value_text(item, charge_supress_str);
     app->settings.charge_supress_percent = value == 100 ? 0 : value;
+    app->settings_changed = true;
 }
 
 // change variable_item_list visible text and app_poweroff_delay_time_settings when user change item in variable_item_list
@@ -60,6 +61,7 @@ static void power_settings_scene_start_auto_poweroff_delay_changed(VariableItem*
 
     variable_item_set_current_value_text(item, auto_poweroff_delay_text[index]);
     app->settings.auto_poweroff_delay_ms = auto_poweroff_delay_value[index];
+    app->settings_changed = true;
 }
 
 static void power_settings_scene_start_submenu_callback(void* context, uint32_t index) {
@@ -76,15 +78,15 @@ void power_settings_scene_start_on_enter(void* context) {
     VariableItem* item;
     uint8_t value_index;
 
-    variable_item_list_add(variable_item_list, "Battery Info", 1, NULL, NULL);
+    variable_item_list_add(variable_item_list, "Power off", 1, NULL, NULL);
 
-    variable_item_list_add(variable_item_list, "Reboot", 1, NULL, NULL);
+    variable_item_list_add(variable_item_list, "Restart", 1, NULL, NULL);
 
-    variable_item_list_add(variable_item_list, "Power OFF", 1, NULL, NULL);
+    variable_item_list_add(variable_item_list, "Battery info", 1, NULL, NULL);
 
     item = variable_item_list_add(
         variable_item_list,
-        "Auto PowerOff",
+        "Auto power off",
         AUTO_POWEROFF_DELAY_COUNT,
         power_settings_scene_start_auto_poweroff_delay_changed,
         app);
@@ -98,7 +100,7 @@ void power_settings_scene_start_on_enter(void* context) {
 
     item = variable_item_list_add(
         variable_item_list,
-        "Limit Charge",
+        "Charge limit",
         100 / CHARGE_SUPRESS_STEP,
         power_settings_scene_start_charge_supress_percent_changed,
         app);
@@ -139,5 +141,6 @@ bool power_settings_scene_start_on_event(void* context, SceneManagerEvent event)
 
 void power_settings_scene_start_on_exit(void* context) {
     PowerSettingsApp* app = context;
+    power_settings_save_changes(app);
     variable_item_list_reset(app->variable_item_list);
 }

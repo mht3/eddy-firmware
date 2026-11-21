@@ -4,6 +4,7 @@
 #include <assets_icons.h>
 #include <loader/loader.h>
 #include <toolbox/run_parallel.h>
+#include <toolbox/eddy_remote_shortcut.h>
 
 #include "../desktop_i.h"
 #include "../views/desktop_events.h"
@@ -32,37 +33,6 @@ static void desktop_scene_main_interact_animation_callback(void* context) {
     view_dispatcher_send_custom_event(
         desktop->view_dispatcher, DesktopAnimationEventInteractAnimation);
 }
-
-#ifdef APP_ARCHIVE
-static void desktop_switch_to_app(
-    Desktop* desktop,
-    const FlipperInternalApplication* flipper_app,
-    void* context) {
-    furi_assert(desktop);
-    furi_assert(flipper_app);
-    furi_assert(flipper_app->app);
-    furi_assert(flipper_app->name);
-
-    if(furi_thread_get_state(desktop->scene_thread) != FuriThreadStateStopped) {
-        FURI_LOG_E("Desktop", "Thread is already running");
-        return;
-    }
-
-    FuriHalRtcHeapTrackMode mode = furi_hal_rtc_get_heap_track_mode();
-    if(mode > FuriHalRtcHeapTrackModeNone) {
-        furi_thread_enable_heap_trace(desktop->scene_thread);
-    } else {
-        furi_thread_disable_heap_trace(desktop->scene_thread);
-    }
-
-    furi_thread_set_name(desktop->scene_thread, flipper_app->name);
-    furi_thread_set_stack_size(desktop->scene_thread, flipper_app->stack_size);
-    furi_thread_set_callback(desktop->scene_thread, flipper_app->app);
-    furi_thread_set_context(desktop->scene_thread, context);
-
-    furi_thread_start(desktop->scene_thread);
-}
-#endif
 
 void desktop_scene_main_callback(DesktopEvent event, void* context) {
     Desktop* desktop = (Desktop*)context;
@@ -115,10 +85,21 @@ bool desktop_scene_main_on_event(void* context, SceneManagerEvent event) {
             consumed = true;
             break;
 
+        case DesktopMainEventOpenShortcut: {
+            FuriString* path = furi_string_alloc();
+            if(eddy_remote_shortcut_get(desktop->storage, path)) {
+                loader_start_detached_with_gui_error(
+                    desktop->loader, "Infrared", furi_string_get_cstr(path));
+            } else {
+                loader_start_detached_with_gui_error(
+                    desktop->loader, LOADER_APPLICATIONS_NAME, NULL);
+            }
+            furi_string_free(path);
+            consumed = true;
+            break;
+        }
         case DesktopMainEventOpenArchive:
-#ifdef APP_ARCHIVE
-            desktop_switch_to_app(desktop, &FLIPPER_ARCHIVE, desktop->archive_dir);
-#endif
+            loader_start_detached_with_gui_error(desktop->loader, LOADER_APPLICATIONS_NAME, NULL);
             consumed = true;
             break;
 

@@ -1,0 +1,16 @@
+for appid, label, icon, order in (
+    ("eddy_rfid", "RFID", "A_125khz_14", 20),
+    ("eddy_nfc", "NFC", "A_NFC_14", 30),
+    ("eddy_ibutton", "iButton", "A_iButton_14", 60),
+):
+    App(
+        appid=appid,
+        name=label,
+        apptype=FlipperAppType.MENUEXTERNAL,
+        entry_point=appid + "_app",
+        icon=icon,
+        order=order,
+        sources=["reader.c", appid + ".c"],
+        stack_size=2048,
+        fap_category="assets",
+    )

@@ -44,6 +44,8 @@ bool desktop_main_input_callback(InputEvent* event, void* context) {
                 event->type == InputTypeShort ? DesktopMainEventOpenMenu :
                                                 DesktopAnimationEventNewIdleAnimation,
                 main_view->context);
+        } else if(event->type == InputTypeShort && event->key == InputKeyDown) {
+            main_view->callback(DesktopMainEventOpenShortcut, main_view->context);
         } else {
             desktop_run_keybind((Desktop*)main_view->context, event->type, event->key);
         }

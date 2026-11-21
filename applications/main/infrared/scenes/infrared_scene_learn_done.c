@@ -4,13 +4,10 @@ void infrared_scene_learn_done_on_enter(void* context) {
     InfraredApp* infrared = context;
     Popup* popup = infrared->popup;
 
-    if(infrared->app_state.is_learning_new_remote) {
-        popup_set_icon(popup, 48, 6, &I_DolphinDone_80x58);
-        popup_set_header(popup, "Success!", 10, 12, AlignLeft, AlignTop);
-    } else {
-        popup_set_icon(popup, 36, 5, &I_DolphinSaved_92x58);
-        popup_set_header(popup, "Saved", 15, 19, AlignLeft, AlignBottom);
-    }
+    popup_set_icon(popup, 0, 0, NULL);
+    popup_set_header(popup, "Saved to My remotes", 64, 18, AlignCenter, AlignCenter);
+    popup_set_text(
+        popup, infrared_remote_get_name(infrared->remote), 64, 39, AlignCenter, AlignCenter);
 
     popup_set_callback(popup, infrared_popup_closed_callback);
     popup_set_context(popup, context);
@@ -40,5 +37,5 @@ bool infrared_scene_learn_done_on_event(void* context, SceneManagerEvent event) 
 void infrared_scene_learn_done_on_exit(void* context) {
     InfraredApp* infrared = context;
     infrared->app_state.is_learning_new_remote = false;
-    popup_set_header(infrared->popup, NULL, 0, 0, AlignLeft, AlignTop);
+    popup_reset(infrared->popup);
 }

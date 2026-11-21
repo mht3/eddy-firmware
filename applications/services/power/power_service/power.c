@@ -2,7 +2,6 @@
 
 #include <furi.h>
 #include <furi_hal.h>
-#include <momentum/momentum.h>
 
 #include <update_util/update_operation.h>
 #include <notification/notification_messages.h>
@@ -20,230 +19,12 @@
 static void power_draw_battery_callback(Canvas* canvas, void* context) {
     furi_assert(context);
     Power* power = context;
-    BatteryIcon battery_icon = momentum_settings.battery_icon;
-    if(battery_icon == BatteryIconOff) return;
-
-    canvas_draw_icon(canvas, 0, 0, &I_Battery_25x8);
-    canvas_set_color(canvas, ColorWhite);
-    canvas_draw_box(canvas, -1, 0, 1, 8);
-    canvas_draw_box(canvas, 0, -1, 24, 1);
-    canvas_draw_box(canvas, 0, 8, 24, 1);
-    canvas_draw_box(canvas, 25, 1, 2, 6);
-    canvas_set_color(canvas, ColorBlack);
-    canvas_draw_box(canvas, 25, 2, 1, 4);
-
+    char text[8] = "--";
     if(power->info.gauge_is_ok) {
-        char batteryPercentile[4];
-        snprintf(batteryPercentile, sizeof(batteryPercentile), "%d", power->info.charge);
-
-        if((battery_icon == BatteryIconPercent) &&
-           (power->state !=
-            PowerStateCharging)) { //if display battery percentage, black background white text
-            canvas_set_font(canvas, FontBatteryPercent);
-            canvas_set_color(canvas, ColorBlack);
-            canvas_draw_box(canvas, 1, 1, 22, 6);
-            canvas_set_color(canvas, ColorWhite);
-            canvas_draw_str_aligned(canvas, 11, 4, AlignCenter, AlignCenter, batteryPercentile);
-        } else if(
-            (battery_icon == BatteryIconInvertedPercent) &&
-            (power->state !=
-             PowerStateCharging)) { //if display inverted percentage, white background black text
-            canvas_set_font(canvas, FontBatteryPercent);
-            canvas_set_color(canvas, ColorBlack);
-            canvas_draw_str_aligned(canvas, 11, 4, AlignCenter, AlignCenter, batteryPercentile);
-        } else if(
-            (battery_icon == BatteryIconRetro3) &&
-            (power->state != PowerStateCharging)) { //Retro style segmented display, 3 parts
-            if(power->info.charge > 25) {
-                canvas_draw_box(canvas, 2, 2, 6, 4);
-            }
-            if(power->info.charge > 50) {
-                canvas_draw_box(canvas, 9, 2, 6, 4);
-            }
-            if(power->info.charge > 75) {
-                canvas_draw_box(canvas, 16, 2, 6, 4);
-            }
-        } else if(
-            (battery_icon == BatteryIconRetro5) &&
-            (power->state != PowerStateCharging)) { //Retro style segmented display, 5 parts
-            if(power->info.charge > 10) {
-                canvas_draw_box(canvas, 2, 2, 3, 4);
-            }
-            if(power->info.charge > 30) {
-                canvas_draw_box(canvas, 6, 2, 3, 4);
-            }
-            if(power->info.charge > 50) {
-                canvas_draw_box(canvas, 10, 2, 3, 4);
-            }
-            if(power->info.charge > 70) {
-                canvas_draw_box(canvas, 14, 2, 3, 4);
-            }
-            if(power->info.charge > 90) {
-                canvas_draw_box(canvas, 18, 2, 3, 4);
-            }
-        } else if(
-            (battery_icon == BatteryIconBarPercent) &&
-            (power->state != PowerStateCharging) && // Default bar display with percentage
-            (power->info.voltage_battery_charge_limit >=
-             4.2f)) { // not looking nice with low voltage indicator
-            canvas_set_font(canvas, FontBatteryPercent);
-
-            // align charge display value with digits to draw
-            uint8_t bar_charge = power->info.charge;
-            if(bar_charge > 23 && bar_charge < 38) {
-                bar_charge = 23;
-            } else if(bar_charge >= 38 && bar_charge < 62) {
-                bar_charge = 50;
-            } else if(bar_charge >= 62 && bar_charge < 74) {
-                bar_charge = 74;
-            }
-
-            // drawing digits
-            canvas_set_color(canvas, ColorBlack);
-            canvas_draw_box(canvas, 1, 1, (bar_charge * 22) / 100, 6);
-            if(bar_charge < 38) { // both digits are black
-                canvas_set_color(canvas, ColorBlack);
-                canvas_draw_str_aligned(
-                    canvas, 11, 4, AlignCenter, AlignCenter, batteryPercentile);
-            } else if(bar_charge >= 38 && bar_charge < 74) { // first digit is white
-                canvas_set_color(canvas, ColorWhite);
-
-                // first
-                char batteryPercentileFirstDigit[2];
-                snprintf(
-                    batteryPercentileFirstDigit,
-                    sizeof(batteryPercentileFirstDigit),
-                    "%c",
-                    batteryPercentile[0]);
-                canvas_draw_str_aligned(
-                    canvas, 9, 4, AlignCenter, AlignCenter, batteryPercentileFirstDigit);
-
-                // second
-                char batteryPercentileSecondDigit[2];
-                snprintf(
-                    batteryPercentileSecondDigit,
-                    sizeof(batteryPercentileSecondDigit),
-                    "%c",
-                    batteryPercentile[1]);
-                canvas_set_color(canvas, ColorBlack);
-                canvas_draw_str_aligned(
-                    canvas, 15, 4, AlignCenter, AlignCenter, batteryPercentileSecondDigit);
-            } else { // charge >= 74, both digits are white
-                canvas_set_color(canvas, ColorWhite);
-                canvas_draw_str_aligned(
-                    canvas, 11, 4, AlignCenter, AlignCenter, batteryPercentile);
-            }
-
-        } else { //default bar display, added here to serve as fallback/default behaviour.
-            canvas_draw_box(canvas, 2, 2, (power->info.charge + 4) / 5, 4);
-        }
-
-        // TODO: Verify if it displays correctly with custom battery skins !!!
-        if(power->info.voltage_battery_charge_limit < 4.2f) {
-            // Battery charging voltage is modified, indicate with cross pattern
-            canvas_invert_color(canvas);
-            uint8_t battery_bar_width = (power->info.charge + 4) / 5;
-            bool cross_odd = false;
-            // Start 1 further in from the battery bar's x position
-            for(uint8_t x = 3; x <= battery_bar_width; x++) {
-                // Cross pattern is from the center of the battery bar
-                // y = 2 + 1 (inset) + 1 (for every other)
-                canvas_draw_dot(canvas, x, 3 + (uint8_t)cross_odd);
-                cross_odd = !cross_odd;
-            }
-            canvas_invert_color(canvas);
-        }
-
-        if(power->state == PowerStateCharging) {
-            canvas_set_bitmap_mode(canvas, true);
-            // TODO: replace -1 magic for uint8_t with re-framing
-            if(battery_icon == BatteryIconPercent) {
-                canvas_set_color(canvas, ColorBlack);
-                canvas_draw_box(canvas, 1, 1, 22, 6);
-                canvas_draw_icon(canvas, 2, -1, &I_Charging_lightning_9x10);
-                canvas_set_color(canvas, ColorWhite);
-                canvas_draw_icon(canvas, 2, -1, &I_Charging_lightning_mask_9x10);
-                canvas_set_font(canvas, FontBatteryPercent);
-                canvas_draw_str_aligned(
-                    canvas, 16, 4, AlignCenter, AlignCenter, batteryPercentile);
-            } else if(battery_icon == BatteryIconInvertedPercent) {
-                canvas_set_color(canvas, ColorWhite);
-                canvas_draw_box(canvas, 1, 1, 22, 6);
-                canvas_draw_icon(canvas, 2, -1, &I_Charging_lightning_9x10);
-                canvas_set_color(canvas, ColorBlack);
-                canvas_draw_icon(canvas, 2, -1, &I_Charging_lightning_mask_9x10);
-                canvas_set_font(canvas, FontBatteryPercent);
-                canvas_draw_str_aligned(
-                    canvas, 16, 4, AlignCenter, AlignCenter, batteryPercentile);
-            } else if(battery_icon == BatteryIconBarPercent) {
-                // clean-up default charging bar display
-                canvas_set_color(canvas, ColorWhite);
-                canvas_draw_box(canvas, 1, 1, 22, 6);
-
-                // align charge display value with digits to draw
-                uint8_t bar_charge = power->info.charge;
-
-                if(bar_charge > 48 && bar_charge < 63) {
-                    bar_charge = 48;
-                } else if(bar_charge >= 63 && bar_charge < 84) {
-                    bar_charge = 75;
-                } else if(bar_charge >= 84 && bar_charge < 96) {
-                    bar_charge = 96;
-                }
-                canvas_set_color(canvas, ColorBlack);
-                canvas_draw_box(canvas, 1, 1, (bar_charge * 22) / 100, 6);
-
-                // drawing charge icon
-                canvas_draw_icon(canvas, 2, -1, &I_Charging_lightning_9x10);
-                canvas_set_color(canvas, ColorWhite);
-                canvas_draw_icon(canvas, 2, -1, &I_Charging_lightning_mask_9x10);
-
-                // drawing digits
-                canvas_set_font(canvas, FontBatteryPercent);
-                if(bar_charge < 64) { // both digits are black
-                    canvas_set_color(canvas, ColorBlack);
-                    canvas_draw_str_aligned(
-                        canvas, 16, 4, AlignCenter, AlignCenter, batteryPercentile);
-                } else if(bar_charge >= 64 && bar_charge < 84) { // first digit is white
-                    canvas_set_color(canvas, ColorWhite);
-
-                    // first
-                    char batteryPercentileFirstDigit[2];
-                    snprintf(
-                        batteryPercentileFirstDigit,
-                        sizeof(batteryPercentileFirstDigit),
-                        "%c",
-                        batteryPercentile[0]);
-                    canvas_draw_str_aligned(
-                        canvas, 14, 4, AlignCenter, AlignCenter, batteryPercentileFirstDigit);
-
-                    // second
-                    char batteryPercentileSecondDigit[2];
-                    snprintf(
-                        batteryPercentileSecondDigit,
-                        sizeof(batteryPercentileSecondDigit),
-                        "%c",
-                        batteryPercentile[1]);
-                    canvas_set_color(canvas, ColorBlack);
-                    canvas_draw_str_aligned(
-                        canvas, 20, 4, AlignCenter, AlignCenter, batteryPercentileSecondDigit);
-                } else { // charge >= 84, both digits are white
-                    canvas_set_color(canvas, ColorWhite);
-                    canvas_draw_str_aligned(
-                        canvas, 16, 4, AlignCenter, AlignCenter, batteryPercentile);
-                }
-            } else {
-                canvas_set_color(canvas, ColorWhite);
-                canvas_draw_icon(canvas, 8, -1, &I_Charging_lightning_mask_9x10);
-                canvas_set_color(canvas, ColorBlack);
-                canvas_draw_icon(canvas, 8, -1, &I_Charging_lightning_9x10);
-            }
-            canvas_set_bitmap_mode(canvas, false);
-        }
-
-    } else {
-        canvas_draw_box(canvas, 8, 3, 8, 2);
+        snprintf(text, sizeof(text), "%u%%", (unsigned)power->info.charge);
     }
+    canvas_set_font(canvas, FontSecondary);
+    canvas_draw_str_aligned(canvas, 24, 7, AlignRight, AlignBottom, text);
 }
 
 static ViewPort* power_battery_view_port_alloc(Power* power) {
@@ -274,7 +55,7 @@ static bool power_update_info(Power* power) {
     };
 
     const bool need_refresh = (power->info.charge != info.charge) ||
-                              (power->info.is_charging != info.is_charging);
+                              (power->info.gauge_is_ok != info.gauge_is_ok);
     power->info = info;
     return need_refresh;
 }
@@ -589,8 +370,6 @@ static void power_tick_callback(void* context) {
     // charge supress arm/disarm
     power_charge_supress(power);
     // Update battery view port
-    view_port_enabled_set(
-        power->battery_view_port, momentum_settings.battery_icon != BatteryIconOff);
     if(need_refresh) {
         view_port_update(power->battery_view_port);
     }

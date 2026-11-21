@@ -6,6 +6,7 @@
 
 #include <string.h>
 #include <toolbox/path.h>
+#include <toolbox/eddy_remote_shortcut.h>
 #include <toolbox/saved_struct.h>
 #include <dolphin/dolphin.h>
 
@@ -28,7 +29,7 @@ static const NotificationSequence*
 
 static void infrared_make_app_folder(InfraredApp* infrared) {
     if(!storage_simply_mkdir(infrared->storage, INFRARED_APP_FOLDER)) {
-        infrared_show_error_message(infrared, "Cannot create\napp folder");
+        infrared_show_error_message(infrared, "Check the microSD card\nto save remotes.");
     }
 }
 
@@ -102,50 +103,10 @@ static void infrared_rpc_command_callback(const RpcAppSystemEvent* event, void* 
     }
 }
 
-static void infrared_find_vacant_remote_name(FuriString* name, const char* path) {
-    Storage* storage = furi_record_open(RECORD_STORAGE);
-
-    FuriString* base_path;
-    base_path = furi_string_alloc_set(path);
-
-    if(furi_string_end_with(base_path, INFRARED_APP_EXTENSION)) {
-        size_t filename_start = furi_string_search_rchar(base_path, '/');
-        furi_string_left(base_path, filename_start);
-    }
-
-    furi_string_printf(
-        base_path, "%s/%s%s", path, furi_string_get_cstr(name), INFRARED_APP_EXTENSION);
-
-    FS_Error status = storage_common_stat(storage, furi_string_get_cstr(base_path), NULL);
-
-    if(status == FSE_OK) {
-        /* If the suggested name is occupied, try another one (name2, name3, etc) */
-        size_t dot = furi_string_search_rchar(base_path, '.');
-        furi_string_left(base_path, dot);
-
-        FuriString* path_temp;
-        path_temp = furi_string_alloc();
-
-        uint32_t i = 1;
-        do {
-            furi_string_printf(
-                path_temp, "%s%lu%s", furi_string_get_cstr(base_path), ++i, INFRARED_APP_EXTENSION);
-            status = storage_common_stat(storage, furi_string_get_cstr(path_temp), NULL);
-        } while(status == FSE_OK);
-
-        furi_string_free(path_temp);
-
-        if(status == FSE_NOT_EXIST) {
-            furi_string_cat_printf(name, "%lu", i);
-        }
-    }
-
-    furi_string_free(base_path);
-    furi_record_close(RECORD_STORAGE);
-}
-
 static InfraredApp* infrared_alloc(void) {
     InfraredApp* infrared = malloc(sizeof(InfraredApp));
+    infrared->remote_count = 0;
+    infrared->remote_page_start = furi_string_alloc();
 
     infrared->task_thread =
         furi_thread_alloc_ex("InfraredTask", INFRARED_TASK_STACK_SIZE, NULL, infrared);
@@ -293,6 +254,7 @@ static void infrared_free(InfraredApp* infrared) {
     infrared_remote_free(infrared->remote);
     infrared_worker_free(infrared->worker);
 
+    furi_record_close(RECORD_STORAGE);
     furi_record_close(RECORD_NOTIFICATION);
     infrared->notifications = NULL;
 
@@ -302,67 +264,54 @@ static void infrared_free(InfraredApp* infrared) {
     furi_record_close(RECORD_GUI);
     infrared->gui = NULL;
 
+    furi_string_free(infrared->remote_page_start);
     furi_string_free(infrared->file_path);
     furi_string_free(infrared->button_name);
 
     free(infrared);
 }
 
-InfraredErrorCode infrared_add_remote_with_button(
-    const InfraredApp* infrared,
-    const char* button_name,
-    const InfraredSignal* signal) {
-    InfraredRemote* remote = infrared->remote;
-
-    FuriString* new_name = furi_string_alloc_set(INFRARED_DEFAULT_REMOTE_NAME);
-    FuriString* new_path = furi_string_alloc_set(INFRARED_APP_FOLDER);
-
-    infrared_find_vacant_remote_name(new_name, furi_string_get_cstr(new_path));
-    furi_string_cat_printf(
-        new_path, "/%s%s", furi_string_get_cstr(new_name), INFRARED_APP_EXTENSION);
-
-    InfraredErrorCode error = InfraredErrorCodeNone;
-
-    do {
-        error = infrared_remote_create(remote, furi_string_get_cstr(new_path));
-        if(INFRARED_ERROR_PRESENT(error)) break;
-
-        error = infrared_remote_append_signal(remote, signal, button_name);
-    } while(false);
-
-    furi_string_free(new_name);
-    furi_string_free(new_path);
-
-    return error;
+bool infrared_remote_is_pinned(const InfraredApp* infrared) {
+    FuriString* pin = furi_string_alloc();
+    bool pinned = eddy_remote_shortcut_get(infrared->storage, pin) &&
+                  furi_string_equal_str(pin, infrared_remote_get_path(infrared->remote));
+    furi_string_free(pin);
+    return pinned;
 }
 
-InfraredErrorCode
-    infrared_rename_current_remote(const InfraredApp* infrared, const char* new_name) {
+bool infrared_validate_remote_name(const char* name, FuriString* error, void* context) {
+    size_t n = strlen(name);
+    if(!n || name[0] == '.' || name[0] == ' ' || name[n - 1] == ' ' || name[n - 1] == '.') {
+        furi_string_set(error, "Choose a name without leading or trailing spaces or dots.");
+        return false;
+    }
+    for(const char* c = name; *c; c++) {
+        if((unsigned char)*c < 32 || strchr("/\\:*?\"<>|", *c)) {
+            furi_string_set(error, "Use letters, numbers and spaces.");
+            return false;
+        }
+    }
+    return validator_is_file_callback(name, error, context);
+}
+
+InfraredErrorCode infrared_rename_current_remote(InfraredApp* infrared, const char* new_name) {
     InfraredRemote* remote = infrared->remote;
-    const char* old_path = infrared_remote_get_path(remote);
+    if(!strcmp(infrared_remote_get_name(remote), new_name)) return InfraredErrorCodeNone;
 
-    if(!strcmp(infrared_remote_get_name(remote), new_name)) {
-        return true;
+    bool pinned = infrared_remote_is_pinned(infrared);
+    FuriString* path = furi_string_alloc();
+    path_extract_dirname(infrared_remote_get_path(remote), path);
+    path_append(path, new_name);
+    furi_string_cat_str(path, INFRARED_APP_EXTENSION);
+    InfraredErrorCode error = infrared_remote_rename(remote, furi_string_get_cstr(path));
+    if(!INFRARED_ERROR_PRESENT(error)) {
+        furi_string_set(infrared->file_path, path);
+        if(pinned && !eddy_remote_shortcut_set(infrared->storage, furi_string_get_cstr(path))) {
+            infrared_show_error_message(
+                infrared, "Renamed. Pin the remote\nagain from its controls.");
+        }
     }
-
-    FuriString* new_name_fstr = furi_string_alloc_set(new_name);
-    FuriString* new_path_fstr = furi_string_alloc_set(old_path);
-
-    infrared_find_vacant_remote_name(new_name_fstr, old_path);
-
-    if(furi_string_end_with(new_path_fstr, INFRARED_APP_EXTENSION)) {
-        path_extract_dirname(old_path, new_path_fstr);
-    }
-
-    path_append(new_path_fstr, furi_string_get_cstr(new_name_fstr));
-    furi_string_cat(new_path_fstr, INFRARED_APP_EXTENSION);
-
-    const InfraredErrorCode error =
-        infrared_remote_rename(remote, furi_string_get_cstr(new_path_fstr));
-
-    furi_string_free(new_name_fstr);
-    furi_string_free(new_path_fstr);
-
+    furi_string_free(path);
     return error;
 }
 
@@ -602,6 +551,9 @@ int32_t infrared_app(void* p) {
                                          "Failed to load\n\"%s\"";
 
                 infrared_show_error_message(infrared, format, file_path);
+                infrared_set_tx_pin(infrared, FuriHalInfraredTxPinInternal);
+                infrared_enable_otg(infrared, false);
+                infrared_free(infrared);
                 return -1;
             }
 

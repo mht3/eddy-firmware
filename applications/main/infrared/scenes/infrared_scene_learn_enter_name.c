@@ -58,10 +58,17 @@ bool infrared_scene_learn_enter_name_on_event(void* context, SceneManagerEvent e
     if(event.type == SceneManagerEventTypeCustom) {
         if(event.event == InfraredCustomEventTypeTextEditDone) {
             const char* signal_name = infrared->text_store[0];
-            const InfraredErrorCode error =
-                infrared->app_state.is_learning_new_remote ?
-                    infrared_add_remote_with_button(infrared, signal_name, signal) :
-                    infrared_remote_append_signal(infrared->remote, signal, signal_name);
+            InfraredErrorCode error;
+            if(infrared->app_state.is_learning_new_remote) {
+                FuriString* path = furi_string_alloc_printf(
+                    "%s/%s%s", INFRARED_APP_FOLDER, infrared->remote_name, INFRARED_APP_EXTENSION);
+                error = infrared_remote_create(
+                    infrared->remote, furi_string_get_cstr(path), signal, signal_name);
+                if(!INFRARED_ERROR_PRESENT(error)) furi_string_set(infrared->file_path, path);
+                furi_string_free(path);
+            } else {
+                error = infrared_remote_append_signal(infrared->remote, signal, signal_name);
+            }
 
             if(!INFRARED_ERROR_PRESENT(error)) {
                 scene_manager_next_scene(scene_manager, InfraredSceneLearnDone);
@@ -69,11 +76,7 @@ bool infrared_scene_learn_enter_name_on_event(void* context, SceneManagerEvent e
             } else {
                 infrared_show_error_message(
                     infrared,
-                    "Failed to\n%s",
-                    infrared->app_state.is_learning_new_remote ? "create file" : "add signal");
-                const uint32_t possible_scenes[] = {InfraredSceneRemoteList, InfraredSceneStart};
-                scene_manager_search_and_switch_to_previous_scene_one_of(
-                    scene_manager, possible_scenes, COUNT_OF(possible_scenes));
+                    "Could not save. Check the\nmicroSD card or choose\na different remote name.");
             }
             consumed = true;
         }
@@ -84,5 +87,5 @@ bool infrared_scene_learn_enter_name_on_event(void* context, SceneManagerEvent e
 
 void infrared_scene_learn_enter_name_on_exit(void* context) {
     InfraredApp* infrared = context;
-    UNUSED(infrared);
+    text_input_reset(infrared->text_input);
 }

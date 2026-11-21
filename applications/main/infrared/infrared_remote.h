@@ -188,13 +188,17 @@ InfraredErrorCode infrared_remote_delete_signal(InfraredRemote* remote, size_t i
 /**
  * @brief Create a new file and associate it with an InfraredRemote instance.
  *
- * The instance will be reset and given a new empty file with just the header.
+ * The file is created with its first named button. An existing file is preserved.
  *
  * @param[in,out] remote pointer to the instance to be assigned with a new file.
  * @param[in] path pointer to a zero-terminated string containing the full file path.
  * @returns InfraredErrorCodeNone if the file was successfully created, otherwise error code.
  */
-InfraredErrorCode infrared_remote_create(InfraredRemote* remote, const char* path);
+InfraredErrorCode infrared_remote_create(
+    InfraredRemote* remote,
+    const char* path,
+    const InfraredSignal* signal,
+    const char* button_name);
 
 /**
  * @brief Associate an InfraredRemote instance with a file and load the signal names from it.

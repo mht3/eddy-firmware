@@ -128,7 +128,7 @@
             <h2>
               Meet Eddy.
             </h2>
-            <p>Press the orange center button to explore Momentum’s default apps in this preview. Use the arrows to move and the small button to go back.</p>
+            <p>Press the center button for Apps, Settings, and Power. Try Up from home for brightness and volume.</p>
             <span class="sr-only" id="control-help">The preview uses sample data.</span>
           </section>
         </div>
@@ -151,6 +151,15 @@
           <a class="cta" href="update/">Open Eddy updater</a>
         </div>
       </section>
+      <dialog id="remote-name-dialog">
+        <form method="dialog">
+          <label for="remote-name" id="remote-name-label">Remote name</label>
+          <input id="remote-name" maxlength="22" placeholder="Living room TV" required>
+          <label for="remote-button" id="remote-button-label">Button name</label>
+          <input id="remote-button" maxlength="22" value="Power" required>
+          <div><button type="button" id="remote-cancel">Cancel</button><button type="submit">Save</button></div>
+        </form>
+      </dialog>
     </main>
     <footer>
       <a class="brand" href="./">

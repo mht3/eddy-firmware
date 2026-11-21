@@ -22,6 +22,7 @@ static void power_settings_tick_event_callback(void* context) {
 PowerSettingsApp* power_settings_app_alloc(uint32_t first_scene, ViewDispatcherType type) {
     PowerSettingsApp* app = malloc(sizeof(PowerSettingsApp));
 
+    app->settings_changed = false;
     app->about_battery = first_scene == PowerSettingsAppSceneBatteryInfo;
 
     // Records
@@ -69,11 +70,17 @@ PowerSettingsApp* power_settings_app_alloc(uint32_t first_scene, ViewDispatcherT
     return app;
 }
 
+void power_settings_save_changes(PowerSettingsApp* app) {
+    if(app->settings_changed) {
+        power_api_set_settings(app->power, &app->settings);
+        app->settings_changed = false;
+    }
+}
+
 void power_settings_app_free(PowerSettingsApp* app) {
     furi_assert(app);
 
-    // set settings from app to service
-    power_api_set_settings(app->power, &app->settings);
+    power_settings_save_changes(app);
     // Views
     view_dispatcher_remove_view(app->view_dispatcher, PowerSettingsAppViewBatteryInfo);
     battery_info_free(app->battery_info);

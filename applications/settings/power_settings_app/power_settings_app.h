@@ -28,8 +28,11 @@ typedef struct {
     PowerInfo info;
     VariableItemList* variable_item_list;
 
+    bool settings_changed;
     bool about_battery;
 } PowerSettingsApp;
+
+void power_settings_save_changes(PowerSettingsApp* app);
 
 typedef enum {
     PowerSettingsAppViewBatteryInfo,

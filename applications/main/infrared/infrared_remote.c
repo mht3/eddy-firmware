@@ -375,29 +375,30 @@ InfraredErrorCode
     return error;
 }
 
-InfraredErrorCode infrared_remote_create(InfraredRemote* remote, const char* path) {
-    FURI_LOG_I(TAG, "Creating new file: '%s'", path);
-
-    infrared_remote_reset(remote);
-    infrared_remote_set_path(remote, path);
-
+InfraredErrorCode infrared_remote_create(
+    InfraredRemote* remote,
+    const char* path,
+    const InfraredSignal* signal,
+    const char* button_name) {
     Storage* storage = furi_record_open(RECORD_STORAGE);
-    FlipperFormat* ff = flipper_format_file_alloc(storage);
-
-    bool success = false;
-
-    do {
-        if(!flipper_format_file_open_always(ff, path)) break;
-        if(!flipper_format_write_header_cstr(ff, INFRARED_FILE_HEADER, INFRARED_FILE_VERSION))
-            break;
-
-        success = true;
-    } while(false);
-
-    flipper_format_free(ff);
+    FlipperFormat* file = flipper_format_file_alloc(storage);
+    InfraredErrorCode error = InfraredErrorCodeFileOperationFailed;
+    if(flipper_format_file_open_new(file, path)) {
+        if(flipper_format_write_header_cstr(file, INFRARED_FILE_HEADER, INFRARED_FILE_VERSION)) {
+            error = infrared_signal_save(signal, file, button_name);
+        }
+        if(!flipper_format_file_close(file)) error = InfraredErrorCodeFileOperationFailed;
+        if(INFRARED_ERROR_PRESENT(error)) {
+            storage_common_remove(storage, path);
+        } else {
+            infrared_remote_reset(remote);
+            infrared_remote_set_path(remote, path);
+            StringArray_push_back(remote->signal_names, button_name);
+        }
+    }
+    flipper_format_free(file);
     furi_record_close(RECORD_STORAGE);
-
-    return success ? InfraredErrorCodeNone : InfraredErrorCodeFileOperationFailed;
+    return error;
 }
 
 InfraredErrorCode infrared_remote_load(InfraredRemote* remote, const char* path) {
@@ -458,10 +459,10 @@ InfraredErrorCode infrared_remote_rename(InfraredRemote* remote, const char* new
     const char* old_path = infrared_remote_get_path(remote);
 
     Storage* storage = furi_record_open(RECORD_STORAGE);
-    const FS_Error status = storage_common_rename(storage, old_path, new_path);
+    const FS_Error status = storage_common_rename_safe(storage, old_path, new_path);
     furi_record_close(RECORD_STORAGE);
 
-    const bool success = (status == FSE_OK || status == FSE_EXIST);
+    const bool success = status == FSE_OK;
 
     if(success) {
         infrared_remote_set_path(remote, new_path);
