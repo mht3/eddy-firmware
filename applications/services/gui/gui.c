@@ -77,16 +77,22 @@ static void gui_redraw_fullscreen_battery(Gui* gui) {
         return;
 
     const size_t width = view_port_get_width(battery);
-    if(!width || width > GUI_DISPLAY_WIDTH) return;
-    const size_t x = GUI_DISPLAY_WIDTH - width;
-    // The LCD stores each eight-pixel column of a tile row in one byte.
+    if(!width || width > GUI_DISPLAY_WIDTH - GUI_BATTERY_RIGHT_MARGIN) return;
+    const size_t x = GUI_DISPLAY_WIDTH - width - GUI_BATTERY_RIGHT_MARGIN;
+    // At y=1 the eight-pixel icon spans two tile rows. Test only its pixels,
+    // including when the framebuffer is rotated 180 degrees for left-handed use.
     const uint8_t* buffer = canvas_get_buffer(gui->canvas);
-    const size_t offset = flipped ? (GUI_DISPLAY_HEIGHT / 8 - 1) * GUI_DISPLAY_WIDTH : x;
+    const size_t offset =
+        flipped ? (GUI_DISPLAY_HEIGHT / 8 - 2) * GUI_DISPLAY_WIDTH + GUI_BATTERY_RIGHT_MARGIN : x;
+    const uint8_t upper_mask = flipped ? 0x80 : 0xFE;
+    const uint8_t lower_mask = flipped ? 0x7F : 0x01;
     const uint8_t background = momentum_settings.dark_mode ? 0xFF : 0;
     for(size_t i = 0; i < width; ++i) {
-        if(buffer[offset + i] != background) return;
+        if(((buffer[offset + i] ^ background) & upper_mask) ||
+           ((buffer[offset + GUI_DISPLAY_WIDTH + i] ^ background) & lower_mask))
+            return;
     }
-    canvas_frame_set(gui->canvas, x, 0, width, GUI_STATUS_BAR_WORKAREA_HEIGHT);
+    canvas_frame_set(gui->canvas, x, 1, width, GUI_STATUS_BAR_WORKAREA_HEIGHT);
     canvas_set_color(gui->canvas, ColorBlack);
     canvas_set_font_direction(gui->canvas, CanvasDirectionLeftToRight);
     view_port_draw(battery, gui->canvas);
@@ -145,12 +151,17 @@ static void gui_redraw_status_bar(Gui* gui, bool need_attention) {
         width = view_port_get_width(battery);
         right_used = width + 2;
         canvas_frame_set(
-            gui->canvas, GUI_DISPLAY_WIDTH - width - 3, 2, width, GUI_STATUS_BAR_WORKAREA_HEIGHT);
+            gui->canvas,
+            GUI_DISPLAY_WIDTH - width - GUI_BATTERY_RIGHT_MARGIN,
+            2,
+            width,
+            GUI_STATUS_BAR_WORKAREA_HEIGHT);
         canvas_set_color(gui->canvas, ColorWhite);
         canvas_draw_box(gui->canvas, 0, 0, width, GUI_STATUS_BAR_WORKAREA_HEIGHT);
         canvas_set_color(gui->canvas, ColorBlack);
         view_port_draw(battery, gui->canvas);
     }
+    const uint8_t battery_space = right_used;
     uint8_t x = GUI_DISPLAY_WIDTH - 1 - right_used;
     ViewPortArray_it(it, gui->layers[GuiLayerStatusBarRight]);
     while(!ViewPortArray_end_p(it) && right_used < GUI_STATUS_BAR_WIDTH) {
@@ -186,32 +197,27 @@ static void gui_redraw_status_bar(Gui* gui, bool need_attention) {
         }
         ViewPortArray_next(it);
     }
-    // Draw frame around icons on the right
-    if(right_used) {
-        canvas_frame_set(
+    // Optional status borders surround the clock and other icons. The battery
+    // has its own outline and the space to its right stays clear.
+    if(right_used > battery_space && momentum_settings.bar_borders) {
+        const int left = GUI_DISPLAY_WIDTH - 4 - right_used;
+        const int end = battery ? GUI_DISPLAY_WIDTH - battery_space - 2 : GUI_DISPLAY_WIDTH;
+        canvas_frame_set(gui->canvas, left, GUI_STATUS_BAR_Y, end - left, GUI_STATUS_BAR_HEIGHT);
+        canvas_set_color(gui->canvas, ColorBlack);
+        canvas_draw_rframe(
+            gui->canvas, 0, 0, canvas_width(gui->canvas), canvas_height(gui->canvas), 1);
+        canvas_draw_line(
             gui->canvas,
-            GUI_DISPLAY_WIDTH - 4 - right_used,
-            GUI_STATUS_BAR_Y,
-            right_used + 4,
-            GUI_STATUS_BAR_HEIGHT);
-        // Disable battery border
-        if(momentum_settings.bar_borders) {
-            canvas_set_color(gui->canvas, ColorBlack);
-            canvas_draw_rframe(
-                gui->canvas, 0, 0, canvas_width(gui->canvas), canvas_height(gui->canvas), 1);
-            canvas_draw_line(
-                gui->canvas,
-                canvas_width(gui->canvas) - 2,
-                1,
-                canvas_width(gui->canvas) - 2,
-                canvas_height(gui->canvas) - 2);
-            canvas_draw_line(
-                gui->canvas,
-                1,
-                canvas_height(gui->canvas) - 2,
-                canvas_width(gui->canvas) - 2,
-                canvas_height(gui->canvas) - 2);
-        }
+            canvas_width(gui->canvas) - 2,
+            1,
+            canvas_width(gui->canvas) - 2,
+            canvas_height(gui->canvas) - 2);
+        canvas_draw_line(
+            gui->canvas,
+            1,
+            canvas_height(gui->canvas) - 2,
+            canvas_width(gui->canvas) - 2,
+            canvas_height(gui->canvas) - 2);
     }
 
     // Left side

@@ -24,26 +24,26 @@ static void power_draw_battery_callback(Canvas* canvas, void* context) {
     char text[6] = "--";
     if(charge <= 100) snprintf(text, sizeof(text), "%u%%", charge);
     // Keep the percentage inside the cell at every charge level.
-    canvas_draw_rframe(canvas, 6, 0, 26, 8, 2);
-    canvas_draw_box(canvas, 32, 2, 2, 4);
+    canvas_draw_rframe(canvas, 5, 0, 24, 8, 2);
+    canvas_draw_box(canvas, 30, 3, 1, 2);
     if(charge <= 100) {
-        const unsigned fill = (24 * charge + 50) / 100;
-        if(fill) canvas_draw_box(canvas, 7, 1, fill, 6);
+        const unsigned fill = (22 * charge + 50) / 100;
+        if(fill) canvas_draw_box(canvas, 6, 1, fill, 6);
     }
     canvas_set_font(canvas, FontBatteryPercent);
     canvas_set_color(canvas, ColorXOR);
-    canvas_draw_str_aligned(canvas, 19, 7, AlignCenter, AlignBottom, text);
+    canvas_draw_str_aligned(canvas, 17, 7, AlignCenter, AlignBottom, text);
     canvas_set_color(canvas, ColorBlack);
     if(display & 0x80) {
-        canvas_draw_line(canvas, 4, 0, 0, 4);
-        canvas_draw_line(canvas, 0, 4, 4, 4);
-        canvas_draw_line(canvas, 4, 4, 1, 7);
+        canvas_draw_line(canvas, 3, 0, 0, 4);
+        canvas_draw_line(canvas, 0, 4, 3, 4);
+        canvas_draw_line(canvas, 3, 4, 1, 7);
     }
 }
 
 static ViewPort* power_battery_view_port_alloc(Power* power) {
     ViewPort* battery_view_port = view_port_alloc();
-    view_port_set_width(battery_view_port, 34);
+    view_port_set_width(battery_view_port, 31);
     view_port_draw_callback_set(battery_view_port, power_draw_battery_callback, power);
     return battery_view_port;
 }
