@@ -25,3 +25,9 @@ renders of the same models, including the interactive face-on view. Rebuild the 
 sources using Python 3 and KiCad CLI 10.0.7.
     python3 models/convert.py --kicad-cli /path/to/kicad-cli
 The live renderer is models/renderer.js and the LCD uses device.js, home-screen.js and preview.js.
+
+Launcher preview
+The Wii-style tile layout and icons come from the Momentum-derived firmware
+in this repository (applications/services/gui/modules/menu.c and
+assets/icons/MainMenu). The labels use the firmware's HaxrCorp 4089
+bitmap font, copyright sahwar 2009, as included in lib/u8g2/u8g2_fonts.c.

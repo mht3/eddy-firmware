@@ -1,3 +1,4 @@
+import {drawLauncher, launcherApps, launcherArt} from './launcher.js';
 import {drawHome, ocean} from './home-screen.js';
 
 const panel = document.querySelector('#playable');
@@ -7,12 +8,12 @@ const status = document.querySelector('#preview-state');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const ink = '#432a14';
 const titles = {
-  home:'Home screen', menu:'Main menu', archive:'Archive', folder:'Dolphin',
+  home:'Home screen', menu:'Main menu', apps:'Apps', system:'Settings', about:'About', archive:'Archive', folder:'Dolphin',
   note:'Eddy.txt', signal:'Signal Meter', settings:'Eddy Settings',
   clock:'Clock', passport:'Passport', lock:'Lock menu', locked:'Locked',
 };
 const lists = {
-  menu:[['Signal Meter','signal'], ['Archive','archive'], ['Eddy Settings','settings']],
+  system:[['Passport','passport'], ['Clock & Alarm','clock'], ['About','about']],
   archive:[['Dolphin/','folder'], ['Eddy.txt','note']],
   folder:[['Eddy Current','home']],
   settings:[['Animation','toggle']],
@@ -21,6 +22,8 @@ const lists = {
 const homeKeys = {ok:'menu', up:'lock', down:'archive', left:'clock', right:'passport'};
 let history = [{page:'home',row:0}];
 let animation = true;
+let menuSelection = 0;
+let selectedSince = 0;
 let timer;
 let inView = false;
 const current = () => history[history.length-1];
@@ -61,12 +64,16 @@ function draw() {
   ctx.textBaseline = 'top';
   if (page === 'home') {
     drawHome(ctx, animation ? tick % 16 : 4);
+  } else if (page === 'menu') {
+    drawLauncher(ctx, menuSelection, reducedMotion.matches ? 0 : performance.now()-selectedSince);
   } else {
     ctx.fillText(titles[page],3,2);
     ctx.fillRect(0,13,128,1);
     ctx.font = 'bold 9px monospace';
     const clock = new Date();
     const lines = {
+      apps:['/ext/apps', 'Folder is empty'],
+      about:['Eddy Firmware', 'Flipper Zero F7'],
       note:['Hello from Eddy!', 'See you at sea.'],
       passport:['Eddy the dolphin', 'Level 1'],
       clock:[clock.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})],
@@ -76,7 +83,7 @@ function draw() {
     else if (page === 'signal') drawMeter(tick);
     else lines[page]?.forEach((line,i) => ctx.fillText(line,5,22+i*14));
   }
-  if (page === 'clock' || (!reducedMotion.matches && (page === 'signal' || (page === 'home' && animation)))) {
+  if (page === 'clock' || (!reducedMotion.matches && (page === 'signal' || page === 'menu' || (page === 'home' && animation)))) {
     timer = setTimeout(draw, page === 'clock' ? 1000 : 167);
   }
 }
@@ -84,6 +91,8 @@ function draw() {
 function announce() {
   const {page,row} = current();
   let text = titles[page];
+  if (page === 'menu') text += ', ' + launcherApps[menuSelection].name;
+  if (page === 'apps') text += '. Apps folder is empty.';
   if (lists[page]) text += ', ' + lists[page][row][0];
   if (page === 'settings') text += animation ? ' on' : ' off';
   if (page === 'home') text += '. Eddy swims in an ocean current. Press OK for the menu.';
@@ -102,6 +111,14 @@ function press(key) {
     if (history.length > 1) history.pop();
   } else if (state.page === 'home') {
     next = homeKeys[key];
+    if (next === 'menu') menuSelection = 0;
+  } else if (state.page === 'menu') {
+    if (key === 'ok') next = launcherApps[menuSelection].page;
+    else if (key === 'up' || key === 'down') menuSelection ^= 1;
+    else {
+      const step = key === 'left' ? -2 : 2;
+      menuSelection = (menuSelection + step + launcherApps.length) % launcherApps.length;
+    }
   } else if (rows) {
     if (key === 'up' || key === 'down') {
       state.row = (state.row + (key === 'down' ? 1 : -1) + rows.length) % rows.length;
@@ -112,6 +129,7 @@ function press(key) {
   if (next === 'toggle') animation = !animation;
   else if (next === 'home') history = [{page:'home',row:0}];
   else if (next) history.push({page:next,row:0});
+  if (current().page === 'menu') selectedSince = performance.now();
   draw();
   announce();
 }
@@ -120,20 +138,9 @@ panel.addEventListener('click', event => {
   const button = event.target.closest('[data-key]');
   if (button) press(button.dataset.key);
 });
-document.querySelector('#use-keys').addEventListener('click', () => {
-  // Centering the chapter also activates the preview when tabbing from an earlier chapter.
-  document.querySelector('#home-screen').scrollIntoView({block:'start', behavior:'instant'});
-  requestAnimationFrame(() => panel.querySelector('[data-key=ok]').focus({preventScroll:true}));
-});
-const shortcuts = {ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',Enter:'ok',Escape:'back'};
-panel.addEventListener('keydown', event => {
-  const key = shortcuts[event.key];
-  if (!key || event.altKey || event.metaKey || event.ctrlKey) return;
-  event.preventDefault();
-  press(key);
-});
 new IntersectionObserver(([entry]) => { inView = entry.isIntersecting; draw(); }).observe(panel);
 ocean.addEventListener('load',draw);
+launcherArt.addEventListener('load',draw);
 document.addEventListener('visibilitychange',draw);
 reducedMotion.addEventListener('change',draw);
 
