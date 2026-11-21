@@ -128,7 +128,7 @@
             <h2>
               Meet Eddy.
             </h2>
-            <p>Press the center button for Apps, Settings, and Power. Try Up from home for brightness and volume.</p>
+            <p>Press the center button for Apps, Settings, and Power off. Try Up from home for brightness and volume.</p>
             <span class="sr-only" id="control-help">The preview uses sample data.</span>
           </section>
         </div>
@@ -151,7 +151,14 @@
           <a class="cta" href="update/">Open Eddy updater</a>
         </div>
       </section>
-      <dialog id="remote-name-dialog">
+      <dialog id="observation-dialog" class="name-dialog" aria-label="Save observation">
+        <form method="dialog">
+          <label for="observation-name">Name observation</label>
+          <input id="observation-name" maxlength="22" required>
+          <div><button type="button">Cancel</button><button type="submit">Save</button></div>
+        </form>
+      </dialog>
+      <dialog id="remote-name-dialog" class="name-dialog">
         <form method="dialog">
           <label for="remote-name" id="remote-name-label">Remote name</label>
           <input id="remote-name" maxlength="22" placeholder="Living room TV" required>

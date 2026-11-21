@@ -2,9 +2,9 @@
   "parts": [
     {
       "name": "firmware.dfu",
-      "size": 824601,
-      "sha256": "3fbc54a7921da3b0c539c702e67f4a3664f3f476ddac496cd1c1a52b2f43d1e0",
-      "md5": "2fe17f500b6e6c4cbe62d8dea3d7ae15"
+      "size": 824961,
+      "sha256": "9f6f288945a79db35853229775e9a954a87c5deda5226625b60081d3e91484b5",
+      "md5": "e6ccc075de954759b007c80db5055003"
     },
     {
       "name": "firstboot.bin",
@@ -20,9 +20,9 @@
     },
     {
       "name": "resources.tar.gz",
-      "size": 392028,
-      "sha256": "0f88cd0f6eb082a9250f6fffb0859cf9bf787f3efa688de87c7290928a56b68e",
-      "md5": "bb4742d10f8ca53199fa816b22349211"
+      "size": 401336,
+      "sha256": "6ab8f0dc9e6e4f88ce2b1c21132d123f5e449a6035590dc3e0802f0f7c1bcc02",
+      "md5": "dee66e70460b75e7e5eeb7263dc9f304"
     },
     {
       "name": "splash.bin",
@@ -33,19 +33,19 @@
     {
       "name": "update.fuf",
       "size": 1589,
-      "sha256": "8a8b061b504bba69f794c9be8662540d46edd46158071cf2b8599ee7763072b6",
-      "md5": "e4050652e229460c62ac2510dcea251b"
+      "sha256": "45b775b5c7cad918a566a38bfb6ddedc98786f2c1e1e1266c87070ee9a38e875",
+      "md5": "3c0117fa2ac912d981a5689173925f79"
     },
     {
       "name": "updater.bin",
       "size": 120829,
-      "sha256": "6fbf7f0e7ec4e1ca55420c0a34378d7bb673739d4413254eda2cd860301167b1",
-      "md5": "00e604cc15810c1ce6c02c97e8f81dfe"
+      "sha256": "780b5260447cf6902c299c759305c6a0b0503ea82cb597c46d8e5dfd626e7fe2",
+      "md5": "92ce83d0269055a4e02d7856d76ccafa"
     }
   ],
   "target": "f7",
-  "version": "eddy-dev-d19cfe8e",
-  "file": "flipper-z-f7-update-eddy-dev-d19cfe8e.tgz",
-  "commit": "d19cfe8ec534204b8c5e0be13b2666f0a0f508fb",
-  "sha256": "b74e41158fe7862848c06681f56b4b946ac92a357e3b3c5b44dabe108b12e757"
+  "version": "eddy-dev-c5fd8e3f",
+  "file": "flipper-z-f7-update-eddy-dev-c5fd8e3f.tgz",
+  "commit": "c5fd8e3f87cafcb1706e81daa4f03cece9079d81",
+  "sha256": "1e928500e6dae165f420f9ca404f8e8db08910540c606ceda01e1f1937aeffc6"
 }

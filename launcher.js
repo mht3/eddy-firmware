@@ -2,7 +2,7 @@
 export const launcherArt = new Image();
 launcherArt.src = new URL('launcher.png', import.meta.url).href;
 export const sections = [
-  ['Apps','apps'], ['Settings','settings'], ['Power','power'],
+  ['Apps','apps'], ['Settings','settings'], ['Power off','off'],
 ];
 export const apps = [
   ['Sub-GHz','signal'], ['RFID','rfid'], ['NFC','nfc'], ['Infrared','infrared'],
@@ -14,9 +14,16 @@ export function drawLauncher(ctx, page, selected, gridItems = apps) {
   const items = grid ? gridItems : sections;
   ctx.font = '7px sans-serif';
   ctx.textAlign = 'center';
-  items.forEach(([name],i) => {
+  const first = grid ? Math.floor(selected/8)*8 : 0;
+  if (items.length>8) {
+    ctx.textAlign = 'left';
+    ctx.fillText('Apps '+(first/8+1)+'/'+Math.ceil(items.length/8),2,0);
+    ctx.textAlign = 'center';
+  }
+  items.slice(first,first+8).forEach(([name],slot) => {
+    const i = first+slot;
     const x = grid ? 16 + 32*(i%4) : 21 + 42*i;
-    const y = grid ? 18 + 20*Math.floor(i/4) : 26;
+    const y = grid ? 18 + 20*Math.floor(slot/4) : 26;
     ctx.save();
     ctx.beginPath();
     ctx.roundRect(x-12,y-(grid?9:10),25,grid?19:21,4);
@@ -24,8 +31,15 @@ export function drawLauncher(ctx, page, selected, gridItems = apps) {
       ctx.fill();
       ctx.globalCompositeOperation = 'destination-out';
     } else ctx.stroke();
-    if (launcherArt.naturalWidth) {
-      const index = grid ? (i < apps.length ? i : 3) + sections.length : i;
+    if (grid && i>=apps.length) {
+      let label='';
+      for(const char of name) {
+        if(ctx.measureText(label+char).width>21) break;
+        label+=char;
+      }
+      ctx.fillText(label,x,y-3);
+    } else if (launcherArt.naturalWidth) {
+      const index = grid ? i + sections.length : i;
       ctx.drawImage(launcherArt,index*18,0,18,18,x-9,y-9,18,18);
     }
     ctx.restore();
@@ -34,7 +48,7 @@ export function drawLauncher(ctx, page, selected, gridItems = apps) {
   if (grid) {
     ctx.fillRect(4,49,120,1);
     ctx.font = 'bold 10px sans-serif';
-    ctx.fillText(items[selected][0],64,51);
+    ctx.fillText(items[selected][0],64,51,120);
   }
   ctx.textAlign = 'start';
 }
