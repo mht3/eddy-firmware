@@ -2,17 +2,7 @@
 
 # Eddy Firmware
 
-Eddy is an independent firmware fork for Flipper Zero. The home screen shows Eddy the dolphin and the battery percentage. Press **OK** for Apps, Settings, and Power. Press **Up** for brightness and volume. Left and Right choose a control, Up and Down adjust its level, and the Settings tile opens device settings.
-
-**Apps** opens a grid with Sub-GHz, RFID, NFC, Infrared, GPIO, iButton, and Pomodoro Timer. Sub-GHz measures received power at 433.92 MHz. RFID, NFC, and iButton identify a tag or key type. Pomodoro runs a 25-minute focus session followed by a five-minute break. OK starts or pauses the timer. It keeps time when you leave and signals transitions while open.
-
-**To save a TV remote**, open Infrared → Learn a remote. Capture a button, choose Save, and name the remote and its button. Saved remotes appear under My remotes. Choose **Pin to Home** inside a remote to put its name on the desktop. Press **Down** there to open the remote, then choose a button to send. One remote can be pinned at a time. With no pin, Down opens Apps. Under Infrared, **Button tester** lets you check whether a remote is emitting infrared.
-
-**To turn off the Flipper**, hold Back on the home screen, then press Right to confirm. You can also choose Power from the launcher.
-
-Eddy started from Next-Flip’s Momentum Firmware at commit `d3f89dfe`. Momentum builds on Flipper Devices’ firmware and work from Unleashed and Xtreme. Thank you to those maintainers, artists, and contributors. The repository retains their history, copyright notices and license files. [Momentum source at the fork point](https://github.com/Next-Flip/Momentum-Firmware/tree/d3f89dfe2ef6b01839201598e9be1590cba80322) · [Firmware license](LICENSE)
-
-The project logo shows an ocean eddy from above. The home-screen animation adapts the inherited Flipper dolphin artwork in `assets/icons/Dolphin/DolphinDone_80x58.png`.
+Eddy is a new firmware for Flipper Zero! Eddy started from Next-Flip’s Momentum Firmware and has grown to a standalone, sleek firmware, free for anyone to use! Thank you to those maintainers, artists, and contributors. The repository retains their history, copyright notices and license files. [Momentum source at the fork point](https://github.com/Next-Flip/Momentum-Firmware/tree/d3f89dfe2ef6b01839201598e9be1590cba80322) · [Firmware license](LICENSE)
 
 ![Eddy the dolphin surfacing in an ocean eddy](.github/assets/eddy-ocean.gif)
 
