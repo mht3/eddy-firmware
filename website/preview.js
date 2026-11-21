@@ -9,10 +9,23 @@ const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const ink = '#432a14';
 const titles = {
   home:'Home screen', menu:'Main menu', apps:'Apps', system:'Settings', about:'About', archive:'Archive', folder:'Dolphin',
+  subghz:'Sub-GHz', rfid:'125 kHz RFID', nfc:'NFC', infrared:'Infrared',
+  gpio:'GPIO', ibutton:'iButton', badkb:'Bad KB', u2f:'U2F',
   note:'Eddy.txt', signal:'Signal Meter', settings:'Eddy Settings',
   clock:'Clock', passport:'Passport', lock:'Lock menu', locked:'Locked',
 };
+const sampleScreens = {
+  rfid:['125 kHz reader', 'No tag present'],
+  nfc:['NFC reader', 'No card present'],
+  infrared:['Remote library', 'No saved remotes'],
+  gpio:['GPIO pins', 'No module attached'],
+  ibutton:['iButton reader', 'No key present'],
+  badkb:['Menu preview only'],
+  u2f:['USB security key', 'Waiting for USB'],
+};
 const lists = {
+  apps:[['GPIO','gpio'], ['Infrared','infrared'], ['U2F','u2f']],
+  subghz:[['Signal Meter','signal']],
   system:[['Passport','passport'], ['Clock & Alarm','clock'], ['About','about']],
   archive:[['Dolphin/','folder'], ['Eddy.txt','note']],
   folder:[['Eddy Current','home']],
@@ -80,7 +93,6 @@ function draw() {
     ctx.font = 'bold 9px monospace';
     const clock = new Date();
     const lines = {
-      apps:['/ext/apps', 'Folder is empty'],
       about:['Eddy Firmware', 'Flipper Zero F7'],
       note:['Hello from Eddy!', 'See you at sea.'],
       passport:['Eddy the dolphin', 'Level 1'],
@@ -89,7 +101,7 @@ function draw() {
     };
     if (lists[page]) drawList(page,row);
     else if (page === 'signal') drawMeter(tick);
-    else lines[page]?.forEach((line,i) => ctx.fillText(line,5,22+i*14));
+    else (sampleScreens[page] ?? lines[page])?.forEach((line,i) => ctx.fillText(line,5,22+i*14));
   }
   if (page === 'clock' || (!reducedMotion.matches && (page === 'signal' || page === 'menu' || (page === 'home' && animation)))) {
     timer = setTimeout(draw, page === 'clock' ? 1000 : 167);
@@ -99,8 +111,8 @@ function draw() {
 function announce() {
   const {page,row} = current();
   let text = titles[page];
+  if (sampleScreens[page]) text += '. '+sampleScreens[page].join('. ');
   if (page === 'menu') text += ', ' + launcherApps[menuSelection].name;
-  if (page === 'apps') text += '. Apps folder is empty.';
   if (lists[page]) text += ', ' + lists[page][row][0];
   if (page === 'settings') text += animation ? ' on' : ' off';
   if (page === 'home') text += '. Eddy swims in an ocean current. Press OK for the menu.';

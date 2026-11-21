@@ -100,6 +100,9 @@ FIRMWARE_APPS = {
         "settings_apps",
         "momentum_app",
         "eddy_signal",
+        "infrared",
+        "gpio",
+        "u2f",
         "cli_src",
     ],
     "default": [

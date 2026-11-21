@@ -2,7 +2,7 @@
 
 # Eddy Firmware
 
-Eddy is an independent firmware fork for Flipper Zero. The main build includes an ocean desktop with Eddy the dolphin, Eddy Settings, the file browser, a receive-only Signal Meter at 433.92 MHz, and the USB updater.
+Eddy is an independent firmware fork for Flipper Zero. The main build includes an ocean desktop with Eddy the dolphin, Eddy Settings, the file browser, Infrared, GPIO, U2F, a receive-only Signal Meter at 433.92 MHz, and the USB updater.
 
 Eddy started from Next-Flip’s Momentum Firmware at commit `d3f89dfe`. Momentum builds on Flipper Devices’ firmware and work from Unleashed and Xtreme. Thank you to those maintainers, artists, and contributors. The repository retains their history, copyright notices and license files. [Momentum source at the fork point](https://github.com/Next-Flip/Momentum-Firmware/tree/d3f89dfe2ef6b01839201598e9be1590cba80322) · [Firmware license](LICENSE)
 
