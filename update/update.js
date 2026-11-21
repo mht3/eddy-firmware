@@ -1,12 +1,26 @@
+import {catalog,getSelectedApps} from '../app-catalog.js';
+import {prepareInstall,makeDownload} from './package.js';
 import {FlipperUpdater} from './flipper.js';
 
 const root = new URL('../firmware/',import.meta.url);
 const action = document.querySelector('#action');
 const connection = document.querySelector('#connection');
 const progress = document.querySelector('#progress');
+const picker = document.querySelector('#app-picker');
+const download = document.querySelector('#download');
+const lab = document.querySelector('#lab');
 let build;
 let flipper;
 let busy = false;
+let accepted = false;
+
+function updateControls() {
+  picker.disabled = busy;
+  action.disabled = busy || accepted || !build || !isSecureContext || !navigator.serial;
+  download.disabled = busy || !build;
+  lab.hidden = busy || !lab.hasAttribute('href') || getSelectedApps().size !== catalog.length;
+}
+window.addEventListener('eddy-apps-changed', updateControls);
 
 async function checkedFetch(url,options) {
   const response = await fetch(url,options);
@@ -34,42 +48,37 @@ async function loadBuild() {
     const archive = new URL(data.file,root);
     await checkedFetch(archive,{method:'HEAD'});
     status.textContent = data.version;
-    link('#download',archive).download = data.file;
     if (/^[a-f0-9]{40}$/.test(data.commit)) link('#source','https://github.com/mht3/eddy-firmware/tree/'+data.commit);
-    if (!isSecureContext || !navigator.serial) {
-      connection.textContent = 'For USB installation, open this page in desktop Chrome or Edge over HTTPS, or use the qFlipper download.';
-      return;
-    }
-    if (location.protocol === 'https:') {
-      const lab = new URL('https://lab.flipper.net/');
-      lab.search = new URLSearchParams({url:archive.href,target:'f7',channel:'release-cfw',version:data.version});
-      link('#lab',lab);
-    }
     if (!Array.isArray(data.parts) || !data.parts.some(p=>p.name === 'update.fuf') ||
         data.parts.some(p=> !/^[\w-]+(?:\.[\w-]+)+$/.test(p.name) || !Number.isSafeInteger(p.size) ||
           p.size<=0 || !/^[a-f0-9]{64}$/.test(p.sha256) || !/^[a-f0-9]{32}$/.test(p.md5)) ||
-        new Set(data.parts.map(p=>p.name)).size !== data.parts.length) throw Error('USB installation components are unavailable. Use the qFlipper download.');
+        new Set(data.parts.map(p=>p.name)).size !== data.parts.length) throw Error('This release is missing verified update components.');
+    if (!catalog.every(app=>data.resourceIndex?.apps?.[app.appId])) throw Error('This release does not support app selection yet.');
+    if (!window.CompressionStream || !window.DecompressionStream || !crypto.subtle) {
+      throw Error('Open this page in a current browser over HTTPS to prepare your selection.');
+    }
+    if (location.protocol === 'https:') {
+      const labUrl = new URL('https://lab.flipper.net/');
+      labUrl.search = new URLSearchParams({url:archive.href,target:'f7',channel:'release-cfw',version:data.version});
+      lab.href = labUrl;
+    }
     build = data;
-    connection.textContent = 'No device connected.';
-    action.disabled = false;
+    download.hidden = false;
+    connection.textContent = navigator.serial && isSecureContext ? 'No device connected.' :
+      'For USB installation, open this page in desktop Chrome or Edge. You can also download your selection for qFlipper.';
+    updateControls();
   } catch (error) {
     connection.textContent = error.message;
-    if (!document.querySelector('#download').href) status.textContent = 'Release unavailable.';
+    status.textContent = 'Release unavailable.';
   }
 }
 
 async function install() {
-  const folder = '/ext/update/f7-update-'+build.version;
-  const files = [];
-  connection.textContent = 'Verifying the main build…';
-  for (const part of build.parts) {
-    const response = await checkedFetch(new URL(build.version+'/'+part.name,root));
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    const digest = new Uint8Array(await crypto.subtle.digest('SHA-256',bytes));
-    const hex = Array.from(digest,b=>b.toString(16).padStart(2,'0')).join('');
-    if (hex !== part.sha256 || bytes.length !== part.size) throw Error('The download failed verification.');
-    files.push({part,bytes});
-  }
+  const files = await prepareInstall(build,getSelectedApps(),name=>{
+    connection.textContent = 'Verifying '+name+'…';
+  });
+  const resources = files.find(({part})=>part.name==='resources.tar.gz');
+  const folder = '/ext/update/f7-update-'+build.version+'-'+resources.part.sha256.slice(0,12);
   await flipper.mkdir('/ext/update');
   await flipper.mkdir(folder);
   progress.max = files.reduce((sum,f)=>sum+f.bytes.length,0);
@@ -94,8 +103,7 @@ async function releasePort() {
 action.addEventListener('click',async () => {
   if (busy || !build) return;
   busy = true;
-  action.disabled = true;
-  let accepted = false;
+  updateControls();
   try {
     if (flipper) {
       await install();
@@ -119,7 +127,34 @@ action.addEventListener('click',async () => {
     progress.hidden = true;
   } finally {
     busy = false;
-    action.disabled = accepted;
+    updateControls();
+  }
+});
+
+download.addEventListener('click', async () => {
+  if (busy || !build) return;
+  busy=true;
+  updateControls();
+  try {
+    const files=await prepareInstall(build,getSelectedApps(),name=>{
+      connection.textContent='Verifying '+name+'…';
+    });
+    const blob=await makeDownload(build,files);
+    const url=URL.createObjectURL(blob);
+    const digest=files.find(({part})=>part.name==='resources.tar.gz').part.sha256;
+    const anchor=document.createElement('a');
+    anchor.href=url;
+    anchor.download='flipper-z-f7-update-'+build.version+'-'+digest.slice(0,12)+'.tgz';
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+    connection.textContent='Your package is ready. In qFlipper, choose Install from file and select the downloaded TGZ.';
+  } catch(error) {
+    connection.textContent=error.message;
+  } finally {
+    busy=false;
+    updateControls();
   }
 });
 

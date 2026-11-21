@@ -1,4 +1,4 @@
-import {setPreviewVisible} from './preview.js';
+import {setPreviewVisible,pickerPreview} from './preview.js';
 
 const chapters = [...document.querySelectorAll('[data-phase]')];
 const device = document.querySelector('eddy-device');
@@ -9,6 +9,12 @@ const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 let queued = false;
 function syncScene() {
   queued = false;
+  if (pickerPreview) {
+    device.hidden=true;
+    setPreviewVisible(true);
+    label.textContent='APP PREVIEW';
+    return;
+  }
   const focus = innerHeight * (matchMedia('(max-width: 760px)').matches ? 0.72 : 0.5);
   const centers = chapters.map(section => {
     const box = section.getBoundingClientRect();
@@ -34,6 +40,11 @@ window.addEventListener('scroll', requestScene, {passive:true});
 window.addEventListener('resize', requestScene);
 reducedMotion.addEventListener('change', requestScene);
 syncScene();
+if (pickerPreview) {
+  window.addEventListener('pageshow', () => {
+    document.querySelector('#playable [data-key=ok]').focus({preventScroll:true});
+  }, {once:true});
+}
 
 const field = document.querySelector('.field');
 function drawField() {

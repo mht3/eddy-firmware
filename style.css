@@ -440,3 +440,15 @@ nav [aria-current=page] {color:var(--surf)}
 .name-dialog form {display:grid;gap:1rem}
 .name-dialog input, .name-dialog button {font:inherit;padding:.5rem .75rem;border-radius:.5rem}
 .name-dialog form div {display:flex;gap:.5rem;justify-content:flex-end}
+
+#return-to-picker {margin-top:1.35rem}
+#return-to-picker[hidden], .picker-preview .chapters section:not(#home-screen),
+.picker-preview .music-tour, .picker-preview #install {display:none}
+.picker-preview .stage {position:relative; height:clamp(20rem,60vw,42rem); min-height:0}
+.picker-preview .caption {bottom:4%}
+.picker-preview .chapters #home-screen {min-height:0; height:100%; scroll-margin:6rem}
+@media(max-width:760px) {
+  .picker-preview .stage {height:52vw; margin-top:1rem}
+  .picker-preview .caption {display:none}
+  .picker-preview .chapters #home-screen {padding:1.5rem 6vw 3rem; height:auto; scroll-margin:65vh}
+}

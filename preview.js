@@ -1,3 +1,4 @@
+import {getSelectedApps} from './app-catalog.js';
 import {openMusicDemo, drawMusic, musicStatus, musicKey} from './music-preview.js';
 import {tvPresetRows, tvPadStatus, tvPadKey, drawTvPad, tvPadHit, tvNavigationHit} from './tv-presets.js';
 import {openBuilder, builderKey, builderStatus, drawBuilder} from './builder-preview.js';
@@ -55,9 +56,15 @@ const lists = {
   editRemote:[['Rename remote','rename'],['Delete remote','deleteRemote']],
   ...powerLists,
 };
+const previewParams = new URLSearchParams(location.search);
+export const pickerPreview = previewParams.has('apps') || previewParams.has('app');
+const requestedApps = previewParams.has('apps') ? new Set(previewParams.get('apps').split(',')) : null;
+let visibleShortcuts = [];
 function refreshRemotes() {
   const saved=remoteDemo.rows;
-  lists.apps=[...apps,...remoteDemo.shortcuts];
+  const enabled = requestedApps ?? getSelectedApps();
+  visibleShortcuts = remoteDemo.shortcuts.filter(([,type])=>enabled.has(type==='layout'?'builder':'infrared'));
+  lists.apps=[...apps.filter(([,id])=>enabled.has(id)),...visibleShortcuts];
   lists.remotes=saved.length ? saved : [['Learn a remote','learn']];
   titles.remotes=saved.length?'My remotes':'No remotes yet';
   delete samples.remotes;
@@ -289,11 +296,11 @@ function announce() {
   if (page==='noteDetail') text += '. '+current().note.name+'. '+current().note.detail;
   if (page==='noteList') text += '. '+(current().notes[row]?.name || current().message || 'No saved observations');
   if (samples[page]) text += '. '+samples[page].join('. ');
-  if (lists[page]) text += ', '+lists[page][row][0];
+  if (lists[page]) text += ', '+(lists[page][row]?.[0] ?? 'No apps installed');
   if (page==='remote' && current().sentUntil > performance.now()) text += '. Demo button pressed.';
   if (page==='deleteRemote') text+='. Left to cancel. Right to confirm.';
   if (page==='quick') text+=', '+quickStatus(row);
-  if (page==='home' && remoteDemo.shortcuts.length) text+='. Down opens '+remoteDemo.shortcuts.at(-1)[0];
+  if (page==='home' && visibleShortcuts.length) text+='. Down opens '+visibleShortcuts.at(-1)[0];
   if (page==='tvPad') text+='. '+tvPadStatus(current());
   if (page==='builder') text+='. '+(current().name || '')+' '+builderStatus(current());
   if (page==='btRemote') text+='. '+bluetoothStatus(current());
@@ -308,6 +315,9 @@ function announce() {
 
 function press(key) {
   const state=current(), page=state.page, rows=lists[page];
+  if(page==='music' && state.setup && key==='back') {
+    musicKey(state,key); draw(); announce(); return;
+  }
   if(page==='tvPad' && state.navigation && key==='back') {
     tvPadKey(state,key); draw(); announce(); return;
   }
@@ -324,8 +334,8 @@ function press(key) {
   } else if (key==='back') {
     if (history.length>1) history.pop();
   } else if (page==='home') {
-    if (key==='down' && remoteDemo.shortcuts.length) {
-      const [name,target]=remoteDemo.shortcuts.at(-1);
+    if (key==='down' && visibleShortcuts.length) {
+      const [name,target]=visibleShortcuts.at(-1);
       if(target==='layout') history.push(openBuilder(name));
       else { remoteDemo.select(name); refreshRemotes(); history.push({page:'remote',row:0}); }
       draw(); announce(); return;
@@ -380,7 +390,7 @@ function press(key) {
       else focus.deadline=Date.now()+left;
     }
     if(key==='left' || key==='right') adjustTimer(left,key==='right');
-  } else if(rows) {
+  } else if(rows?.length) {
     if(key==='ok') {
       const [name,next]=rows[state.row];
       if(next==='pin') {
@@ -411,10 +421,42 @@ function press(key) {
   announce();
 }
 
-document.querySelector('#try-music').addEventListener('click', () => {
-  history=[{page:'home',row:0},{page:'apps',row:apps.findIndex(([,id])=>id==='music')},openMusicDemo()];
+function showAppPreview(id, sampleMusic = false) {
+  const index=lists.apps.findIndex(([,page])=>page===id);
+  history=[{page:'home',row:0},{page:'apps',row:Math.max(0,index)}];
+  if(index>=0 || sampleMusic) {
+    if(id==='builder') history.push(openBuilder());
+    else if(id==='music') history.push(openMusicDemo(sampleMusic));
+    else history.push({page:id,row:0});
+  }
   draw(); announce();
-  document.querySelector('#playable [data-key=ok]').focus({preventScroll:true});
+}
+
+document.querySelector('#try-music').addEventListener('click', () => {
+  showAppPreview('music', true);
+  panel.querySelector('[data-key=ok]').focus({preventScroll:true});
+});
+if(pickerPreview) {
+  document.documentElement.classList.add('picker-preview');
+  const id=previewParams.get('app');
+  showAppPreview(id);
+  const title=lists.apps.find(([,page])=>page===id)?.[0] ?? 'Your Apps menu';
+  document.querySelector('#home-screen h2').textContent=title;
+  document.querySelector('#preview-intro').textContent='Use the buttons on the Flipper to try your selection. This preview uses sample data.';
+  const back=document.querySelector('#return-to-picker');
+  const selection = lists.apps.filter(([,page])=>apps.some(([,id])=>id===page)).map(([,id])=>id);
+  const returnTo = selection.includes(id) ? 'try-'+id : 'try-app-menu';
+  back.href='update/?'+new URLSearchParams({apps:selection.join(',')})+'#'+returnTo;
+  back.hidden=false;
+}
+window.addEventListener('eddy-apps-changed', () => {
+  if(requestedApps) return;
+  refreshHistory();
+  const appView=history.findIndex(entry=>entry.page==='apps');
+  const open=history[appView+1];
+  if(appView>=0 && open && apps.some(([,id])=>id===open.page) &&
+      !lists.apps.some(([,id])=>id===open.page)) history.length=appView+1;
+  draw(); announce();
 });
 
 const nameDialog=document.getElementById('remote-name-dialog');
@@ -436,7 +478,7 @@ function openRemoteForm(action) {
 function refreshHistory() {
   refreshRemotes();
   for(const entry of history) {
-    if(lists[entry.page]) entry.row=Math.min(entry.row,lists[entry.page].length-1);
+    if(lists[entry.page]) entry.row=Math.max(0,Math.min(entry.row,lists[entry.page].length-1));
   }
 }
 for(const field of [nameInput,buttonInput]) field.addEventListener('input',()=>field.setCustomValidity(''));

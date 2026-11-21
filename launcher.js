@@ -1,20 +1,23 @@
+import {catalog} from './app-catalog.js';
 // Icons and positions match the device launcher in loader_menu.c.
 export const launcherArt = new Image();
 launcherArt.src = new URL('launcher.png', import.meta.url).href;
 export const sections = [
   ['Apps','apps'], ['Settings','settings'], ['Power off','off'],
 ];
-export const apps = [
-  ['Sub-GHz','signal'], ['RFID','rfid'], ['NFC','nfc'], ['Infrared','infrared'],
-  ['GPIO','gpio'], ['iButton','ibutton'], ['Pomodoro Timer','pomodoro'], ['Metronome','metronome'],
-  ['Remote Builder','builder'], ['Bluetooth Remote','btRemote'], ['Spotify','music'],
-];
+export const apps = catalog.map(({name,id})=>[name,id]);
 
 export function drawLauncher(ctx, page, selected, gridItems = apps) {
   const grid = page === 'apps';
   const items = grid ? gridItems : sections;
   ctx.font = '7px sans-serif';
   ctx.textAlign = 'center';
+  if (!items.length) {
+    ctx.font = '10px sans-serif';
+    ctx.fillText('No apps installed',64,26);
+    ctx.textAlign = 'start';
+    return;
+  }
   const first = grid ? Math.floor(selected/8)*8 : 0;
   if (items.length>8) {
     ctx.textAlign = 'left';
@@ -32,7 +35,8 @@ export function drawLauncher(ctx, page, selected, gridItems = apps) {
       ctx.fill();
       ctx.globalCompositeOperation = 'destination-out';
     } else ctx.stroke();
-    if (grid && i>=apps.length) {
+    const appIndex = grid ? apps.findIndex(([,id])=>id===items[i][1]) : -1;
+    if (grid && appIndex<0) {
       let label='';
       for(const char of name) {
         if(ctx.measureText(label+char).width>21) break;
@@ -49,7 +53,7 @@ export function drawLauncher(ctx, page, selected, gridItems = apps) {
       }
       ctx.stroke();
     } else if (launcherArt.naturalWidth) {
-      const index = grid ? (items[i][1]==='music' ? 7 : i) + sections.length : i;
+      const index = grid ? (items[i][1]==='music' ? 7 : appIndex) + sections.length : i;
       ctx.drawImage(launcherArt,index*18,0,18,18,x-9,y-9,18,18);
     }
     ctx.restore();

@@ -6,7 +6,7 @@ export const settingsRows = [
 ];
 
 export const settingsSamples = {
-  bluetooth:['Bluetooth','Ready to pair'], notifications:['Backlight and sound'], storage:['microSD card','Space available: 12 GB'],
+  bluetooth:['Bluetooth: ON','Paired demo phone'], notifications:['Backlight and sound'], storage:['microSD card','Space available: 12 GB'],
   desktop:['Eddy home screen'], system:['Firmware: Eddy','Hardware: Flipper Zero'],
   expansion:['Expansion modules'], input:['Device buttons'],
 };
