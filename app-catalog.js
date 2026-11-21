@@ -1,3 +1,5 @@
+import {spotifyConfigured} from './spotify/config.js';
+
 // The id opens the same app in the web preview. appId identifies its packaged FAP.
 export const catalog = [
   {id:'signal', name:'Sub-GHz', appId:'eddy_signal', core:true, description:'Watch signal strength at 433.92 MHz and save a reading.'},
@@ -10,13 +12,14 @@ export const catalog = [
   {id:'metronome', name:'Metronome', appId:'eddy_metronome', core:false, description:'Tap in a tempo and feel each beat on your Flipper.'},
   {id:'builder', name:'Remote Builder', appId:'eddy_remote_builder', core:false, description:'Design a six-button infrared remote with your own labels.'},
   {id:'btRemote', name:'Bluetooth Remote', appId:'eddy_bluetooth', core:false, description:'Control a camera shutter, presentation, or music over Bluetooth.'},
-  {id:'music', name:'Spotify', appId:'eddy_music', core:false, description:'Control phone playback. With iPhone, see the song and artist on your Flipper.'},
+  {id:'music', name:'Music', appId:'eddy_music', core:false, description:'Control Apple Music or Spotify on your phone. See the song and artist with a paired iPhone.'},
+  {id:'spotify', name:'Spotify', appId:'eddy_spotify', core:false, description:spotifyConfigured ? 'Browse Liked Songs, playlists and albums. Account linking is available to invited testers.' : 'Try sample Liked Songs, playlists and albums. Personal account linking is currently unavailable.'},
 ];
 
 export const defaultAppOrder = Object.freeze([
-  'signal','rfid','infrared','pomodoro','music','builder','btRemote','metronome','gpio','ibutton','nfc',
+  'signal','rfid','infrared','pomodoro','music','builder','btRemote','metronome','gpio','ibutton','nfc','spotify',
 ]);
-const defaultIds = defaultAppOrder.filter(id => id!=='pomodoro' && id!=='metronome');
+const defaultIds = defaultAppOrder.filter(id => id!=='pomodoro' && id!=='metronome' && id!=='spotify');
 const selectionKey = 'eddy-install-apps-v1';
 const orderKey = 'eddy-install-order-v1';
 
@@ -30,6 +33,16 @@ export function validAppOrder(ids) {
     defaultAppOrder.every(id => ids.includes(id));
 }
 
+// The separate Spotify library was added after the original eleven launcher slots.
+export function restoreAppOrder(ids) {
+  if (validAppOrder(ids)) return [...ids];
+  if (Array.isArray(ids) && ids.length===defaultAppOrder.length-1) {
+    const expanded = [...ids,'spotify'];
+    if (validAppOrder(expanded)) return expanded;
+  }
+  return null;
+}
+
 function readSetting(key, historyKey, validate) {
   const entry = validate(globalThis.history?.state?.[historyKey]);
   if (entry) return entry;
@@ -41,7 +54,7 @@ function readSelection() {
 }
 
 function readOrder() {
-  return readSetting(orderKey,'eddyInstallOrder',ids => validAppOrder(ids) ? ids : null);
+  return readSetting(orderKey,'eddyInstallOrder',restoreAppOrder);
 }
 
 let selected = readSelection();
@@ -78,8 +91,9 @@ export function setSelectedApps(ids) {
 }
 
 export function setAppOrder(ids) {
-  if (!validAppOrder(ids)) return;
-  order = [...ids];
+  const next = restoreAppOrder(ids);
+  if (!next) return;
+  order = next;
   persist(orderKey, 'eddyInstallOrder', order);
 }
 

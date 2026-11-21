@@ -1,4 +1,5 @@
-import {getAppOrder, getSelectedApps, validAppOrder} from './app-catalog.js';
+import {getAppOrder, getSelectedApps, restoreAppOrder} from './app-catalog.js';
+import {openSpotifyDemo, drawSpotify, spotifyStatus, spotifyKey} from './spotify-preview.js';
 import {openMusicDemo, drawMusic, musicStatus, musicKey} from './music-preview.js';
 import {tvPresetRows, tvPadStatus, tvPadKey, drawTvPad, tvPadHit, tvNavigationHit} from './tv-presets.js';
 import {openBuilder, builderKey, builderStatus, drawBuilder} from './builder-preview.js';
@@ -18,7 +19,7 @@ const status = document.querySelector('#preview-state');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const ink = '#432a14';
 const titles = {
-  music:'Spotify', tvPresets:'Choose your TV', tvPad:'TV remote', builder:'Remote Builder', btRemote:'Bluetooth Remote', noteList:'Saved observations', noteDetail:'Saved observation',
+  music:'Music', spotify:'Spotify', tvPresets:'Choose your TV', tvPad:'TV remote', builder:'Remote Builder', btRemote:'Bluetooth Remote', noteList:'Saved observations', noteDetail:'Saved observation',
   home:'Home screen', menu:'Launcher', apps:'Apps', settings:'Settings', power:'Power',
   signal:'Sub-GHz', rfid:'RFID', nfc:'NFC', infrared:'Infrared', gpio:'GPIO', ibutton:'iButton',
   metronome:'Metronome', pomodoro:'Pomodoro Timer', battery:'Battery info', restart:'Restart?', shutdown:'Power off?',
@@ -57,10 +58,11 @@ const lists = {
   ...powerLists,
 };
 const previewParams = new URLSearchParams(location.search);
-export const pickerPreview = previewParams.has('apps') || previewParams.has('app');
+const spotifyDemo = previewParams.get('demo')==='spotify';
+export const pickerPreview = spotifyDemo || previewParams.has('apps') || previewParams.has('app');
 const requestedApps = previewParams.has('apps') ? new Set(previewParams.get('apps').split(',')) : null;
 const orderParam = previewParams.get('order')?.split(',');
-const requestedOrder = validAppOrder(orderParam) ? orderParam : null;
+const requestedOrder = restoreAppOrder(orderParam);
 let visibleShortcuts = [];
 function refreshRemotes() {
   const saved=remoteDemo.rows;
@@ -250,6 +252,8 @@ function draw() {
     drawBuilder(ctx,current());
   } else if (page === 'btRemote') {
     drawBluetooth(ctx,current());
+  } else if (page === 'spotify') {
+    if(drawSpotify(ctx,current())) timer=setTimeout(draw,200);
   } else if (page === 'music') {
     if(drawMusic(ctx,current())) timer=setTimeout(draw,500);
   } else if (page === 'metronome') {
@@ -309,6 +313,7 @@ function announce() {
   if (page!=='off') text += '. Sample battery '+sampleCharge+'%, not charging.';
   if (page==='home') text += ' Press OK for the launcher or Up for quick settings.';
   if (page==='signal') text+='. Sample signal at 433.92 MHz. OK to save this reading, Right for saved readings.';
+  if (page==='spotify') text += '. '+spotifyStatus(current());
   if (page==='music') text += '. '+musicStatus(current());
   if (page==='metronome') text += '. '+metronomeStatus(current());
   if (page==='pomodoro') text += '. '+Math.ceil(remaining()/1000)+' seconds. '+(focus.deadline?'Running. OK to pause.':'Paused. Left or Right to set minutes, OK to start.');
@@ -317,9 +322,7 @@ function announce() {
 
 function press(key) {
   const state=current(), page=state.page, rows=lists[page];
-  if(page==='music' && state.setup && key==='back') {
-    musicKey(state,key); draw(); announce(); return;
-  }
+  if(page==='spotify' && spotifyKey(state,key)) { draw(); announce(); return; }
   if(page==='tvPad' && state.navigation && key==='back') {
     tvPadKey(state,key); draw(); announce(); return;
   }
@@ -407,6 +410,7 @@ function press(key) {
         if(next==='remote') { remoteDemo.select(name); refreshRemotes(); }
         if(next==='layout' || next==='builder') history.push(openBuilder(next==='layout'?name:undefined));
         else if(next==='music') history.push(openMusicDemo());
+        else if(next==='spotify') history.push(openSpotifyDemo());
         else if(next==='tvPad') history.push({page:next,profile:state.row,row:2});
         else history.push({page:next,row:0});
       }
@@ -421,12 +425,13 @@ function press(key) {
   announce();
 }
 
-function showAppPreview(id, sampleMusic = false) {
+function showAppPreview(id, standaloneSample = false) {
   const index=lists.apps.findIndex(([,page])=>page===id);
   history=[{page:'home',row:0},{page:'apps',row:Math.max(0,index)}];
-  if(index>=0 || sampleMusic) {
+  if(index>=0 || standaloneSample) {
     if(id==='builder') history.push(openBuilder());
-    else if(id==='music') history.push(openMusicDemo(sampleMusic));
+    else if(id==='music') history.push(openMusicDemo());
+    else if(id==='spotify') history.push(openSpotifyDemo());
     else history.push({page:id,row:0});
   }
   draw(); announce();
@@ -438,19 +443,25 @@ document.querySelector('#try-music').addEventListener('click', () => {
 });
 if(pickerPreview) {
   document.documentElement.classList.add('picker-preview');
-  const id=previewParams.get('app');
-  showAppPreview(id);
+  const id=spotifyDemo ? 'spotify' : previewParams.get('app');
+  showAppPreview(id,spotifyDemo);
   const title=lists.apps.find(([,page])=>page===id)?.[0] ?? 'Your Apps menu';
-  document.querySelector('#home-screen h2').textContent=title;
-  document.querySelector('#preview-intro').textContent='Use the buttons on the Flipper to try your selection. This preview uses sample data.';
+  document.querySelector('#home-screen h2').textContent=spotifyDemo ? 'Spotify' : title;
+  document.querySelector('#preview-intro').textContent=spotifyDemo ?
+    'Browse sample Liked Songs, Playlists, and Albums. Use Up or Down to choose a category and OK to open it.' :
+    'Use the buttons on the Flipper to try your selection. This preview uses sample data.';
   const back=document.querySelector('#return-to-picker');
   const selection = lists.apps.filter(([,page])=>apps.some(([,id])=>id===page)).map(([,id])=>id);
   const returnTo = selection.includes(id) ? 'try-'+id : 'try-app-menu';
   back.href='update/?'+new URLSearchParams({apps:selection.join(','),order:(requestedOrder ?? getAppOrder()).join(',')})+'#'+returnTo;
+  if(spotifyDemo) {
+    back.href='spotify/';
+    back.textContent='Back to the Spotify guide';
+  }
   back.hidden=false;
 }
 window.addEventListener('eddy-apps-changed', () => {
-  if(requestedApps) return;
+  if(requestedApps || spotifyDemo) return;
   refreshHistory();
   const appView=history.findIndex(entry=>entry.page==='apps');
   const open=history[appView+1];
@@ -542,7 +553,7 @@ display.addEventListener('click', event=>{
 const upButton=panel.querySelector('[data-key=up]');
 let upTimer;
 let heldUp=false;
-function startMusicUpHold() {
+function startSpotifyUpHold() {
   heldUp=false;
   clearTimeout(upTimer);
   const state=current();
@@ -555,21 +566,21 @@ function startMusicUpHold() {
 }
 upButton.addEventListener('pointerdown',event=>{
   heldUp=false;
-  if(current().page!=='music' || event.button!==0) return;
+  if(current().page!=='spotify' || event.button!==0) return;
   upButton.setPointerCapture(event.pointerId);
-  startMusicUpHold();
+  startSpotifyUpHold();
 });
 for(const event of ['pointerup','pointercancel','lostpointercapture','blur']) {
   upButton.addEventListener(event,()=>clearTimeout(upTimer));
 }
 // Let a focused Up button perform both gestures with native button activation keys.
 upButton.addEventListener('keydown',event=>{
-  if(current().page!=='music' || !['Enter',' '].includes(event.key)) return;
+  if(current().page!=='spotify' || !['Enter',' '].includes(event.key)) return;
   event.preventDefault();
-  if(!event.repeat) startMusicUpHold();
+  if(!event.repeat) startSpotifyUpHold();
 });
 upButton.addEventListener('keyup',event=>{
-  if(current().page!=='music' || !['Enter',' '].includes(event.key)) return;
+  if(current().page!=='spotify' || !['Enter',' '].includes(event.key)) return;
   event.preventDefault();
   clearTimeout(upTimer);
   if(!heldUp) press('up');
