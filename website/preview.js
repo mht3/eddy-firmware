@@ -445,7 +445,8 @@ if(pickerPreview) {
   document.querySelector('#preview-intro').textContent='Use the buttons on the Flipper to try your selection. This preview uses sample data.';
   const back=document.querySelector('#return-to-picker');
   const selection = lists.apps.filter(([,page])=>apps.some(([,id])=>id===page)).map(([,id])=>id);
-  back.href='update/?'+new URLSearchParams({apps:selection.join(',')})+'#app-picker';
+  const returnTo = selection.includes(id) ? 'try-'+id : 'try-app-menu';
+  back.href='update/?'+new URLSearchParams({apps:selection.join(',')})+'#'+returnTo;
   back.hidden=false;
 }
 window.addEventListener('eddy-apps-changed', () => {

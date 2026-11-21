@@ -38,6 +38,7 @@ function makeCard(app) {
 
   const preview = document.createElement('a');
   preview.className = 'app-preview';
+  preview.id = 'try-' + app.id;
   preview.textContent = 'Try in emulator';
   preview.setAttribute('aria-label','Try ' + app.name + ' in emulator');
   const excluded = document.createElement('span');

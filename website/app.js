@@ -40,6 +40,11 @@ window.addEventListener('scroll', requestScene, {passive:true});
 window.addEventListener('resize', requestScene);
 reducedMotion.addEventListener('change', requestScene);
 syncScene();
+if (pickerPreview) {
+  window.addEventListener('pageshow', () => {
+    document.querySelector('#playable [data-key=ok]').focus({preventScroll:true});
+  }, {once:true});
+}
 
 const field = document.querySelector('.field');
 function drawField() {
