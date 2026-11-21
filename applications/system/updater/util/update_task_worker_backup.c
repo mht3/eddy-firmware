@@ -6,6 +6,7 @@
 #include <storage/storage.h>
 #include <desktop/views/desktop_view_slideshow.h>
 #include <toolbox/path.h>
+#include <toolbox/md5_calc.h>
 #include <update_util/dfu_file.h>
 #include <update_util/int_backup.h>
 #include <update_util/update_operation.h>
@@ -43,6 +44,23 @@ static void update_task_resource_unpack_cb(size_t progress, size_t total, void* 
     update_task_set_progress(update_task, UpdateTaskStageProgress, (progress * 100) / (total + 1));
 }
 
+// Earlier releases bundled examples alongside users' own remotes. Leave those
+// paths in place, and retire stock IR databases only while their contents match.
+static bool update_task_keep_ir_file(
+    Storage* storage,
+    const ResourceManifestEntry* entry,
+    const char* path) {
+    if(!furi_string_start_with_str(entry->name, "infrared/")) return false;
+    if(!furi_string_start_with_str(entry->name, "infrared/assets/")) return true;
+
+    File* file = storage_file_alloc(storage);
+    uint8_t digest[sizeof(entry->hash)];
+    bool matches = md5_calc_file(file, path, digest, NULL) &&
+                   memcmp(digest, entry->hash, sizeof(digest)) == 0;
+    storage_file_free(file);
+    return !matches;
+}
+
 static void update_task_cleanup_resources(UpdateTask* update_task) {
     ResourceManifestReader* manifest_reader = resource_manifest_reader_alloc(update_task->storage);
     do {
@@ -71,6 +89,11 @@ static void update_task_cleanup_resources(UpdateTask* update_task) {
                 FuriString* file_path = furi_string_alloc();
                 path_concat(
                     STORAGE_EXT_PATH_PREFIX, furi_string_get_cstr(entry_ptr->name), file_path);
+                if(update_task_keep_ir_file(
+                       update_task->storage, entry_ptr, furi_string_get_cstr(file_path))) {
+                    furi_string_free(file_path);
+                    continue;
+                }
                 FURI_LOG_D(TAG, "Removing %s", furi_string_get_cstr(file_path));
 
                 FS_Error result =

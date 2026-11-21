@@ -79,8 +79,7 @@ bool desktop_scene_lock_menu_on_event(void* context, SceneManagerEvent event) {
         switch(event.event) {
         case DesktopLockMenuEventSettings:
             desktop_scene_lock_menu_save_settings(desktop);
-            loader_show_settings(furi_record_open(RECORD_LOADER));
-            furi_record_close(RECORD_LOADER);
+            loader_show_settings(desktop->loader);
             consumed = true;
             break;
         case DesktopLockMenuEventLockKeypad:
@@ -114,11 +113,6 @@ bool desktop_scene_lock_menu_on_event(void* context, SceneManagerEvent event) {
                 scene_manager_set_scene_state(
                     desktop->scene_manager, DesktopSceneLockMenu, CheckPinLockOff);
             }
-            consumed = true;
-            break;
-        case DesktopLockMenuEventMomentum:
-            desktop_scene_lock_menu_save_settings(desktop);
-            loader_show_settings(desktop->loader);
             consumed = true;
             break;
         case DesktopLockMenuEventScreenSettings:

@@ -20,8 +20,6 @@ static const NotificationSequence*
         &sequence_success,
         &sequence_set_only_green_255,
         &sequence_reset_green,
-        &sequence_solid_yellow,
-        &sequence_reset_rgb,
         &sequence_blink_start_cyan,
         &sequence_blink_start_magenta,
         &sequence_blink_stop,
@@ -115,7 +113,6 @@ static InfraredApp* infrared_alloc(void) {
 
     InfraredAppState* app_state = &infrared->app_state;
     app_state->is_learning_new_remote = false;
-    app_state->is_debug_enabled = furi_hal_rtc_is_flag_set(FuriHalRtcFlagDebug);
     app_state->is_transmitting = false;
     app_state->is_otg_enabled = false;
     app_state->is_easy_mode = false;
@@ -143,7 +140,6 @@ static InfraredApp* infrared_alloc(void) {
     infrared->worker = infrared_worker_alloc();
     infrared->remote = infrared_remote_alloc();
     infrared->current_signal = infrared_signal_alloc();
-    infrared->brute_force = infrared_brute_force_alloc();
 
     infrared->submenu = submenu_alloc();
     view_dispatcher_add_view(
@@ -164,16 +160,6 @@ static InfraredApp* infrared_alloc(void) {
     infrared->popup = popup_alloc();
     view_dispatcher_add_view(view_dispatcher, InfraredViewPopup, popup_get_view(infrared->popup));
 
-    infrared->var_item_list = variable_item_list_alloc();
-    view_dispatcher_add_view(
-        view_dispatcher,
-        InfraredViewVariableList,
-        variable_item_list_get_view(infrared->var_item_list));
-
-    infrared->view_stack = view_stack_alloc();
-    view_dispatcher_add_view(
-        view_dispatcher, InfraredViewStack, view_stack_get_view(infrared->view_stack));
-
     infrared->move_view = infrared_move_view_alloc();
     view_dispatcher_add_view(
         view_dispatcher, InfraredViewMove, infrared_move_view_get_view(infrared->move_view));
@@ -181,17 +167,6 @@ static InfraredApp* infrared_alloc(void) {
     infrared->loading = loading_alloc();
     view_dispatcher_add_view(
         view_dispatcher, InfraredViewLoading, loading_get_view(infrared->loading));
-
-    if(app_state->is_debug_enabled) {
-        infrared->debug_view = infrared_debug_view_alloc();
-        view_dispatcher_add_view(
-            view_dispatcher,
-            InfraredViewDebugView,
-            infrared_debug_view_get_view(infrared->debug_view));
-    }
-
-    infrared->button_panel = button_panel_alloc();
-    infrared->progress = infrared_progress_view_alloc();
 
     return infrared;
 }
@@ -203,7 +178,6 @@ static void infrared_free(InfraredApp* infrared) {
     furi_thread_free(infrared->task_thread);
 
     ViewDispatcher* view_dispatcher = infrared->view_dispatcher;
-    InfraredAppState* app_state = &infrared->app_state;
 
     if(infrared->rpc_ctx) {
         rpc_system_app_set_callback(infrared->rpc_ctx, NULL, NULL);
@@ -226,30 +200,15 @@ static void infrared_free(InfraredApp* infrared) {
     view_dispatcher_remove_view(view_dispatcher, InfraredViewPopup);
     popup_free(infrared->popup);
 
-    view_dispatcher_remove_view(view_dispatcher, InfraredViewVariableList);
-    variable_item_list_free(infrared->var_item_list);
-
-    view_dispatcher_remove_view(view_dispatcher, InfraredViewStack);
-    view_stack_free(infrared->view_stack);
-
     view_dispatcher_remove_view(view_dispatcher, InfraredViewMove);
     infrared_move_view_free(infrared->move_view);
 
     view_dispatcher_remove_view(view_dispatcher, InfraredViewLoading);
     loading_free(infrared->loading);
 
-    if(app_state->is_debug_enabled) {
-        view_dispatcher_remove_view(view_dispatcher, InfraredViewDebugView);
-        infrared_debug_view_free(infrared->debug_view);
-    }
-
-    button_panel_free(infrared->button_panel);
-    infrared_progress_view_free(infrared->progress);
-
     view_dispatcher_free(view_dispatcher);
     scene_manager_free(infrared->scene_manager);
 
-    infrared_brute_force_free(infrared->brute_force);
     infrared_signal_free(infrared->current_signal);
     infrared_remote_free(infrared->remote);
     infrared_worker_free(infrared->worker);

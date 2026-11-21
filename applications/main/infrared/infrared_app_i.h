@@ -9,7 +9,6 @@
 #include <gui/gui.h>
 #include <gui/view.h>
 #include <assets_icons.h>
-#include <gui/view_stack.h>
 #include <gui/view_dispatcher.h>
 #include <gui/scene_manager.h>
 
@@ -19,8 +18,6 @@
 #include <gui/modules/dialog_ex.h>
 #include <gui/modules/text_input.h>
 #include <gui/modules/button_menu.h>
-#include <gui/modules/button_panel.h>
-#include <gui/modules/variable_item_list.h>
 
 #include <rpc/rpc_app.h>
 #include <storage/storage.h>
@@ -31,12 +28,9 @@
 
 #include "infrared_app.h"
 #include "infrared_remote.h"
-#include <lib/infrared/signal/infrared_brute_force.h>
 #include "infrared_custom_event.h"
 
 #include "scenes/infrared_scene.h"
-#include "views/infrared_progress_view.h"
-#include "views/infrared_debug_view.h"
 #include "views/infrared_move_view.h"
 
 #define INFRARED_FILE_NAME_SIZE  100
@@ -86,7 +80,6 @@ typedef enum {
  */
 typedef struct {
     bool is_learning_new_remote; /**< Learning new remote or adding to an existing one. */
-    bool is_debug_enabled; /**< Whether to enable or disable debugging features. */
     bool is_transmitting; /**< Whether a signal is currently being transmitted. */
     bool is_otg_enabled; /**< Whether OTG power (external 5V) is enabled. */
     bool is_easy_mode; /**< Whether easy learning mode is enabled. */
@@ -115,22 +108,16 @@ struct InfraredApp {
     InfraredWorker* worker; /**< Used to send or receive signals. */
     InfraredRemote* remote; /**< Holds the currently loaded remote. */
     InfraredSignal* current_signal; /**< Holds the currently loaded signal. */
-    InfraredBruteForce* brute_force; /**< Used for the Universal Remote feature. */
 
     Submenu* submenu; /**< Standard view for displaying application menus. */
     TextInput* text_input; /**< Standard view for receiving user text input. */
     DialogEx* dialog_ex; /**< Standard view for displaying dialogs. */
     ButtonMenu* button_menu; /**< Custom view for interacting with IR remotes. */
     Popup* popup; /**< Standard view for displaying messages. */
-    VariableItemList* var_item_list; /**< Standard view for displaying menus of choice items. */
 
-    ViewStack* view_stack; /**< Standard view for displaying stacked interfaces. */
-    InfraredDebugView* debug_view; /**< Custom view for displaying debug information. */
     InfraredMoveView* move_view; /**< Custom view for rearranging buttons in a remote. */
 
-    ButtonPanel* button_panel; /**< Standard view for displaying control panels. */
     Loading* loading; /**< Standard view for informing about long operations. */
-    InfraredProgressView* progress; /**< Custom view for showing brute force progress. */
 
     FuriThread* task_thread; /**< Pointer to a FuriThread instance for concurrent tasks. */
     FuriString* file_path; /**< Full path to the currently loaded file. */
@@ -156,9 +143,6 @@ typedef enum {
     InfraredViewDialogEx,
     InfraredViewButtonMenu,
     InfraredViewPopup,
-    InfraredViewVariableList,
-    InfraredViewStack,
-    InfraredViewDebugView,
     InfraredViewMove,
     InfraredViewLoading,
 } InfraredView;
@@ -170,8 +154,6 @@ typedef enum {
     InfraredNotificationMessageSuccess, /**< Play a short happy tune. */
     InfraredNotificationMessageGreenOn, /**< Turn green LED on. */
     InfraredNotificationMessageGreenOff, /**< Turn green LED off. */
-    InfraredNotificationMessageYellowOn, /**< Turn yellow LED on. */
-    InfraredNotificationMessageYellowOff, /**< Turn yellow LED off. */
     InfraredNotificationMessageBlinkStartRead, /**< Blink the LED to indicate receiver mode. */
     InfraredNotificationMessageBlinkStartSend, /**< Blink the LED to indicate transmitter mode. */
     InfraredNotificationMessageBlinkStop, /**< Stop blinking the LED. */

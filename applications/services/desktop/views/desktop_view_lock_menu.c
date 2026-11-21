@@ -20,7 +20,6 @@ typedef enum {
     DesktopLockMenuIndexDarkMode,
     DesktopLockMenuIndexLock,
     DesktopLockMenuIndexBluetooth,
-    DesktopLockMenuIndexMomentum,
     DesktopLockMenuIndexBrightness,
     DesktopLockMenuIndexVolume,
 
@@ -76,15 +75,15 @@ void desktop_lock_menu_draw_callback(Canvas* canvas, void* model) {
     const Icon* icon = NULL;
     for(size_t i = 0; i < DesktopLockMenuIndexTotalCount; ++i) {
         selected = m->idx == i;
-        toggle = i < 6;
+        toggle = i < DesktopLockMenuIndexBrightness;
         if(toggle) {
             x = 2 + 32 * (i / 2);
-            y = 2 + 32 * (i % 2);
+            y = i == DesktopLockMenuIndexBluetooth ? 18 : 2 + 32 * (i % 2);
             w = 28;
             h = 28;
             enabled = false;
         } else {
-            x = 98 + 16 * (i % 2);
+            x = 98 + 16 * (i - DesktopLockMenuIndexBrightness);
             y = 2;
             w = 12;
             h = 60;
@@ -109,9 +108,6 @@ void desktop_lock_menu_draw_callback(Canvas* canvas, void* model) {
         case DesktopLockMenuIndexBluetooth:
             icon = &I_CC_Bluetooth_16x16;
             enabled = m->lock_menu->bt->bt_settings.enabled;
-            break;
-        case DesktopLockMenuIndexMomentum:
-            icon = &I_CC_Momentum_16x16;
             break;
         case DesktopLockMenuIndexBrightness:
             icon = &I_Pin_star_7x7;
@@ -221,36 +217,23 @@ bool desktop_lock_menu_input_callback(InputEvent* event, void* context) {
                 } else {
                     if(model->idx == DesktopLockMenuIndexLock && event->key == InputKeyOk) {
                         model->show_lock_popup = true;
-                    } else if(model->idx < 6) {
+                    } else if(model->idx < DesktopLockMenuIndexBluetooth) {
                         if(event->key == InputKeyUp || event->key == InputKeyDown) {
-                            if(model->idx % 2) {
-                                model->idx--;
-                            } else {
-                                model->idx++;
-                            }
+                            model->idx ^= 1;
                         } else if(event->key == InputKeyLeft) {
-                            if(model->idx < 2) {
-                                model->idx = 7;
-                            } else {
-                                model->idx -= 2;
-                            }
+                            model->idx = model->idx < 2 ? DesktopLockMenuIndexVolume :
+                                                          model->idx - 2;
                         } else if(event->key == InputKeyRight) {
-                            if(model->idx >= 4) {
-                                model->idx = 6;
-                            } else {
-                                model->idx += 2;
-                            }
+                            model->idx = MIN(model->idx + 2, DesktopLockMenuIndexBluetooth);
                         }
-                    } else {
-                        if(event->key == InputKeyLeft) {
-                            model->idx--;
-                        } else if(event->key == InputKeyRight) {
-                            if(model->idx >= 7) {
-                                model->idx = 1;
-                            } else {
-                                model->idx++;
-                            }
-                        }
+                    } else if(event->key == InputKeyLeft) {
+                        model->idx = model->idx == DesktopLockMenuIndexBluetooth ?
+                                         DesktopLockMenuIndexLock :
+                                         model->idx - 1;
+                    } else if(event->key == InputKeyRight) {
+                        model->idx = model->idx == DesktopLockMenuIndexVolume ?
+                                         DesktopLockMenuIndexSettings :
+                                         model->idx + 1;
                     }
                 }
             }
@@ -304,9 +287,6 @@ bool desktop_lock_menu_input_callback(InputEvent* event, void* context) {
                 }
                 lock_menu->save_bt = true;
                 break;
-            case DesktopLockMenuIndexMomentum:
-                desktop_event = DesktopLockMenuEventMomentum;
-                break;
             case DesktopLockMenuIndexBrightness:
                 desktop_event = DesktopLockMenuEventScreenSettings;
                 break;
@@ -317,7 +297,9 @@ bool desktop_lock_menu_input_callback(InputEvent* event, void* context) {
             default:
                 break;
             }
-        } else if(idx >= 6 && (event->type == InputTypeShort || event->type == InputTypeRepeat)) {
+        } else if(
+            idx >= DesktopLockMenuIndexBrightness &&
+            (event->type == InputTypeShort || event->type == InputTypeRepeat)) {
             int8_t offset = 0;
             if(event->key == InputKeyUp) {
                 offset = 1;

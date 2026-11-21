@@ -6,7 +6,15 @@ Eddy is a new firmware for Flipper Zero! Eddy started from Next-Flip’s Momentu
 
 ![Eddy the dolphin surfacing in an ocean eddy](.github/assets/eddy-ocean.gif)
 
-## Build and install
+## Get Eddy
+
+[Install the main build](https://mht3.github.io/eddy-firmware/update/) · [Try the home screen](https://mht3.github.io/eddy-firmware/#home-screen) · [Read the wiki](https://mht3.github.io/eddy-firmware/wiki/)
+
+Press **OK → Apps** for Sub-GHz, RFID, NFC, Infrared, GPIO, iButton, Pomodoro Timer, and Metronome. In Infrared, choose **Learn a remote** to save your own buttons. Saved remotes appear under **My remotes**.
+
+<details>
+<summary>Build and install from source</summary>
+
 
 From the root of this checkout on macOS or Linux, fetch the pinned dependencies and build the F7 update.
 
@@ -25,7 +33,11 @@ FBT_NO_SYNC=1 ./fbt flash_usb_full
 
 Keep the device connected through the restart. Open **Quick Settings → Settings → About** to check the firmware version. Some inherited SDK symbols, app filenames and saved preferences retain their historical identifiers for compatibility.
 
-## Website and main build
+</details>
+
+<details>
+<summary>Run the website and updater locally</summary>
+
 
 The launch page, one-page wiki and USB updater are in `website/`. To preview the site with the local package, run these commands after building the current revision.
 
@@ -36,10 +48,8 @@ python3 -m http.server --bind 127.0.0.1 --directory dist/eddy-site 8000
 
 Open `http://127.0.0.1:8000/update/` in desktop Chrome or Edge. The Eddy updater uses Web Serial on localhost or HTTPS. It verifies the downloaded components, copies them to the microSD card, and asks the Flipper to verify the package and restart. The same page offers the full TGZ for qFlipper.
 
-### Publish on GitHub Pages
+The public updater and its firmware are hosted on GitHub Pages. Each published build links back to its source revision.
 
-The [Eddy website](https://mht3.github.io/eddy-firmware/) and [USB updater](https://mht3.github.io/eddy-firmware/update/) are hosted for free by GitHub Pages from this repository. Website source is in `website/`.
+</details>
 
-In the repository’s Settings → Pages, select **GitHub Actions** as the source. Push a change to `dev` to build the firmware and publish it together with the site. To republish manually, open **Actions → Build Eddy → Run workflow** and choose `dev`. A pull request builds and checks the package without publishing.
-
-Building from a public, committed revision keeps the matching source available with each binary. The project's distribution license and source notices are part of the checkout. Bundled third-party components retain their respective terms.
+Bundled third-party components retain their respective licenses and notices.
