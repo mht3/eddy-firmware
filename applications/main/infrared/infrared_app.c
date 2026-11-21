@@ -160,6 +160,7 @@ static InfraredApp* infrared_alloc(void) {
     infrared->popup = popup_alloc();
     view_dispatcher_add_view(view_dispatcher, InfraredViewPopup, popup_get_view(infrared->popup));
 
+    infrared->tv_pad = NULL;
     infrared->move_view = infrared_move_view_alloc();
     view_dispatcher_add_view(
         view_dispatcher, InfraredViewMove, infrared_move_view_get_view(infrared->move_view));
@@ -206,6 +207,10 @@ static void infrared_free(InfraredApp* infrared) {
     view_dispatcher_remove_view(view_dispatcher, InfraredViewLoading);
     loading_free(infrared->loading);
 
+    if(infrared->tv_pad) {
+        view_dispatcher_remove_view(view_dispatcher, InfraredViewTvPad);
+        view_free(infrared->tv_pad);
+    }
     view_dispatcher_free(view_dispatcher);
     scene_manager_free(infrared->scene_manager);
 

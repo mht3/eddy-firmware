@@ -115,6 +115,7 @@ struct InfraredApp {
     ButtonMenu* button_menu; /**< Custom view for interacting with IR remotes. */
     Popup* popup; /**< Standard view for displaying messages. */
 
+    View* tv_pad; /**< Allocated when first opening a TV preset. */
     InfraredMoveView* move_view; /**< Custom view for rearranging buttons in a remote. */
 
     Loading* loading; /**< Standard view for informing about long operations. */
@@ -145,6 +146,7 @@ typedef enum {
     InfraredViewPopup,
     InfraredViewMove,
     InfraredViewLoading,
+    InfraredViewTvPad,
 } InfraredView;
 
 /**

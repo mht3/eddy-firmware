@@ -3,6 +3,7 @@
 enum SubmenuIndex {
     SubmenuIndexSavedRemotes,
     SubmenuIndexLearnNewRemote,
+    SubmenuIndexTvPresets,
     SubmenuIndexButtonTester,
 };
 
@@ -32,6 +33,12 @@ void infrared_scene_start_on_enter(void* context) {
 
     submenu_add_item(
         submenu,
+        "TV presets",
+        SubmenuIndexTvPresets,
+        infrared_scene_start_submenu_callback,
+        infrared);
+    submenu_add_item(
+        submenu,
         "Button tester",
         SubmenuIndexButtonTester,
         infrared_scene_start_submenu_callback,
@@ -59,6 +66,8 @@ bool infrared_scene_start_on_event(void* context, SceneManagerEvent event) {
             infrared->app_state.is_learning_new_remote = true;
             infrared->app_state.current_button_index = 0; // Reset index when starting new remote
             scene_manager_next_scene(scene_manager, InfraredSceneLearn);
+        } else if(submenu_index == SubmenuIndexTvPresets) {
+            scene_manager_next_scene(scene_manager, InfraredSceneTvPresets);
         } else if(submenu_index == SubmenuIndexButtonTester) {
             scene_manager_next_scene(scene_manager, InfraredSceneButtonTester);
         } else if(submenu_index == SubmenuIndexSavedRemotes) {
