@@ -42,11 +42,12 @@ void spotify_screen_draw(Canvas* canvas, void* context) {
             [SpotifyNoPlayer] = "Open Spotify on a device.",
             [SpotifyLogin] = "Link Spotify in the browser.",
             [SpotifyOffline] = "Check the browser link.",
-            [SpotifyRestricted] = "Check Spotify on your phone.",
+            [SpotifyRestricted] = "Spotify declined access.",
             [SpotifyRateLimited] = "Spotify is busy. Try later.",
             [SpotifyInvalid] = "Could not read this page.",
         };
-        canvas_draw_str(canvas, 2, 35, errors[lib->error]);
+        canvas_draw_str(canvas, 2, 28, errors[lib->error]);
+        canvas_draw_str(canvas, 2, 41, "See details in your browser.");
         canvas_draw_str(canvas, 2, 62, "OK: Refresh");
     } else if(!screen->connected || !screen->bridge) {
         canvas_draw_str(

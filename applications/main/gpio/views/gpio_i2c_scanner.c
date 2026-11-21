@@ -10,7 +10,13 @@ struct GpioI2CScanner {
     void* context;
 };
 
+enum {
+    AddressesPerPage = 8
+};
+
 typedef struct {
+    bool scanned;
+    uint8_t page;
     uint8_t items;
     uint8_t responding_address[AVAILABLE_NONRESVERED_I2C_ADDRESSES];
 } GpioI2CScannerModel;
@@ -20,45 +26,35 @@ static bool gpio_i2c_scanner_process_ok(GpioI2CScanner* gpio_i2c_scanner, InputE
 static void gpio_i2c_scanner_draw_callback(Canvas* canvas, void* _model) {
     GpioI2CScannerModel* model = _model;
 
-    char temp_str[25];
-    elements_button_center(canvas, "Start scan");
-    canvas_draw_line(canvas, 2, 10, 125, 10);
-    canvas_draw_line(canvas, 2, 52, 125, 52);
-
+    char label[20];
     canvas_set_font(canvas, FontPrimary);
-    canvas_draw_str(canvas, 2, 9, "I2C-Scanner");
-    canvas_draw_str(canvas, 3, 25, "SDA:");
-    canvas_draw_str(canvas, 3, 42, "SCL:");
-
+    canvas_draw_str(canvas, 2, 9, "I2C scanner");
     canvas_set_font(canvas, FontSecondary);
-    snprintf(temp_str, 25, "Slaves: %u", model->items);
-    canvas_draw_str_aligned(canvas, 126, 8, AlignRight, AlignBottom, temp_str);
-
-    canvas_draw_str(canvas, 29, 25, "Pin 15");
-    canvas_draw_str(canvas, 29, 42, "Pin 16");
-
-    canvas_set_font(canvas, FontSecondary);
-
-    char temp_str2[6];
-    if(model->items > 0) {
-        snprintf(temp_str, 25, "Addr: ");
-        for(int i = 0; i < model->items; i++) {
-            snprintf(temp_str2, 6, "0x%x ", model->responding_address[i]);
-            strcat(temp_str, temp_str2);
-
-            if(i == 1 || model->items == 1) { //Draw a maximum of two addresses in the first line
-                canvas_draw_str_aligned(canvas, 127, 24, AlignRight, AlignBottom, temp_str);
-                temp_str[0] = '\0';
-            } else if(
-                i == 4 || (model->items - 1 == i &&
-                           i < 6)) { //Draw a maximum of three addresses in the second line
-                canvas_draw_str_aligned(canvas, 127, 36, AlignRight, AlignBottom, temp_str);
-                temp_str[0] = '\0';
-            } else if(i == 7 || model->items - 1 == i) { //Draw a maximum of three addresses in the third line
-                canvas_draw_str_aligned(canvas, 127, 48, AlignRight, AlignBottom, temp_str);
-                break;
-            }
+    canvas_draw_str(canvas, 2, 21, "SDA 15   SCL 16");
+    if(model->scanned) {
+        snprintf(label, sizeof(label), "%u found", model->items);
+        canvas_draw_str_aligned(canvas, 126, 21, AlignRight, AlignBottom, label);
+    }
+    if(!model->items) {
+        canvas_draw_str(
+            canvas, 2, 40, model->scanned ? "No devices found." : "Connect an I2C device.");
+    } else {
+        size_t first = model->page * AddressesPerPage;
+        for(size_t i = 0; i < AddressesPerPage && first + i < model->items; ++i) {
+            snprintf(label, sizeof(label), "0x%02X", model->responding_address[first + i]);
+            canvas_draw_str(canvas, 3 + 32 * (i % 4), 34 + 12 * (i / 4), label);
         }
+    }
+    elements_button_center(canvas, "Scan");
+    if(model->items > AddressesPerPage) {
+        snprintf(
+            label,
+            sizeof(label),
+            "%u/%u",
+            model->page + 1,
+            (model->items + AddressesPerPage - 1) / AddressesPerPage);
+        canvas_draw_str(canvas, 2, 62, label);
+        canvas_draw_str(canvas, 101, 62, "<  >");
     }
 }
 
@@ -67,7 +63,21 @@ static bool gpio_i2c_scanner_input_callback(InputEvent* event, void* context) {
     GpioI2CScanner* gpio_i2c_scanner = context;
     bool consumed = false;
 
-    if(event->key == InputKeyOk) {
+    if((event->key == InputKeyLeft || event->key == InputKeyRight) &&
+       event->type == InputTypeShort) {
+        with_view_model(
+            gpio_i2c_scanner->view,
+            GpioI2CScannerModel * model,
+            {
+                uint8_t pages = (model->items + AddressesPerPage - 1) / AddressesPerPage;
+                if(pages > 1) {
+                    model->page =
+                        (model->page + (event->key == InputKeyRight ? 1 : pages - 1)) % pages;
+                    consumed = true;
+                }
+            },
+            true);
+    } else if(event->key == InputKeyOk) {
         consumed = gpio_i2c_scanner_process_ok(gpio_i2c_scanner, event);
     }
 
@@ -130,6 +140,8 @@ void gpio_i2c_scanner_update_state(GpioI2CScanner* instance, I2CScannerState* st
         GpioI2CScannerModel * model,
         {
             model->items = st->items;
+            model->page = 0;
+            model->scanned = true;
 
             for(int i = 0; i < model->items; i++) {
                 model->responding_address[i] = st->responding_address[i];

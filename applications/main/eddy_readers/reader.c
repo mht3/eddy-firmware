@@ -18,6 +18,7 @@ static void reader_draw(Canvas* canvas, void* context) {
     if(model->type[0]) {
         canvas_draw_str(canvas, 3, 24, "Type detected");
         elements_text_box(canvas, 3, 26, 122, 25, AlignLeft, AlignCenter, model->type, true);
+        elements_button_left(canvas, "Scan");
         elements_button_center(canvas, "Save");
     } else {
         canvas_draw_icon(
@@ -41,7 +42,13 @@ static bool reader_event(void* context, uint32_t event) {
 static bool reader_input(InputEvent* event, void* context) {
     EddyReader* reader = context;
     if(event->type != InputTypeShort) return false;
-    if(event->key == InputKeyRight) {
+    if(event->key == InputKeyLeft) {
+        bool has_result;
+        with_view_model(
+            reader->view, ReaderModel * model, { has_result = model->type[0] != 0; }, false);
+        if(!has_result) return false;
+        reader->rescan(reader->rescan_context);
+    } else if(event->key == InputKeyRight) {
         eddy_notes_browse(reader->notes);
     } else if(event->key == InputKeyOk) {
         // Freeze the result the user chose while the worker continues sampling.
@@ -59,7 +66,15 @@ static bool reader_input(InputEvent* event, void* context) {
     return true;
 }
 
-void eddy_reader_init(EddyReader* reader, const char* title, const char* hint, const Icon* art) {
+void eddy_reader_init(
+    EddyReader* reader,
+    const char* title,
+    const char* hint,
+    const Icon* art,
+    void (*rescan)(void*),
+    void* context) {
+    reader->rescan = rescan;
+    reader->rescan_context = context;
     reader->gui = furi_record_open(RECORD_GUI);
     reader->dispatcher = view_dispatcher_alloc();
     reader->view = view_alloc();
@@ -86,9 +101,18 @@ void eddy_reader_init(EddyReader* reader, const char* title, const char* hint, c
     view_dispatcher_switch_to_view(reader->dispatcher, ReaderScan);
 }
 
+void eddy_reader_clear(EddyReader* reader) {
+    with_view_model(reader->view, ReaderModel * model, { model->type[0] = 0; }, true);
+}
+
 void eddy_reader_found(EddyReader* reader, const char* type) {
     with_view_model(
-        reader->view, ReaderModel * m, { snprintf(m->type, sizeof(m->type), "%s", type); }, true);
+        reader->view,
+        ReaderModel * m,
+        {
+            if(!m->type[0]) snprintf(m->type, sizeof(m->type), "%s", type);
+        },
+        true);
 }
 
 void eddy_reader_free(EddyReader* reader) {

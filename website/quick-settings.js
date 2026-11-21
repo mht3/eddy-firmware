@@ -35,11 +35,11 @@ export function drawQuick(ctx, row) {
     const x=21+42*i;
     const width = i===2 ? 27 : 15;
     ctx.beginPath();
-    ctx.roundRect(x-width/2,10,width,29,4);
+    ctx.roundRect(x-width/2,12,width,27,4);
     ctx.stroke();
     if (row===i) {
       ctx.beginPath();
-      ctx.roundRect(x-width/2-2,8.5,width+4,32,5);
+      ctx.roundRect(x-width/2-2,10.5,width+4,30,5);
       ctx.stroke();
     }
     if (i<2) {

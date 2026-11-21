@@ -137,8 +137,15 @@ static void remote_draw(Canvas* canvas, void* context) {
         snprintf(status, sizeof(status), "Pair: %s", model->advertised_name);
     }
     canvas_set_font(canvas, FontSecondary);
-    canvas_draw_line(canvas, 2, 51, 125, 51);
-    canvas_draw_str(canvas, 3, 62, status);
+    if(model->connected && model->label[0] && canvas_string_width(canvas, status) > 122) {
+        canvas_draw_line(canvas, 2, 50, 4, 52);
+        canvas_draw_line(canvas, 4, 52, 8, 48);
+        canvas_draw_line(canvas, 12, 51, 125, 51);
+        canvas_draw_str(canvas, 1, 62, model->label);
+    } else {
+        canvas_draw_line(canvas, 2, 51, 125, 51);
+        canvas_draw_str(canvas, 3, 62, status);
+    }
 }
 
 // Display and act on the paired link only. A new host must be drawn before it can receive input.

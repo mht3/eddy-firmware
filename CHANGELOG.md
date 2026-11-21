@@ -1,5 +1,9 @@
 # Eddy Firmware changes
 
+- The launcher keeps selected apps and pinned remotes together. Drag apps in the web installer to swap positions.
+- RFID, NFC, and iButton let you scan again from the result screen. Saved readings open in a named list.
+- The Music guide opens directly in the playable preview. You can reconnect a previously chosen Flipper to the Spotify library from the same browser tab.
+
 - Music controls the active player on a paired phone, including Spotify or Apple Music. A separate optional Spotify app browses Liked Songs, playlists, and saved albums and plays the selected item through a linked browser. The website includes a sample library.
 
 - The installer opens with nine apps selected. You can add Pomodoro Timer and Metronome, swap app positions across pages, and try your layout before installing it.

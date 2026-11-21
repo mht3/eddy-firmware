@@ -51,11 +51,14 @@ function flipper() {
   controls.startNotifications = async () => {};
   const state = {writeValueWithResponse: async bytes => { frames.push([...bytes]); }};
   const service = {getCharacteristic: async uuid => uuid.startsWith('efdd0002') ? state : controls};
-  device.gatt = {connected: true, connect: async () => ({getPrimaryService: async () => service}),
+  let choices = 0;
+  device.gatt = {connected: false, async connect() { this.connected = true; return {getPrimaryService: async () => service}; },
     disconnect() { this.connected = false; }};
-  Object.defineProperty(navigator, 'bluetooth', {configurable: true, value: {requestDevice: async () => device}});
+  Object.defineProperty(navigator, 'bluetooth', {configurable: true, value: {requestDevice: async () => { choices++; return device; }}});
   return {
     frames,
+    get choices() { return choices; },
+    drop() { device.gatt.disconnect(); device.dispatchEvent(new Event('gattserverdisconnected')); },
     send(...bytes) {
       controls.value = new DataView(Uint8Array.from(bytes).buffer);
       controls.dispatchEvent(new Event('characteristicvaluechanged'));
@@ -171,6 +174,21 @@ test('signed-in Flipper browses real response rows and plays only the displayed 
   device.send(0x10, 42, 0, 0, 0);
   await drain();
   assert.equal(list.children.length, 4);
+  device.drop();
+  await drain();
+  assert.equal(auth.linked(id), true);
+  assert.equal(list.hidden, true);
+  assert.equal(dom.pair.textContent, 'Reconnect Flipper');
+  await dom.pair.onclick();
+  assert.equal(device.choices, 1);
+  assert.deepEqual(device.frames.at(-1), [0x15]);
+  device.send(0x20, 43, 0, 42, 0); // Drops invalidate the old page's row tokens.
+  await drain();
+  assert.deepEqual(device.frames.at(-1), [0x13,43,0,3]);
+  await dom.disconnect.onclick();
+  assert.equal(dom.pair.textContent, 'Choose Flipper');
+  await dom.pair.onclick();
+  assert.equal(device.choices, 2);
   await dom.unlink.onclick();
   assert.deepEqual(list.children, []);
   assert.deepEqual(device.frames.at(-1), [0x16]);

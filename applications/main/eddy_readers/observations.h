@@ -3,21 +3,29 @@
 #include <dialogs/dialogs.h>
 #include <gui/elements.h>
 #include <gui/modules/text_input.h>
+#include <gui/modules/submenu.h>
 #include <gui/view_dispatcher.h>
 #include <storage/storage.h>
-#include <toolbox/path.h>
 
 // These independently packaged apps share the same private note views.
 // View 0 belongs to the caller. Its custom event handler forwards events to eddy_notes_event.
 enum {
     ReaderScan,
     ReaderName,
-    ReaderDetail
+    ReaderDetail,
+    ReaderSaved,
 };
 enum {
     BeginSave,
     CommitSave,
-    BrowseNotes
+    BrowseNotes,
+    NotesPrevious,
+    NotesNext,
+    NotesScan,
+    NotesSelect,
+};
+enum {
+    NotesPerPage = 8
 };
 #define NOTES_ROOT EXT_PATH("eddy_observations")
 #define NOTE_EXT   ".note"
@@ -26,6 +34,10 @@ typedef struct EddyNotes {
     ViewDispatcher* dispatcher;
     TextInput* input;
     View* detail;
+    Submenu* list;
+    FuriString* names[NotesPerPage];
+    size_t offset;
+    size_t count;
     Storage* storage;
     DialogsApp* dialogs;
     FuriString* folder;
@@ -41,8 +53,7 @@ static uint32_t back_to_scan(void* context) {
 
 static uint32_t detail_back(void* context) {
     EddyNotes* notes = context;
-    if(notes->browsing) view_dispatcher_send_custom_event(notes->dispatcher, BrowseNotes);
-    return ReaderScan;
+    return notes->browsing ? ReaderSaved : ReaderScan;
 }
 
 typedef struct {
@@ -109,39 +120,88 @@ static void save_note(EddyNotes* notes) {
     furi_string_free(temp);
 }
 
+static void select_note(void* context, uint32_t event) {
+    EddyNotes* notes = context;
+    view_dispatcher_send_custom_event(notes->dispatcher, event);
+}
+
 static void browse_notes(EddyNotes* notes) {
-    if(!ensure_folder(notes)) return;
-    DialogsFileBrowserOptions options;
-    dialog_file_browser_set_basic_options(&options, NOTE_EXT, NULL);
-    options.base_path = furi_string_get_cstr(notes->folder);
-    options.hide_dot_files = true;
-    FuriString* path = furi_string_alloc_set(notes->folder);
-    if(dialog_file_browser_show(notes->dialogs, path, path, &options)) {
-        File* file = storage_file_alloc(notes->storage);
-        char type[sizeof(notes->value)];
-        bool ok =
-            storage_file_open(file, furi_string_get_cstr(path), FSAM_READ, FSOM_OPEN_EXISTING);
-        const uint64_t size = ok ? storage_file_size(file) : 0;
-        ok = size > 0 && size < sizeof(type) && storage_file_read(file, type, size) == size;
-        storage_file_close(file);
-        storage_file_free(file);
-        if(ok) {
-            type[size] = 0;
-            for(size_t i = 0; i < size; ++i) {
-                if((unsigned char)type[i] < 32 || (unsigned char)type[i] > 126) ok = false;
-            }
-        }
-        if(ok) {
-            FuriString* name = furi_string_alloc();
-            path_extract_filename(path, name, true);
-            notes->browsing = true;
-            show_detail(notes, furi_string_get_cstr(name), type);
-            furi_string_free(name);
-        } else {
-            dialog_message_show_storage_error(notes->dialogs, "Cannot read\nobservation");
-        }
+    if(!ensure_folder(notes)) {
+        notes->count = 0;
+        view_dispatcher_switch_to_view(notes->dispatcher, ReaderScan);
+        return;
     }
+    File* dir = storage_file_alloc(notes->storage);
+    bool ok = storage_dir_open(dir, furi_string_get_cstr(notes->folder));
+    notes->count = 0;
+    bool more = false;
+    if(ok) {
+        FileInfo info;
+        char entry[256];
+        size_t skipped = 0;
+        while(storage_dir_read(dir, &info, entry, sizeof(entry))) {
+            size_t len = strlen(entry);
+            if(file_info_is_dir(&info) || entry[0] == '.' || len <= sizeof(NOTE_EXT) - 1 ||
+               strcmp(entry + len - (sizeof(NOTE_EXT) - 1), NOTE_EXT) != 0)
+                continue;
+            if(skipped++ < notes->offset) continue;
+            if(notes->count == NotesPerPage) {
+                more = true;
+                break;
+            }
+            entry[len - (sizeof(NOTE_EXT) - 1)] = 0;
+            furi_string_set_str(notes->names[notes->count++], entry);
+        }
+        FS_Error error = storage_file_get_error(dir);
+        ok = error == FSE_OK || error == FSE_NOT_EXIST;
+    }
+    storage_file_free(dir);
+    if(!ok) {
+        notes->count = 0;
+        dialog_message_show_storage_error(notes->dialogs, "Cannot read\nsaved readings.");
+        view_dispatcher_switch_to_view(notes->dispatcher, ReaderScan);
+        return;
+    }
+    submenu_reset(notes->list);
+    submenu_set_header(notes->list, notes->count ? "Saved readings" : "No readings yet");
+    if(notes->offset)
+        submenu_add_item(notes->list, "Previous page", NotesPrevious, select_note, notes);
+    for(size_t i = 0; i < notes->count; ++i)
+        submenu_add_item(
+            notes->list,
+            furi_string_get_cstr(notes->names[i]),
+            NotesSelect + i,
+            select_note,
+            notes);
+    if(more) submenu_add_item(notes->list, "Next page", NotesNext, select_note, notes);
+    if(!notes->count) submenu_add_item(notes->list, "Back to scan", NotesScan, select_note, notes);
+    view_dispatcher_switch_to_view(notes->dispatcher, ReaderSaved);
+}
+
+static void open_note(EddyNotes* notes, size_t index) {
+    const char* name = furi_string_get_cstr(notes->names[index]);
+    FuriString* path =
+        furi_string_alloc_printf("%s/%s" NOTE_EXT, furi_string_get_cstr(notes->folder), name);
+    File* file = storage_file_alloc(notes->storage);
+    char type[sizeof(notes->value)];
+    bool ok = storage_file_open(file, furi_string_get_cstr(path), FSAM_READ, FSOM_OPEN_EXISTING);
+    uint64_t size = ok ? storage_file_size(file) : 0;
+    ok = size > 0 && size < sizeof(type) && storage_file_read(file, type, size) == size;
+    storage_file_free(file);
     furi_string_free(path);
+    if(ok) {
+        type[size] = 0;
+        for(size_t i = 0; i < size; ++i)
+            if((unsigned char)type[i] < 32 || (unsigned char)type[i] > 126) ok = false;
+    }
+    if(ok) {
+        notes->browsing = true;
+        show_detail(notes, name, type);
+    } else {
+        notes->count = 0;
+        dialog_message_show_storage_error(notes->dialogs, "Cannot read\nobservation");
+        view_dispatcher_switch_to_view(notes->dispatcher, ReaderScan);
+    }
 }
 
 static bool validate_name(const char* text, FuriString* error, void* context) {
@@ -159,8 +219,18 @@ static bool validate_name(const char* text, FuriString* error, void* context) {
 static void name_submitted(void* context);
 
 static bool eddy_notes_event(EddyNotes* notes, uint32_t event) {
-    if(event == BrowseNotes) {
+    if(event == BrowseNotes || event == NotesPrevious || event == NotesNext) {
+        if(event == BrowseNotes)
+            notes->offset = 0;
+        else if(event == NotesNext)
+            notes->offset += NotesPerPage;
+        else if(notes->offset >= NotesPerPage)
+            notes->offset -= NotesPerPage;
         browse_notes(notes);
+    } else if(event >= NotesSelect && event - NotesSelect < notes->count) {
+        open_note(notes, event - NotesSelect);
+    } else if(event == NotesScan) {
+        view_dispatcher_switch_to_view(notes->dispatcher, ReaderScan);
     } else if(event == BeginSave) {
         if(!ensure_folder(notes)) return true;
         FuriString* name = furi_string_alloc();
@@ -197,6 +267,11 @@ static EddyNotes* eddy_notes_alloc(ViewDispatcher* dispatcher, const char* categ
     notes->folder = furi_string_alloc_printf(NOTES_ROOT "/%s", category);
     notes->input = text_input_alloc();
     notes->detail = view_alloc();
+    notes->list = submenu_alloc();
+    for(size_t i = 0; i < NotesPerPage; ++i)
+        notes->names[i] = furi_string_alloc();
+    view_set_previous_callback(submenu_get_view(notes->list), back_to_scan);
+    view_dispatcher_add_view(dispatcher, ReaderSaved, submenu_get_view(notes->list));
     text_input_set_header_text(notes->input, "Name observation");
     text_input_set_validator(notes->input, validate_name, NULL);
     view_set_previous_callback(text_input_get_view(notes->input), back_to_scan);
@@ -219,6 +294,10 @@ static void eddy_notes_browse(EddyNotes* notes) {
 }
 
 static void eddy_notes_free(EddyNotes* notes) {
+    view_dispatcher_remove_view(notes->dispatcher, ReaderSaved);
+    submenu_free(notes->list);
+    for(size_t i = 0; i < NotesPerPage; ++i)
+        furi_string_free(notes->names[i]);
     view_dispatcher_remove_view(notes->dispatcher, ReaderName);
     view_dispatcher_remove_view(notes->dispatcher, ReaderDetail);
     text_input_free(notes->input);

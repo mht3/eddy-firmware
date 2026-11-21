@@ -11,6 +11,7 @@
 #define SFP_I2C_ADDRESS                     0x50
 
 typedef struct {
+    bool valid;
     char vendor[32];
     char oui[32];
     char rev[32];

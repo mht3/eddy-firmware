@@ -19,7 +19,7 @@ static void tester_retry(DialogExResult result, void* context) {
 static void tester_listen(InfraredApp* app) {
     furi_event_flag_clear(app->tester_flags, SignalSeen);
     scene_manager_set_scene_state(app->scene_manager, InfraredSceneButtonTester, 0);
-    dialog_ex_set_header(app->dialog_ex, "Button tester", 64, 3, AlignCenter, AlignTop);
+    dialog_ex_set_header(app->dialog_ex, "Button tester", 2, 2, AlignLeft, AlignTop);
     dialog_ex_set_text(
         app->dialog_ex,
         "Point your remote here\nand press a button.",
@@ -55,7 +55,7 @@ bool infrared_scene_button_tester_on_event(void* context, SceneManagerEvent even
     if(!scene_manager_get_scene_state(app->scene_manager, InfraredSceneButtonTester) &&
        (furi_event_flag_get(app->tester_flags) & SignalSeen)) {
         scene_manager_set_scene_state(app->scene_manager, InfraredSceneButtonTester, 1);
-        dialog_ex_set_header(app->dialog_ex, "Signal detected", 64, 3, AlignCenter, AlignTop);
+        dialog_ex_set_header(app->dialog_ex, "Signal detected", 2, 2, AlignLeft, AlignTop);
         dialog_ex_set_text(
             app->dialog_ex, "Your remote sent infrared.", 64, 30, AlignCenter, AlignCenter);
         dialog_ex_set_center_button_text(app->dialog_ex, "Test another");

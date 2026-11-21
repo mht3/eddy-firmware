@@ -138,16 +138,10 @@ enum {
 };
 
 typedef struct {
-    const FlipperExternalApplication* app;
-    size_t slot;
-} LauncherApp;
-
-typedef struct {
     uint8_t section;
     size_t app_index;
     bool in_apps;
-    LauncherApp* apps;
-    size_t first_pin_slot;
+    const FlipperExternalApplication** apps;
     size_t app_count;
     FuriString* pinned_labels[EDDY_REMOTE_PIN_MAX];
     size_t pin_count;
@@ -208,7 +202,7 @@ static void launcher_load_apps(LauncherModel* model, Storage* storage) {
     uint8_t order[COUNT_OF(launcher_catalog)];
     launcher_read_order(storage, order);
     const FlipperExternalApplication* installed[COUNT_OF(launcher_catalog)] = {0};
-    model->apps = malloc((FLIPPER_EXTERNAL_APPS_COUNT + 1) * sizeof(LauncherApp));
+    model->apps = malloc((FLIPPER_EXTERNAL_APPS_COUNT + 1) * sizeof(*model->apps));
     model->app_count = 0;
     for(size_t i = 0; i < FLIPPER_EXTERNAL_APPS_COUNT; ++i) {
         const FlipperExternalApplication* app = &FLIPPER_EXTERNAL_APPS[i];
@@ -216,53 +210,27 @@ static void launcher_load_apps(LauncherModel* model, Storage* storage) {
         if(index < COUNT_OF(installed) && storage_file_exists(storage, app->path))
             installed[index] = app;
     }
-    size_t next = 0;
     for(size_t i = 0; i < COUNT_OF(installed); ++i) {
         const FlipperExternalApplication* app = installed[order[i]];
         if(!app) continue;
-        // Omitted neighbors leave their slots empty on both installer pages.
-        model->apps[model->app_count++] = (LauncherApp){.app = app, .slot = i};
-        next = MAX((size_t)LauncherPageSize, i + 1);
+        model->apps[model->app_count++] = app;
     }
     // Keep additional menu apps supplied by other builds discoverable as well.
     for(size_t i = 0; i < FLIPPER_EXTERNAL_APPS_COUNT; ++i) {
         const FlipperExternalApplication* app = &FLIPPER_EXTERNAL_APPS[i];
         if(launcher_catalog_index(app->name) == COUNT_OF(installed) &&
            storage_file_exists(storage, app->path))
-            model->apps[model->app_count++] = (LauncherApp){.app = app, .slot = next++};
+            model->apps[model->app_count++] = app;
     }
-    model->first_pin_slot = next;
 }
 
-static size_t launcher_slot(const LauncherModel* model, size_t index) {
-    if(index < model->app_count) return model->apps[index].slot;
-    return model->first_pin_slot + index - model->app_count;
-}
-
-// In a sparse row, land on the nearest available column. An empty row is skipped.
 static size_t launcher_vertical(const LauncherModel* model, bool up) {
     size_t count = model->app_count + model->pin_count;
-    size_t slot = launcher_slot(model, model->app_index);
-    size_t rows = launcher_slot(model, count - 1) / LauncherColumns + 1;
-    size_t row = slot / LauncherColumns;
-    size_t column = slot % LauncherColumns;
-    for(size_t step = 1; step < rows; ++step) {
-        size_t target = (row + (up ? rows - step : step)) % rows;
-        size_t best = model->app_index;
-        size_t distance = LauncherColumns;
-        for(size_t i = 0; i < count; ++i) {
-            size_t cell = launcher_slot(model, i);
-            if(cell / LauncherColumns != target) continue;
-            size_t other = cell % LauncherColumns;
-            size_t gap = column > other ? column - other : other - column;
-            if(gap < distance) {
-                distance = gap;
-                best = i;
-            }
-        }
-        if(distance < LauncherColumns) return best;
-    }
-    return model->app_index;
+    if(!count) return 0;
+    size_t rows = (count - 1) / LauncherColumns + 1;
+    size_t row = model->app_index / LauncherColumns;
+    size_t next_row = (row + (up ? rows - 1 : 1)) % rows;
+    return MIN(next_row * LauncherColumns + model->app_index % LauncherColumns, count - 1);
 }
 
 static void launcher_draw(Canvas* canvas, void* context) {
@@ -275,18 +243,17 @@ static void launcher_draw(Canvas* canvas, void* context) {
         canvas_draw_str_aligned(canvas, 64, 35, AlignCenter, AlignCenter, "No apps installed");
         return;
     }
-    const size_t page_number = grid ? launcher_slot(model, selected) / LauncherPageSize : 0;
-    const size_t pages = grid ? launcher_slot(model, count - 1) / LauncherPageSize + 1 : 1;
+    const size_t page_number = grid ? selected / LauncherPageSize : 0;
+    const size_t pages = grid ? (count - 1) / LauncherPageSize + 1 : 1;
     if(pages > 1) {
         char page[32];
         snprintf(page, sizeof(page), "Apps %u/%u", (unsigned)(page_number + 1), (unsigned)pages);
         canvas_draw_str(canvas, 2, 7, page);
     }
     for(size_t i = 0; i < count; ++i) {
-        size_t cell = grid ? launcher_slot(model, i) : i;
-        if(cell / LauncherPageSize != page_number) continue;
-        int x = grid ? 16 + 32 * (cell % LauncherColumns) : 21 + 42 * i;
-        int y = grid ? 18 + 20 * ((cell % LauncherPageSize) / LauncherColumns) : 26;
+        if(i / LauncherPageSize != page_number) continue;
+        int x = grid ? 16 + 32 * (i % LauncherColumns) : 21 + 42 * i;
+        int y = grid ? 18 + 20 * ((i % LauncherPageSize) / LauncherColumns) : 26;
         if(i == selected) {
             canvas_draw_rbox(canvas, x - 12, y - (grid ? 9 : 10), 25, grid ? 19 : 21, 4);
             canvas_set_color(canvas, ColorWhite);
@@ -297,7 +264,7 @@ static void launcher_draw(Canvas* canvas, void* context) {
             elements_scrollable_text_line_centered(
                 canvas, x, y + 3, 21, model->pinned_labels[i - model->app_count], 0, false, true);
         } else {
-            const Icon* icon = grid ? model->apps[i].app->icon : sections[i].icon;
+            const Icon* icon = grid ? model->apps[i]->icon : sections[i].icon;
             if(!icon) icon = &A_Plugins_14;
             canvas_draw_icon(
                 canvas, x - icon_get_width(icon) / 2, y - icon_get_height(icon) / 2, icon);
@@ -324,7 +291,7 @@ static void launcher_draw(Canvas* canvas, void* context) {
                 true);
         } else {
             canvas_draw_str_aligned(
-                canvas, 64, 63, AlignCenter, AlignBottom, model->apps[selected].app->name);
+                canvas, 64, 63, AlignCenter, AlignBottom, model->apps[selected]->name);
         }
     }
 }
@@ -359,7 +326,7 @@ static bool launcher_input(InputEvent* event, void* context) {
                 remote_path = furi_string_get_cstr(
                     launcher->pins.paths[model->app_index - model->app_count]);
             else
-                launch = model->apps[model->app_index].app->name;
+                launch = model->apps[model->app_index]->name;
         } else if(model->in_apps) {
             handled = false;
         } else if(model->section == 0)

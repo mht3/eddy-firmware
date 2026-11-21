@@ -280,6 +280,7 @@ void print_part(uint8_t *data, char *ptype, char *prefix, int start, int len){
 */
 
 void gpio_i2c_sfp_run_once(I2CSfpState* i2c_sfp_state) {
+    *i2c_sfp_state = (I2CSfpState){0};
     furi_hal_i2c_acquire(&furi_hal_i2c_handle_external);
     // Allocate buffer for SFP Data
     uint8_t sfp_data[255];
@@ -291,12 +292,15 @@ void gpio_i2c_sfp_run_once(I2CSfpState* i2c_sfp_state) {
         for(uint8_t i = 0; i <= 254; i++) {
             uint8_t data = 0;
             // Read data from register
-            furi_hal_i2c_read_reg_8(
-                &furi_hal_i2c_handle_external,
-                SFP_I2C_ADDRESS << 1,
-                i,
-                &data,
-                response_timeout_ticks);
+            if(!furi_hal_i2c_read_reg_8(
+                   &furi_hal_i2c_handle_external,
+                   SFP_I2C_ADDRESS << 1,
+                   i,
+                   &data,
+                   response_timeout_ticks)) {
+                furi_hal_i2c_release(&furi_hal_i2c_handle_external);
+                return;
+            }
             // Save data
             sfp_data[i] = data;
         }
@@ -317,6 +321,7 @@ void gpio_i2c_sfp_run_once(I2CSfpState* i2c_sfp_state) {
         printf("Max length: %3u km %4u m %4u m %4u m %4u m\r\n", sfp_data[14], sfp_data[17]*10, sfp_data[16]*10, sfp_data[19]*10, sfp_data[18]*10);
         */
 
+        i2c_sfp_state->valid = true;
         str_part(sfp_data, i2c_sfp_state->vendor, 20, 16);
         str_part(sfp_data, i2c_sfp_state->rev, 56, 4);
         str_part(sfp_data, i2c_sfp_state->pn, 40, 16);

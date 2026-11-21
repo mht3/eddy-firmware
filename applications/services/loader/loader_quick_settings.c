@@ -36,9 +36,9 @@ static void quick_draw(Canvas* canvas, void* context) {
     for(size_t i = 0; i < QuickCount; i++) {
         const int x = 21 + i * 42;
         const int width = i == QuickDetails ? 27 : 15;
-        canvas_draw_rframe(canvas, x - width / 2, 10, width, 29, 4);
+        canvas_draw_rframe(canvas, x - width / 2, 12, width, 27, 4);
         if(i == model->selected)
-            canvas_draw_rframe(canvas, x - width / 2 - 2, 8, width + 4, 33, 5);
+            canvas_draw_rframe(canvas, x - width / 2 - 2, 10, width + 4, 31, 5);
         if(i != QuickDetails) {
             unsigned pct = level_percent(
                 i == QuickBrightness ? settings->display_brightness : settings->speaker_volume);

@@ -13,19 +13,32 @@ static const char* saved_remote_label(InfraredApp* infrared) {
     const size_t length = strlen(name);
     if(length <= max_line) return name;
 
-    // Newly named remotes are limited to 22 bytes. Prefer a space that lets
-    // both halves fit, otherwise break at a complete UTF-8 character.
-    size_t split = length / 2;
-    for(size_t i = length - max_line; i <= max_line; ++i) {
-        if(name[i] == ' ') {
-            split = i;
-            break;
+    // Imported remote names may be longer than the on-device input limit.
+    size_t split = length <= 2 * max_line ? length / 2 : max_line;
+    if(length <= 2 * max_line) {
+        for(size_t i = length - max_line; i <= max_line; ++i) {
+            if(name[i] == ' ') {
+                split = i;
+                break;
+            }
         }
     }
     while(split && ((uint8_t)name[split] & 0xC0) == 0x80)
-        split--;
+        --split;
+    const char* rest = name + split + (name[split] == ' ');
+    size_t remaining = strlen(rest);
+    size_t shown = remaining <= max_line ? remaining : max_line - 3;
+    while(shown && ((uint8_t)rest[shown] & 0xC0) == 0x80)
+        --shown;
     infrared_text_store_set(
-        infrared, 0, "%.*s\n%s", (int)split, name, name + split + (name[split] == ' '));
+        infrared,
+        0,
+        "%.*s\n%.*s%s",
+        (int)split,
+        name,
+        (int)shown,
+        rest,
+        shown < remaining ? "..." : "");
     return infrared->text_store[0];
 }
 
@@ -44,8 +57,7 @@ void infrared_scene_learn_done_on_enter(void* context) {
     } else {
         Popup* popup = infrared->popup;
         popup_set_header(popup, "Button saved", 64, 18, AlignCenter, AlignCenter);
-        popup_set_text(
-            popup, infrared_remote_get_name(infrared->remote), 64, 39, AlignCenter, AlignCenter);
+        popup_set_text(popup, saved_remote_label(infrared), 64, 39, AlignCenter, AlignCenter);
         popup_set_callback(popup, infrared_popup_closed_callback);
         popup_set_context(popup, context);
         popup_set_timeout(popup, 1500);

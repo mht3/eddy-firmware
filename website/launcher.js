@@ -14,28 +14,18 @@ export function layoutApps(items, order = getAppOrder()) {
     const item = items.find(([,target]) => target === id);
     if (item) cells.push([item[0],id,cells.length]);
   });
-  let next = cells.length ? Math.max(8,cells.at(-1)[2]+1) : 0;
   for (const [name,id] of items) {
-    if (!order.includes(id)) cells.push([name,id,next++]);
+    if (!order.includes(id)) cells.push([name,id,cells.length]);
   }
   return cells;
 }
 
 export function verticalApp(items,index,key) {
-  const slot = items[index][2];
-  const rows = Math.floor(items.at(-1)[2]/4)+1;
-  const row = Math.floor(slot/4);
-  for (let step=1; step<rows; step++) {
-    const target = (row+(key==='up' ? rows-step : step))%rows;
-    let best = index, distance = 4;
-    items.forEach(([, ,cell],i) => {
-      if (Math.floor(cell/4)!==target) return;
-      const gap = Math.abs(cell%4-slot%4);
-      if (gap<distance) { best=i; distance=gap; }
-    });
-    if (distance<4) return best;
-  }
-  return index;
+  if (!items.length) return 0;
+  const rows = Math.ceil(items.length/4);
+  const row = Math.floor(index/4);
+  const nextRow = (row + (key === 'up' ? rows-1 : 1)) % rows;
+  return Math.min(nextRow*4 + index%4, items.length-1);
 }
 
 export function drawLauncher(ctx, page, selected, gridItems = layoutApps(apps)) {

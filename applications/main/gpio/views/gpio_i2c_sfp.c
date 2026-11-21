@@ -11,18 +11,9 @@ struct GpioI2CSfp {
 };
 
 typedef struct {
-    char vendor[32];
-    char oui[32];
-    char rev[32];
-    char pn[32];
-    char sn[32];
-    char dc[32];
-    uint8_t type;
-    char connector[32];
-    int wavelength;
-    int sm_reach;
-    int mm_reach_om3;
-    int bitrate;
+    I2CSfpState module;
+    bool scanned;
+    bool details;
 } GpioI2CSfpModel;
 
 static bool gpio_i2c_sfp_process_ok(GpioI2CSfp* gpio_i2c_sfp, InputEvent* event);
@@ -30,41 +21,40 @@ static bool gpio_i2c_sfp_process_ok(GpioI2CSfp* gpio_i2c_sfp, InputEvent* event)
 static void gpio_i2c_sfp_draw_callback(Canvas* canvas, void* _model) {
     GpioI2CSfpModel* model = _model;
 
-    // Temp String for formatting output
-    char temp_str[280];
-
+    const I2CSfpState* module = &model->module;
+    char label[64];
+    canvas_set_font(canvas, FontPrimary);
+    canvas_draw_str(canvas, 2, 9, model->details ? "SFP details" : "SFP module");
     canvas_set_font(canvas, FontSecondary);
-    elements_button_center(canvas, "Read");
-    canvas_draw_str(canvas, 2, 63, "P15 SCL");
-    canvas_draw_str(canvas, 92, 63, "P16 SDA");
-
-    snprintf(temp_str, 280, "Vendor: %s", model->vendor);
-    canvas_draw_str(canvas, 2, 9, temp_str);
-
-    snprintf(temp_str, 280, "PN: %s", model->pn);
-    canvas_draw_str(canvas, 2, 19, temp_str);
-
-    snprintf(temp_str, 280, "SN: %s", model->sn);
-    canvas_draw_str(canvas, 2, 29, temp_str);
-
-    snprintf(temp_str, 280, "REV: %s", model->rev);
-    canvas_draw_str(canvas, 2, 39, temp_str);
-
-    snprintf(temp_str, 280, "CON: %s", model->connector);
-    canvas_draw_str(canvas, 50, 39, temp_str);
-
-    //Print Wavelength of Module
-    snprintf(temp_str, 280, "%u nm", model->wavelength);
-    canvas_draw_str(canvas, 2, 49, temp_str);
-
-    // These values will be zero if not applicable..
-    if(model->sm_reach != 0) {
-        snprintf(temp_str, 280, "%u km (SM)", model->sm_reach);
-        canvas_draw_str(canvas, 50, 49, temp_str);
+    if(!module->valid) {
+        canvas_draw_str(
+            canvas,
+            2,
+            27,
+            model->scanned ? "No module data. Check pins." : "Connect an SFP module.");
+        canvas_draw_str(canvas, 2, 42, "Pin 15: SDA   Pin 16: SCL");
+    } else if(!model->details) {
+        snprintf(label, sizeof(label), "Vendor: %.16s", module->vendor);
+        elements_text_box(canvas, 2, 11, 124, 12, AlignLeft, AlignCenter, label, true);
+        snprintf(label, sizeof(label), "PN: %.16s", module->pn);
+        elements_text_box(canvas, 2, 24, 124, 12, AlignLeft, AlignCenter, label, true);
+        snprintf(label, sizeof(label), "SN: %.16s", module->sn);
+        elements_text_box(canvas, 2, 37, 124, 12, AlignLeft, AlignCenter, label, true);
+    } else {
+        snprintf(label, sizeof(label), "Rev %.4s   %.20s", module->rev, module->connector);
+        elements_text_box(canvas, 2, 12, 124, 13, AlignLeft, AlignCenter, label, true);
+        snprintf(label, sizeof(label), "%u nm", module->wavelength);
+        canvas_draw_str(canvas, 2, 35, label);
+        snprintf(
+            label, sizeof(label), "SM %u km   OM3 %u m", module->sm_reach, module->mm_reach_om3);
+        canvas_draw_str(canvas, 2, 48, label);
     }
-    if(model->mm_reach_om3 != 0) {
-        snprintf(temp_str, 280, "%u m (MM OM3)", model->mm_reach_om3);
-        canvas_draw_str(canvas, 50, 49, temp_str);
+    elements_button_center(canvas, "Read");
+    if(module->valid) {
+        if(model->details)
+            elements_button_left(canvas, "Info");
+        else
+            elements_button_right(canvas, "More");
     }
 }
 
@@ -73,7 +63,19 @@ static bool gpio_i2c_sfp_input_callback(InputEvent* event, void* context) {
     GpioI2CSfp* gpio_i2c_sfp = context;
     bool consumed = false;
 
-    if(event->key == InputKeyOk) {
+    if(event->type == InputTypeShort &&
+       (event->key == InputKeyLeft || event->key == InputKeyRight)) {
+        with_view_model(
+            gpio_i2c_sfp->view,
+            GpioI2CSfpModel * model,
+            {
+                if(model->module.valid) {
+                    model->details = event->key == InputKeyRight;
+                    consumed = true;
+                }
+            },
+            true);
+    } else if(event->key == InputKeyOk) {
         consumed = gpio_i2c_sfp_process_ok(gpio_i2c_sfp, event);
     }
 
@@ -135,15 +137,9 @@ void gpio_i2c_sfp_update_state(GpioI2CSfp* instance, I2CSfpState* st) {
         instance->view,
         GpioI2CSfpModel * model,
         {
-            // Insert values into model...
-            strcpy(model->vendor, st->vendor);
-            strcpy(model->pn, st->pn);
-            strcpy(model->sn, st->sn);
-            strcpy(model->rev, st->rev);
-            strcpy(model->connector, st->connector);
-            model->wavelength = st->wavelength;
-            model->sm_reach = st->sm_reach;
-            model->mm_reach_om3 = st->mm_reach_om3;
+            model->module = *st;
+            model->scanned = true;
+            model->details = false;
         },
         true);
 }

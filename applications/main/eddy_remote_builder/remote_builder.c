@@ -183,7 +183,7 @@ static void grid_draw(Canvas* canvas, void* context) {
     canvas_draw_str_aligned(canvas, 64, 53, AlignCenter, AlignBottom, subtitle);
     const char* hint = m->moving ?
                            "OK: place    Back: cancel" :
-                           (name[0] ? "OK: send    Hold OK: edit" : "OK: add    Hold OK: options");
+                           (name[0] ? "OK: send    Hold OK: menu" : "OK: add    Hold OK: menu");
     canvas_draw_str_aligned(canvas, 64, 63, AlignCenter, AlignBottom, hint);
 }
 
@@ -320,7 +320,7 @@ static void show_dialog(
     const char* accept) {
     app->screen = screen;
     dialog_ex_reset(app->dialog);
-    dialog_ex_set_header(app->dialog, title, 64, 10, AlignCenter, AlignCenter);
+    dialog_ex_set_header(app->dialog, title, 64, 11, AlignCenter, AlignTop);
     dialog_ex_set_text(app->dialog, body, 64, 32, AlignCenter, AlignCenter);
     dialog_ex_set_center_button_text(app->dialog, accept);
     dialog_ex_set_context(app->dialog, app);
@@ -454,19 +454,19 @@ static bool pin_state(Builder* app, bool* pinned) {
 static void show_options(Builder* app) {
     const char* label = app->layout.buttons[app->slot].label;
     begin_menu(app, Options, label[0] ? label : "Remote options");
+    bool pinned;
+    if(!pin_state(app, &pinned)) {
+        show_error(app, "Could not read shortcuts.\nCheck the microSD card.", Grid);
+        return;
+    }
+    if(!pinned) add_item(app, "Add to Apps", PinRemote);
     if(label[0]) {
         add_item(app, "Rename button", RenameButton);
         add_item(app, "Learn again", LearnAgain);
         add_item(app, "Move button", MoveButton);
         add_item(app, "Remove button", RemoveButton);
     }
-    bool pinned;
-    if(pin_state(app, &pinned)) {
-        add_item(app, pinned ? "Remove from Apps" : "Add to Apps", PinRemote);
-    } else {
-        show_error(app, "Could not read shortcuts.\nCheck the microSD card.", Grid);
-        return;
-    }
+    if(pinned) add_item(app, "Remove from Apps", PinRemote);
     view_dispatcher_switch_to_view(app->dispatcher, MenuView);
 }
 
