@@ -2,15 +2,15 @@
   "parts": [
     {
       "name": "firmware.dfu",
-      "size": 799425,
-      "sha256": "bb13b2a1bb5a4652dc27fd5db9956c0522c7a6b4310c330514d3b12a9f57394b",
-      "md5": "1eecdc0c2a477104b07c73cac466c6db"
+      "size": 799273,
+      "sha256": "9abf69d1e50716b4e82f1c3386b2e76aa1bf67110aa097b57398360430ce5c5d",
+      "md5": "f863a66db959cc25e6b19d7f043c9a38"
     },
     {
       "name": "firstboot.bin",
-      "size": 1137,
-      "sha256": "e958623314829213bda2733aa939f8935f2fd300db65881d162d15577b21f6ec",
-      "md5": "641082f1794c730c3112ec76f937ec16"
+      "size": 1215,
+      "sha256": "725ec980e7617def63833c7344b37cccba0bedf264b2eb31bde4d0c9778d2736",
+      "md5": "524d6304e55527cf2f292701422f815f"
     },
     {
       "name": "radio.bin",
@@ -20,27 +20,27 @@
     },
     {
       "name": "resources.tar.gz",
-      "size": 202875,
-      "sha256": "064623af29b6383c5555cab85e2eb37fb67fba3a751cc0e3af578130e3233a23",
-      "md5": "b4c7e44f26314b48baf9c9b9ce20ba5a"
+      "size": 202974,
+      "sha256": "223286be75636672410f36c91d47686475006668529f905968f6e5b7b50be110",
+      "md5": "08186944c846f9517e8a97d08ab65328"
     },
     {
       "name": "splash.bin",
-      "size": 361,
-      "sha256": "a8f900cdbf530966549e2e3028d12d7797dfebac0b944133f3cc1479be2a50dd",
-      "md5": "c8b671f598fb38249f40ead5d471fbb1"
+      "size": 456,
+      "sha256": "16f4509f6f93900660953e03930b8256301c03989c49e03b14a304b27ada02c7",
+      "md5": "58cf8246a54955cfa6dac64a6d08a4cf"
     },
     {
       "name": "update.fuf",
       "size": 1589,
-      "sha256": "7f45d57d8450d6da0883448bc1aaaf11ed1b5a963bda8538670fd024af195da5",
-      "md5": "4b8a263692618452ea673034a49e9b4d"
+      "sha256": "569719f70a8a5dfe576b66ab8ef749e97376628e38f0fb4e7c17198bcfadea20",
+      "md5": "2a3a07e7b64842dba0d74b6cf2a96572"
     },
     {
       "name": "updater.bin",
-      "size": 120845,
-      "sha256": "3f94fc91657c3eb1fb4401a2ca8d6d2512316e9573734d778eda723123f5056c",
-      "md5": "99dc03c2ec5ef43fbf6909d10c7ee3a3"
+      "size": 120833,
+      "sha256": "da23c8dc54b8e8ea3f7ed3c5eef2fc35e598a63baa470f42d68df5a824ae8775",
+      "md5": "b13fd6a1017b824e6f34d241358350a3"
     }
   ],
   "resourceIndex": {
@@ -142,8 +142,8 @@
     }
   },
   "target": "f7",
-  "version": "eddy-dev-a6bb09e2",
-  "file": "flipper-z-f7-update-eddy-dev-a6bb09e2.tgz",
-  "commit": "a6bb09e26caadfe75e49c2e7714030ba62d421c9",
-  "sha256": "323dacbe875da911238c19c6c55a18e94a4adf64eb9bef6383bdb7846f2a6009"
+  "version": "eddy-dev-d773dbc6",
+  "file": "flipper-z-f7-update-eddy-dev-d773dbc6.tgz",
+  "commit": "d773dbc6c87d597b0c25d2759a620d648202524f",
+  "sha256": "aa90f3f10f6265be47bd76abddee49acca99a6fed779f2dfd88d61f76a7720ba"
 }
