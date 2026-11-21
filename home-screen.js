@@ -5,26 +5,26 @@ export function drawBattery(ctx, charging = false) {
   ctx.fillStyle = ctx.strokeStyle = '#432a14';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.roundRect(100.5,.5,25,7,1.5);
+  ctx.roundRect(99.5,1.5,23,7,1.5);
   ctx.stroke();
-  ctx.fillRect(126,2,2,4);
-  const fill = Math.round(24*sampleCharge/100);
-  ctx.fillRect(101,1,fill,6);
+  ctx.fillRect(124,4,1,2);
+  const fill = Math.round(22*sampleCharge/100);
+  ctx.fillRect(100,2,fill,6);
   ctx.font = 'bold 7px monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   const label = sampleCharge+'%';
-  ctx.fillText(label,113,4.3);
+  ctx.fillText(label,111,5.3);
   ctx.save();
   ctx.beginPath();
-  ctx.rect(101,1,fill,6);
+  ctx.rect(100,2,fill,6);
   ctx.clip();
   ctx.globalCompositeOperation = 'destination-out';
-  ctx.fillText(label,113,4.3);
+  ctx.fillText(label,111,5.3);
   ctx.restore();
   if (charging) {
     ctx.beginPath();
-    ctx.moveTo(98,0); ctx.lineTo(94,4); ctx.lineTo(98,4); ctx.lineTo(95,7);
+    ctx.moveTo(97.5,1.5); ctx.lineTo(94.5,5.5); ctx.lineTo(97.5,5.5); ctx.lineTo(95.5,8.5);
     ctx.stroke();
   }
   ctx.restore();

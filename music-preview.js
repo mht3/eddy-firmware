@@ -21,7 +21,7 @@ function drawSetup(ctx) {
     for (let y=0; y<64; y++) {
       for (let x=0; x<128; x++) {
         // The emulator draws its own status battery in the upper right.
-        if ((x<94 || y>=8) && data[4*(128*y+x)]<128) setupInk.rect(x,y,1,1);
+        if ((x<94 || x>124 || y<1 || y>8) && data[4*(128*y+x)]<128) setupInk.rect(x,y,1,1);
       }
     }
   }

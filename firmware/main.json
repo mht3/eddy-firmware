@@ -2,9 +2,9 @@
   "parts": [
     {
       "name": "firmware.dfu",
-      "size": 799313,
-      "sha256": "370672dddd5a024b26220e0f64f3e44747272d9e3b993f737d95e611e30d14f1",
-      "md5": "4f8d38c16248289e1713d46e7251ed6f"
+      "size": 799345,
+      "sha256": "e32393582c6749dfe2975aaf23b939de0cf9440c1dd26a32ee154ff15ab55762",
+      "md5": "d92581575a99bb03f00ea792273e6a31"
     },
     {
       "name": "firstboot.bin",
@@ -20,9 +20,9 @@
     },
     {
       "name": "resources.tar.gz",
-      "size": 196421,
-      "sha256": "9cc45c5c6eadea25e52e0479cecb54979d5b81e1262fddbd26a9d884ad9f1512",
-      "md5": "0a84e7d9717812ea67d36637001ea3c3"
+      "size": 196431,
+      "sha256": "40ed65064220265674e71bb56aab93cd882b9f41e8a5f5b42c7a36b462845858",
+      "md5": "3f1419d3686a13450e95c4f42a473e5c"
     },
     {
       "name": "splash.bin",
@@ -33,14 +33,14 @@
     {
       "name": "update.fuf",
       "size": 1589,
-      "sha256": "8742cddf7e554f07a39b473ebabe185f6edb1ea0af4a985f7a52e31c8993d9ed",
-      "md5": "376c2ed12314edfb97a4c36aace0542e"
+      "sha256": "52e2e4b78b72a12d96712e663d6ed0c3c54e4bbac08104b9fd3b4adfd0eaea58",
+      "md5": "cba3962a8c0a1ac9511ace409adfcb83"
     },
     {
       "name": "updater.bin",
-      "size": 120797,
-      "sha256": "5f3a4aaa978544a5349c466d370dfaae6e47ad82c2828d4818a21839ce9c03cf",
-      "md5": "a40a00aebb9d22c6dd9ea239514cafde"
+      "size": 120845,
+      "sha256": "127f0f70edeb62c54fed0e8afcd497e5260688222b88ad7c3550d9e3885acfac",
+      "md5": "a081683d4d98300aa60ec2a5a177ea45"
     }
   ],
   "resourceIndex": {
@@ -138,8 +138,8 @@
     }
   },
   "target": "f7",
-  "version": "eddy-dev-c598a7bc",
-  "file": "flipper-z-f7-update-eddy-dev-c598a7bc.tgz",
-  "commit": "c598a7bc4e22678e91908e8f81c512336ae4d3ca",
-  "sha256": "3e52d5315e6cb1ba1389b200b549696ffe42dee85615b8f721f1fc24daa0f843"
+  "version": "eddy-dev-6336df13",
+  "file": "flipper-z-f7-update-eddy-dev-6336df13.tgz",
+  "commit": "6336df13b972f84125a93eb1ca86924f371fc586",
+  "sha256": "8371c632edaf810eef4b0cf92cab38d8c95a9a388906dc837dbe5991b9850ecd"
 }
