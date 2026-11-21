@@ -5,37 +5,10 @@ const tracks = [
   {title:'Dolphin Days', artist:'Eddy demo', length:242},
 ];
 
-// Reuse the firmware capture so the QR on the preview opens the same link as the device.
-const setupImage = new Image();
-setupImage.src = new URL('./spotify/handheld-setup.png', import.meta.url).href;
-let setupInk;
-function drawSetup(ctx) {
-  if (!setupInk && setupImage.naturalWidth) {
-    const canvas = document.createElement('canvas');
-    canvas.width = 128;
-    canvas.height = 64;
-    const pixels = canvas.getContext('2d');
-    pixels.drawImage(setupImage, 0, 0);
-    const data = pixels.getImageData(0, 0, 128, 64).data;
-    setupInk = new Path2D();
-    for (let y=0; y<64; y++) {
-      for (let x=0; x<128; x++) {
-        // The emulator draws its own status battery in the upper right.
-        if ((x<94 || x>124 || y<1 || y>8) && data[4*(128*y+x)]<128) setupInk.rect(x,y,1,1);
-      }
-    }
-  }
-  if (setupInk) ctx.fill(setupInk);
-  return !setupImage.complete;
-}
-
-let seenSetup = false;
-try { seenSetup = localStorage.getItem('eddy-preview-spotify-ready') === '1'; } catch {}
-
-export function openMusicDemo(sampleTrack = false) {
+export function openMusicDemo() {
   return {
-    setup:!sampleTrack && !seenSetup, page:'music', row:0, index:0,
-    elapsed:42, started:performance.now(), playing:true, volume:50, volumeUntil:0,
+    page:'music', row:0, index:0, elapsed:42,
+    started:performance.now(), playing:true, volume:50, volumeUntil:0,
   };
 }
 
@@ -44,16 +17,6 @@ function position(s) {
 }
 
 export function musicKey(s,key) {
-  if (key==='holdUp' || (s.setup && (key==='ok' || key==='back'))) {
-    s.setup = !s.setup;
-    s.volumeUntil=0;
-    if (!s.setup) {
-      seenSetup = true;
-      try { localStorage.setItem('eddy-preview-spotify-ready','1'); } catch {}
-    }
-    return;
-  }
-  if (s.setup) return;
   if(key==='left' || key==='right') {
     const at=position(s);
     s.playing=s.playing && at<tracks[s.index].length;
@@ -73,11 +36,10 @@ export function musicKey(s,key) {
 }
 
 export function musicStatus(s) {
-  if (s.setup) return 'Scan the QR code to open Spotify on your phone. OK for the sample track.';
   const track=tracks[s.index];
   return 'Sample track. '+track.title+' by '+track.artist+'. '+
     (s.playing && position(s)<track.length ? 'Playing.' : 'Paused.')+
-    ' Position '+clock(position(s))+'. Media volume '+s.volume+'%. Left restarts the song, or goes back a track in its first three seconds. Right skips. OK plays or pauses. Up and Down adjust volume. Hold Up for the QR code.';
+    ' Position '+clock(position(s))+'. Media volume '+s.volume+'%. Left restarts the song, or goes back a track in its first three seconds. Right skips. OK plays or pauses. Up and Down adjust volume.';
 }
 
 function clock(seconds) {
@@ -86,14 +48,13 @@ function clock(seconds) {
 }
 
 export function drawMusic(ctx,s) {
-  if (s.setup) return drawSetup(ctx);
   const track=tracks[s.index];
   const at=position(s);
   const playing=s.playing && at<track.length;
   ctx.save();
   ctx.textBaseline='alphabetic';
   ctx.font='7px sans-serif';
-  ctx.fillText('iPhone',2,8);
+  ctx.fillText('Music demo',2,8);
   const showVolume=performance.now()<s.volumeUntil;
   ctx.fillText(showVolume?'Volume '+s.volume+'%':playing?'Playing':'Paused',45,8);
   ctx.font='bold 11px sans-serif';

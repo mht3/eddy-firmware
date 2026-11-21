@@ -1,28 +1,10 @@
 #include "music_state.h"
 #include <string.h>
+#include <toolbox/eddy_media_label.h>
 
 static uint32_t read_ms(const uint8_t* p) {
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) |
            ((uint32_t)p[3] << 24);
-}
-
-static bool valid_text(const char* field, size_t length) {
-    const uint8_t* s = (const uint8_t*)field;
-    size_t i = 0;
-    while(i < length) {
-        uint8_t c = s[i++];
-        if(c < 0x20 || c == 0x7f) return false;
-        if(c < 0x80) continue;
-        size_t n = c <= 0xdf ? 1 : c <= 0xef ? 2 : 3;
-        if(c < 0xc2 || c > 0xf4 || length - i < n) return false;
-        if((c == 0xe0 && s[i] < 0xa0) || (c == 0xed && s[i] >= 0xa0) ||
-           (c == 0xf0 && s[i] < 0x90) || (c == 0xf4 && s[i] >= 0x90))
-            return false;
-        while(n--) {
-            if((s[i++] & 0xc0) != 0x80) return false;
-        }
-    }
-    return true;
 }
 
 bool music_frame_receive(
@@ -40,10 +22,10 @@ bool music_frame_receive(
         *frame = (MusicFrame){.started = true};
         return false;
     }
-    if(op == 5 && size == 2 && data[1] <= 4) {
+    if(op == 5 && size == 2 && data[1] == 0) {
         frame->started = false;
         *track = (MusicTrackInfo){0};
-        *state = MusicIdle + data[1];
+        *state = MusicIdle;
         return true;
     }
     if(!frame->started) return false;
@@ -60,8 +42,8 @@ bool music_frame_receive(
     }
     frame->started = false;
     if(op != 4 || size != 10 || data[1] > 1 || !frame->title_len ||
-       !valid_text(frame->pending.title, frame->title_len) ||
-       !valid_text(frame->pending.artist, frame->artist_len))
+       !eddy_media_label_valid(frame->pending.title, frame->title_len) ||
+       !eddy_media_label_valid(frame->pending.artist, frame->artist_len))
         return false;
     *track = frame->pending;
     track->playing = data[1] != 0;

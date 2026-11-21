@@ -4,12 +4,12 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="referrer" content="no-referrer">
-    <meta name="description" content="Pair your phone with Eddy Firmware and control Spotify from your Flipper Zero.">
-    <title>Spotify · Eddy Firmware</title>
+    <meta name="description" content="Browse Liked Songs, playlists and saved albums in Eddy’s Spotify app or try a sample library in your browser.">
+    <title>Spotify library · Eddy Firmware</title>
     <link rel="canonical" href="https://mht3.github.io/eddy-firmware/spotify/">
     <link rel="icon" href="../eddy.svg">
     <link rel="stylesheet" href="../style.css">
-    <link rel="stylesheet" href="music.css">
+    <link rel="stylesheet" href="../spotify/music.css">
     <script type="module" src="music.js"></script>
   </head>
   <body>
@@ -18,36 +18,24 @@
       <nav aria-label="Main"><a href="../resources/">Resources</a><a class="small-cta" href="../update/">Install</a></nav>
     </div></header>
     <main class="music">
-      <h1>Spotify.</h1>
-      <p class="intro">Control Spotify from your Flipper while your phone plays the music.</p>
-
-      <section aria-labelledby="start-title">
-        <h2 id="start-title">Play your first song</h2>
-        <p>Choose Spotify under Extras in the <a href="../update/#app-picker">Eddy installer</a>, then connect your phone to your Flipper once. <a href="../bluetooth/">Bluetooth pairing guide</a></p>
-        <ol>
-          <li>Open <strong>Apps → Spotify</strong> on the Flipper.</li>
-          <li>The first time you open it, scan the QR code on the Flipper to open Spotify on your phone. Press <strong>OK</strong> on the Flipper to close the code.</li>
-          <li>Play a song on your phone. Press <strong>OK</strong> on the Flipper to pause and again to resume. Use <strong>Up / Down</strong> to adjust media volume.</li>
-        </ol>
-        <p class="note">Next time, open Apps → Spotify and play a song. Hold <strong>Up</strong> whenever you want the QR code again.</p>
+      <h1>Spotify library.</h1>
+      <p class="intro">Browse your Liked Songs, playlists and saved albums. Pick one on your Flipper to play it on your active Spotify device.</p>
+      <section>
+        <h2>Explore the library</h2>
+        <img class="library-device" src="liked-songs.webp" width="1080" height="540" alt="Flipper Zero showing a sample Liked Songs library with Dolphin Days selected.">
+        <p>Pick a collection with <strong>OK</strong>. Use <strong>Up / Down</strong> to move through its items and <strong>Left / Right</strong> to turn the page. Press <strong>OK</strong> to play your selection.</p>
+        <a class="small-cta" href="../?demo=spotify#home-screen">Try the sample library</a>
       </section>
-
-      <div class="platforms" id="platforms" aria-label="Choose your phone" hidden>
-        <button type="button" id="choose-iphone" aria-controls="iphone" aria-pressed="false">iPhone</button>
-        <button type="button" id="choose-android" aria-controls="android" aria-pressed="false">Android</button>
-      </div>
-
-      <section id="iphone" aria-labelledby="iphone-title">
-        <h2 id="iphone-title">On iPhone</h2>
-        <p>Your Flipper shows the song title, artist and playback time from the active player. Start playback in Spotify to see its track. Pressing Left sends Previous to the iPhone. Spotify decides whether to restart the song or go back a track.</p>
-      </section>
-
-      <section id="android" aria-labelledby="android-title">
-        <h2 id="android-title">On Android</h2>
-        <p id="android-mode">Use the Flipper to control playback and volume on phones that support Bluetooth media controls. View the song title and artist on your phone.</p>
+      <section>
+        <h2>Your Spotify library</h2>
+        <p id="bridge-availability" role="status">Personal account linking is currently unavailable on this site.</p>
+        <p><a href="https://open.spotify.com/collection/tracks">Open my Liked Songs in Spotify</a></p>
         <div id="bridge" hidden>
-          <h3>Show track details</h3>
-          <p>Link Spotify, then choose your Flipper. Keep this Chrome tab active while you use the remote. Spotify playback controls require Premium and an account eligible for this integration.</p>
+          <ol>
+            <li>Add <strong>Spotify</strong> in the <a href="../update/#app-picker">installer</a>. On the Flipper, open <strong>Apps → Spotify</strong>.</li>
+            <li>Link your Spotify account below, then choose your Flipper in the Bluetooth prompt. Keep this tab open on the computer or Android phone connected to your Flipper.</li>
+            <li>Start Spotify on the device you want to hear. A song, playlist or album you select on the Flipper will play there. Playback requires Spotify Premium.</li>
+          </ol>
           <div class="bridge-actions">
             <button id="link" class="cta" type="button">Link Spotify</button>
             <button id="pair" class="cta" type="button" hidden>Choose Flipper</button>
@@ -55,31 +43,15 @@
             <button id="unlink" type="button" hidden>Unlink Spotify</button>
           </div>
           <p id="notice" role="status"></p>
-          <div id="track" hidden>
-            <img src="spotify-white.svg" width="92" height="25" alt="Spotify">
-            <a id="song" target="_blank" rel="noopener"><strong id="title"></strong><span id="artist"></span></a>
-            <p id="times"></p>
-          </div>
+          <ul id="library-links" hidden aria-label="Open displayed items in Spotify"></ul>
+          <details id="privacy">
+            <summary>Privacy and account access</summary>
+            <p>Eddy uses Spotify sign-in to read your saved music and playlists and start playback when you press OK. This tab sends library labels to your paired Flipper. It keeps the sign-in tokens in browser session storage and sends requests directly to Spotify.</p>
+            <p>Choose <strong>Unlink Spotify</strong> to remove the sign-in from this tab. You can also remove Eddy from <a href="https://www.spotify.com/account/apps/">your Spotify account’s apps</a> to revoke access.</p>
+          </details>
         </div>
       </section>
-
-      <section class="controls" aria-labelledby="controls-title">
-        <h2 id="controls-title">On your Flipper</h2>
-        <div class="screens">
-          <figure><img src="handheld-setup.png" width="256" height="128" alt="Flipper setup screen with the QR code that opens Spotify."><figcaption>Scan to open Spotify</figcaption></figure>
-          <figure><img src="handheld-track.png" width="256" height="128" alt="Flipper track view showing a song, artist and playback progress."><figcaption>Flipper track view · sample song</figcaption></figure>
-        </div>
-        <p class="note">This first release has passed simulated playback tests. Pairing and reconnecting after a power cycle still need confirmation on physical phones and Flippers.</p>
-        <dl>
-          <div><dt>OK</dt><dd>Play or pause</dd></div>
-          <div><dt>Left</dt><dd>Restart or previous</dd></div>
-          <div><dt>Right</dt><dd>Next track</dd></div>
-          <div><dt>Up</dt><dd>Volume up</dd></div>
-          <div><dt>Down</dt><dd>Volume down</dd></div>
-          <div><dt>Hold Up</dt><dd>Show QR code</dd></div>
-        </dl>
-        <p class="note">In the <a href="../#home-screen">Meet Eddy preview</a>, Left restarts the song at three seconds or later. Press Left during the first three seconds to go back a track.</p>
-      </section>
+      <a href="../music/">Control Spotify or Apple Music with the Bluetooth Music app</a>
     </main>
   </body>
 </html>

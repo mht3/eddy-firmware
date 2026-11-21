@@ -22,11 +22,11 @@ Available apps include Sub-GHz, RFID, NFC, Infrared, GPIO, iButton, Pomodoro Tim
 
 ## Music integration
 
-Pair your phone with your Flipper over Bluetooth and open **Apps → Spotify**. The first time, scan the QR code to open Spotify on your phone, press **OK** to dismiss it, and start a song. The Flipper uses the same pairing the next time you turn it on. [Bluetooth pairing guide](https://mht3.github.io/eddy-firmware/bluetooth/)
+Open **Apps → Music** to control Spotify or Apple Music on your paired phone. On iPhone, the Flipper shows the song, artist, and playback time. Press **OK** to play or pause, **Left / Right** for tracks, and **Up / Down** for volume. Compatible Android phones support playback controls. [Music guide](https://mht3.github.io/eddy-firmware/music/) · [Bluetooth pairing](https://mht3.github.io/eddy-firmware/bluetooth/)
 
-![Dolphin Days playing in the Spotify preview on a Flipper Zero](.github/assets/dolphin-days.png)
+![Dolphin Days playing in the Music preview on a Flipper Zero](.github/assets/dolphin-days.png)
 
-On iPhone, the Flipper displays the song, artist, and playback time. **OK** plays or pauses, **Left / Right** send previous and next, and **Up / Down** adjust volume. Compatible Android phones support playback controls. Try *Dolphin Days* in the browser preview. [Meet Eddy](https://mht3.github.io/eddy-firmware/#home-screen) · [Spotify setup](https://mht3.github.io/eddy-firmware/spotify/)
+The separate **Spotify** app browses Liked Songs, playlists, and saved albums four items at a time. Press OK to play a selection on your active Spotify device. Try it with a sample library in the emulator. Access to your own library requires an eligible Spotify account and a browser with Web Bluetooth. [Try the library](https://mht3.github.io/eddy-firmware/?demo=spotify#home-screen) · [Spotify guide](https://mht3.github.io/eddy-firmware/spotify/)
 
 ## Acknowledgements
 

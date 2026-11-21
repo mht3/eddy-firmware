@@ -45,6 +45,14 @@ bool ble_svc_media_listen(BleMediaEventCallback callback, void* context);
 void ble_svc_media_unlisten(void* context);
 bool ble_svc_media_send(void* context, uint8_t command, bool hid);
 
+/** Request a Spotify library page or track on the active bridge. */
+bool ble_svc_media_library_request(
+    void* context,
+    uint16_t connection,
+    uint8_t op,
+    uint16_t request,
+    uint16_t page);
+
 /** Serial profile descriptor */
 extern const FuriHalBleProfileTemplate* const ble_profile_serial;
 

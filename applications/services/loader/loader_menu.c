@@ -123,13 +123,14 @@ static const struct {
     {"rfid", "RFID"},
     {"infrared", "Infrared"},
     {"pomodoro", "Pomodoro Timer"},
-    {"music", "Spotify"},
+    {"music", "Music"},
     {"builder", "Remote Builder"},
     {"btRemote", "Bluetooth Remote"},
     {"metronome", "Metronome"},
     {"gpio", "GPIO"},
     {"ibutton", "iButton"},
     {"nfc", "NFC"},
+    {"spotify", "Spotify"},
 };
 enum {
     LauncherPageSize = 8,

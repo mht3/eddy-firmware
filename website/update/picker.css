@@ -57,7 +57,8 @@
 [data-id=metronome] {--highlight:#dfc0ff; --shade:#ad91d9; --glyph:#493166; --icon-shift:7}
 [data-id=builder]   {--highlight:#fad4ac; --shade:#c8a07f; --glyph:#553e2d; --icon-shift:8}
 [data-id=btRemote]  {--highlight:#a8c8f8; --shade:#699ce0; --glyph:#143760; --icon-shift:9}
-[data-id=music]     {--highlight:#a2e1d0; --shade:#74bba7; --glyph:#19453b; --icon-shift:10}
+[data-id=music]     {--highlight:#ffb9c8; --shade:#d57b9a; --glyph:#55273e; --icon-shift:7}
+[data-id=spotify]   {--highlight:#a2e1d0; --shade:#74bba7; --glyph:#19453b; --icon-shift:10}
 .toggle-mark {
   position:absolute; top:.45rem; right:.45rem; width:1.85rem; height:1.85rem;
   display:grid; place-items:center; border-radius:50%; font:500 1.4rem/1 sans-serif;

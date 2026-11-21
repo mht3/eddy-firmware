@@ -7,10 +7,6 @@ typedef enum {
     MusicWaiting,
     MusicTrack,
     MusicIdle,
-    MusicLogin,
-    MusicOffline,
-    MusicRestricted,
-    MusicRateLimited,
 } MusicState;
 
 typedef struct {

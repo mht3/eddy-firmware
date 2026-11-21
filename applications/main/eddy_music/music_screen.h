@@ -14,9 +14,6 @@ typedef struct {
     MusicTrackInfo track;
     bool available;
     bool connected;
-    bool iphone;
-    bool setup;
-    bool linked;
     MusicFeedback feedback;
     uint32_t position;
     uint32_t scroll;

@@ -105,6 +105,7 @@ FIRMWARE_APPS = {
         "eddy_remote_builder",
         "eddy_bluetooth",
         "eddy_music",
+        "eddy_spotify",
         "eddy_signal",
         "infrared",
         "gpio",

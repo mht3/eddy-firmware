@@ -9,3 +9,4 @@ metronome
 gpio
 ibutton
 nfc
+spotify

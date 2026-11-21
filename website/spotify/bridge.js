@@ -1,40 +1,55 @@
-import {authorize, callback, command, linked, playback, PlaybackError, unlink} from "./spotify.js";
+import {authorize, callback, libraryPage, linked, pageSize, PlaybackError, playLibraryItem, unlink} from './spotify.js';
 
-const uuid = n => "efdd000" + n + "-5a34-4a32-9fab-1f72e60d00ed";
+const uuid = n => 'efdd000' + n + '-5a34-4a32-9fab-1f72e60d00ed';
 const get = id => document.getElementById(id);
-const maxQueuedControls = 16;
+const categories = new Map([[0x10, 'track'], [0x18, 'playlist'], [0x19, 'album']]);
+const next = 0x11, previous = 0x12, hello = 0x15, dismiss = 0x16, playRow = 0x20;
 
-function textPackets(tag, text) {
-  const bytes = new Uint8Array(95);
-  const {written} = new TextEncoder().encodeInto(text, bytes);
-  const result = [];
-  for (let i = 0; i < written; i += 19) result.push(Uint8Array.of(tag, ...bytes.subarray(i, Math.min(written, i + 19))));
-  return result;
+function decodeCommand(value) {
+  if (value?.byteLength !== 5) return;
+  const op = value.getUint8(0), token = value.getUint16(1, true), base = value.getUint16(3, true);
+  const standalone = categories.has(op) || op === hello || op === dismiss;
+  if (!token || (standalone ? base !== 0 : !base)) return;
+  if (standalone || op === next || op === previous || (op >= playRow && op < playRow + pageSize)) {
+    return {op, token, base};
+  }
 }
 
-export function trackPackets(player) {
-  const commit = new Uint8Array(10);
-  const timing = new DataView(commit.buffer);
-  commit.set([4, Number(player.is_playing)]);
-  const duration = Math.max(0, Math.min(0xffffffff, player.item.duration_ms || 0));
-  timing.setUint32(2, Math.max(0, Math.min(duration, player.progress_ms || 0)), true);
-  timing.setUint32(6, duration, true);
-  const artist = player.item.artists?.map(item => item.name).join(", ") || "";
-  return [Uint8Array.of(1), ...textPackets(2, player.item.name || ""), ...textPackets(3, artist), commit];
+function showLibraryLinks(rows = []) {
+  const list = get('library-links');
+  const items = [];
+  for (const {label, href} of rows) {
+    if (!href) continue;
+    const link = document.createElement('a');
+    link.href = href;
+    link.textContent = label;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    const item = document.createElement('li');
+    item.append(link);
+    items.push(item);
+  }
+  list.replaceChildren(...items);
+  list.hidden = !items.length;
 }
 
-function displayTrack(player) {
-  const item = player.item;
-  get("title").textContent = item.name;
-  get("artist").textContent = item.artists?.map(a => a.name).join(", ") || "";
-  const external = item.external_urls?.spotify || "";
-  get("song").href = /^https:\/\/open\.spotify\.com\/track\//.test(external) ? external : "https://open.spotify.com/";
-  const clock = ms => {
-    const seconds = Math.floor(Math.max(0, ms || 0) / 1000);
-    return Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0");
-  };
-  get("times").textContent = clock(player.progress_ms) + " / " + clock(item.duration_ms);
-  get("track").hidden = false;
+function packet(op, token, ...data) {
+  return Uint8Array.of(op, token & 255, token >>> 8, ...data);
+}
+
+function pagePackets(page, token) {
+  const packets = [packet(0x10, token)];
+  for (const [row, song] of page.rows.entries()) {
+    const text = new Uint8Array(80);
+    const {written} = new TextEncoder().encodeInto(song.label.replace(/[\x00-\x1f\x7f]/g, ' '), text);
+    for (let i = 0; i < written; i += 16) {
+      packets.push(packet(0x11, token, row, ...text.subarray(i, Math.min(i + 16, written))));
+    }
+  }
+  const offset = new Uint8Array(4);
+  new DataView(offset.buffer).setUint32(0, page.offset, true);
+  packets.push(packet(0x12, token, page.rows.length, Number(page.hasPrev), Number(page.hasNext), ...offset));
+  return packets;
 }
 
 async function connect(onCommand, onDrop) {
@@ -44,33 +59,35 @@ async function connect(onCommand, onDrop) {
   });
   let controls;
   function notification(event) {
-    const bytes = event.target.value;
-    if (bytes?.byteLength === 1 && [1, 2, 3, 4, 5].includes(bytes.getUint8(0))) onCommand(bytes.getUint8(0));
+    const command = decodeCommand(event.target.value);
+    if (command) onCommand(command);
   }
   function detach() {
-    device.removeEventListener("gattserverdisconnected", dropped);
-    controls?.removeEventListener("characteristicvaluechanged", notification);
+    controls?.removeEventListener('characteristicvaluechanged', notification);
+    device.removeEventListener('gattserverdisconnected', dropped);
   }
-  function dropped() {
-    detach();
-    onDrop();
-  }
+  function dropped() { detach(); onDrop(); }
   try {
     const server = await device.gatt.connect();
     const service = await server.getPrimaryService(uuid(1));
     const state = await service.getCharacteristic(uuid(2));
     controls = await service.getCharacteristic(uuid(3));
-    controls.addEventListener("characteristicvaluechanged", notification);
+    controls.addEventListener('characteristicvaluechanged', notification);
     await controls.startNotifications();
-    if (!device.gatt.connected) throw new Error("Disconnected while pairing.");
-    device.addEventListener("gattserverdisconnected", dropped);
+    if (!device.gatt.connected) throw new Error('Disconnected while pairing.');
+    device.addEventListener('gattserverdisconnected', dropped);
+    let lastWrite = Promise.resolve();
     return {
-      name: device.name || "Flipper",
-      write: packet => state.writeValueWithResponse(packet),
-      close() {
-        detach();
-        if (device.gatt.connected) device.gatt.disconnect();
+      name: device.name || 'Flipper',
+      write(bytes, stillActive = () => true) {
+        // Web Bluetooth permits a single in-flight GATT operation, including hello.
+        const operation = lastWrite.then(() => {
+          if (stillActive()) return state.writeValueWithResponse(bytes);
+        });
+        lastWrite = operation.catch(() => {});
+        return operation;
       },
+      close() { detach(); if (device.gatt.connected) device.gatt.disconnect(); },
     };
   } catch (error) {
     detach();
@@ -80,134 +97,176 @@ async function connect(onCommand, onDrop) {
 }
 
 export async function startBridge(id) {
-  let remote, pending = false, cooldown = 0;
-  const notice = text => { get("notice").textContent = text; };
-  const render = () => {
+  let session, pending = false, cooldown = 0;
+  const notice = text => { get('notice').textContent = text; };
+  function render() {
     const ready = linked(id);
-    get("link").hidden = ready;
-    get("pair").hidden = !ready || Boolean(remote);
-    get("unlink").hidden = !ready;
-    get("disconnect").hidden = !remote;
-    get("pair").disabled = get("link").disabled = get("unlink").disabled = pending;
-    if (!remote) get("track").hidden = true;
-  };
-  const disconnect = text => {
-    if (remote) {
-      clearTimeout(remote.timer);
-      remote.abort.abort();
-      remote.device.close();
-      remote = null;
+    get('link').hidden = ready;
+    get('pair').hidden = !ready || Boolean(session);
+    get('unlink').hidden = !ready;
+    get('disconnect').hidden = !session;
+    get('pair').disabled = get('link').disabled = get('unlink').disabled = get('disconnect').disabled = pending;
+  }
+  async function disconnect(message, goodbye = false) {
+    showLibraryLinks();
+    if (session) {
+      const old = session;
+      session = null;
+      clearTimeout(old.timer);
+      old.controller?.abort();
+      if (goodbye) {
+        pending = true;
+        render();
+        // A sleeping or unplugged device must not block local sign-out.
+        let timeout;
+        try {
+          await Promise.race([old.device.write(Uint8Array.of(0x16)),
+            new Promise(resolve => { timeout = setTimeout(resolve, 1000); })]);
+        } catch {} finally { clearTimeout(timeout); }
+        pending = false;
+      }
+      old.device.close();
     }
     render();
-    notice(text);
-  };
-
-  function enqueue(code) {
-    if (!remote) return;
-    if (remote.controls.length >= maxQueuedControls) {
-      notice("Playback controls are catching up. Try that button again in a moment.");
-      return;
-    }
-    remote.controls.push(code);
-    sync(remote);
+    notice(message);
+  }
+  function forgetPage(current) {
+    current.controller?.abort();
+    current.active = current.waiting = current.page = null;
+    showLibraryLinks();
+  }
+  function heartbeat(current) {
+    current.timer = setTimeout(async () => {
+      if (current !== session) return;
+      // Background tabs can be suspended past the firmware's bridge timeout.
+      const op = Date.now() - current.lastSeen >= 40000 ? 0x15 : 0x17;
+      if (op === hello) forgetPage(current);
+      try { await current.device.write(Uint8Array.of(op), () => session === current); }
+      catch { if (session === current) disconnect('Bluetooth disconnected. Choose your Flipper again.'); return; }
+      if (session === current) {
+        current.lastSeen = Date.now();
+        heartbeat(current);
+      }
+    }, 10000);
   }
 
-  // A timer wakes the queue. The session keeps ownership of each command until it completes.
-  async function sync(session) {
-    if (remote !== session || session.busy) return;
-    clearTimeout(session.timer);
-    if (Date.now() < cooldown) {
-      session.timer = setTimeout(() => sync(session), cooldown - Date.now());
+  // The Flipper permits one outstanding transaction. Starting the app again sends a
+  // fresh first-page command and invalidates the previous foreground app's request.
+  async function respond(current, request) {
+    if (session !== current || !current.device) return;
+    const {op, token, base} = request;
+    if (op === dismiss) { forgetPage(current); return; }
+    if (op === hello) {
+      forgetPage(current);
+      try { await current.device.write(Uint8Array.of(hello), () => session === current); }
+      catch { if (session === current) disconnect('Bluetooth disconnected. Choose your Flipper again.'); }
       return;
     }
-    session.busy = true;
-    const controlCode = session.controls[0];
-    let retryControl = false;
-    let wait = 5000;
-    const signal = AbortSignal.any([session.abort.signal, AbortSignal.timeout(12000)]);
+    const first = categories.has(op);
+    if (current.active?.token === token) return;
+    if (first) {
+      forgetPage(current);
+    } else if (current.active) {
+      // A selection can arrive while the last GATT write response is still in flight.
+      current.waiting = request;
+      return;
+    }
+    current.waiting = null;
+    current.active = request;
+    const controller = new AbortController();
+    current.controller = controller;
+    const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]);
+    const active = () => session === current && current.active === request;
+    let writing = false;
+    async function send(bytes) {
+      if (!active()) return;
+      writing = true;
+      await current.device.write(bytes, active);
+      writing = false;
+    }
     try {
-      const player = await playback(id, signal);
-      if (remote !== session) return;
-      if (controlCode) {
-        await command(id, controlCode, player, signal);
-        wait = 550;
-      } else {
-        for (const packet of trackPackets(player)) {
-          if (remote !== session) return;
-          await session.device.write(packet);
+      if (!first && current.page?.token !== base) {
+        throw new PlaybackError(3, 'The displayed page changed. Reopen the library section and try again.');
+      }
+      if (Date.now() < cooldown) throw new PlaybackError(4, 'Spotify is busy. Wait a moment before retrying.');
+      if (op >= playRow) {
+        const row = op - playRow;
+        // A retransmitted acknowledgement must not start the song a second time.
+        if (current.page.lastPlay !== token) {
+          await playLibraryItem(id, current.page, row, signal);
+          if (!active()) return;
+          current.page.lastPlay = token;
         }
-        if (remote !== session) return;
-        displayTrack(player);
-        notice((player.is_playing ? "Playing on " : "Paused on ") + (player.device.name || "Spotify"));
+        await send(packet(0x14, token, row));
+        if (active()) notice('Playback requested on your active Spotify device.');
+      } else {
+        showLibraryLinks();
+        if ((op === next && !current.page.hasNext) || (op === previous && !current.page.hasPrev)) {
+          throw new PlaybackError(3, 'The library has no page in that direction.');
+        }
+        const offset = first ? 0 : current.page.offset + (op === next ? pageSize : -pageSize);
+        const kind = first ? categories.get(op) : current.page.kind;
+        const page = await libraryPage(id, kind, offset, signal);
+        for (const bytes of pagePackets(page, token)) {
+          if (!active()) return;
+          await send(bytes);
+        }
+        if (!active()) return;
+        current.page = {...page, token};
+        showLibraryLinks(page.rows);
+        notice(page.rows.length ? 'Your library page is ready on the Flipper.' : 'This section of your library is empty.');
       }
     } catch (error) {
-      if (remote !== session) return;
-      const issue = error instanceof PlaybackError ? error : new PlaybackError(2, "Connection interrupted. Eddy will retry.");
+      if (!active()) return;
+      showLibraryLinks();
+      if (writing) { disconnect('Bluetooth disconnected. Choose your Flipper again.'); return; }
+      const issue = error instanceof PlaybackError ? error : new PlaybackError(2, 'Connection interrupted. Retry on your Flipper.');
+      if (issue.retryMs) cooldown = Date.now() + issue.retryMs;
       notice(issue.message);
-      get("track").hidden = true;
-      wait = issue.retryMs;
-      if (issue.code === 4) {
-        cooldown = Date.now() + wait;
-        retryControl = true;
-      }
-      try { await session.device.write(Uint8Array.of(5, issue.code)); }
-      catch {
-        if (remote === session) disconnect("Bluetooth disconnected. Choose your Flipper to reconnect.");
-        return;
-      }
-      if (issue.code === 1 && remote === session) {
-        unlink();
-        disconnect(issue.message);
-        return;
-      }
+      try { await send(packet(0x13, token, issue.code)); }
+      catch { if (active()) disconnect('Bluetooth disconnected. Choose your Flipper again.'); return; }
+      if (active() && issue.code === 1) { unlink(); disconnect(issue.message); }
     } finally {
-      session.busy = false;
-      if (remote === session) {
-        if (controlCode && !retryControl) session.controls.shift();
-        const delay = Math.max(cooldown - Date.now(), session.controls.length ? 0 : wait);
-        session.timer = setTimeout(() => sync(session), delay);
+      if (active()) {
+        current.active = null;
+        if (current.waiting) respond(current, current.waiting);
       }
     }
   }
 
-  get("link").onclick = async () => {
+  get('link').onclick = async () => {
     pending = true;
     render();
     try { await authorize(id); }
-    catch {
-      pending = false;
-      render();
-      notice("Allow this tab to use session storage and try linking Spotify again.");
-    }
+    catch { pending = false; render(); notice('Allow session storage in this tab and try linking Spotify again.'); }
   };
-  get("pair").onclick = async () => {
+  get('pair').onclick = async () => {
     pending = true;
     render();
-    notice("Choose your paired Flipper in the browser’s device list.");
+    notice('Choose your Flipper and leave Apps → Spotify open.');
+    const current = {};
     try {
-      const device = await connect(
-        enqueue,
-        () => disconnect("Bluetooth disconnected. Choose your Flipper to reconnect."),
-      );
-      remote = {device, abort: new AbortController(), timer: null, controls: [], busy: false};
-      notice("Connected to " + device.name + ".");
-      sync(remote);
+      current.device = await connect(request => respond(current, request), () => {
+        if (session === current) disconnect('Bluetooth disconnected. Choose your Flipper to reconnect.');
+      });
+      session = current;
+      notice('Connected to ' + current.device.name + '. Open Apps → Spotify to browse your library.');
+      await current.device.write(Uint8Array.of(0x15));
+      if (session === current) {
+        current.lastSeen = Date.now();
+        heartbeat(current);
+      }
     } catch (error) {
-      notice(error.name === "NotFoundError" ? "No Flipper selected. You can choose again." :
-        "Pairing didn’t finish. Leave Apps → Spotify open, turn on Bluetooth and try again.");
-    } finally {
-      pending = false;
-      render();
-    }
+      const message = error.name === 'NotFoundError' ? 'No Flipper selected. You can choose again.' :
+        'Pairing did not finish. Open Apps → Spotify, check Bluetooth and try again.';
+      if (session === current) disconnect(message);
+      else notice(message);
+    } finally { pending = false; render(); }
   };
-  get("disconnect").onclick = () => disconnect("Flipper disconnected.");
-  get("unlink").onclick = () => {
-    unlink();
-    disconnect("Spotify unlinked from this tab.");
-  };
-  window.addEventListener("pagehide", () => disconnect(""));
-  get("android-mode").textContent = "Standard Android pairing provides playback buttons. Link this tab below to add the song, artist and playback clock.";
-  get("bridge").hidden = false;
+  get('disconnect').onclick = () => disconnect('Flipper disconnected.', true);
+  get('unlink').onclick = () => { unlink(); return disconnect('Spotify unlinked from this tab.', true); };
+  window.addEventListener('pagehide', () => disconnect(''));
+  get('bridge').hidden = false;
   pending = true;
   render();
   try { await callback(id); }

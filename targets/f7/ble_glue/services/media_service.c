@@ -23,7 +23,8 @@ static const BleGattCharacteristicParams state_char = {
 };
 static const BleGattCharacteristicParams command_char = {
     .name = "Transport",
-    .data.fixed.length = 1,
+    .data.fixed.length = 5,
+    .is_variable = CHAR_VALUE_LEN_VARIABLE,
     .uuid.Char_UUID_128 = MUSIC_UUID(3),
     .uuid_type = UUID_TYPE_128,
     .char_properties = CHAR_PROP_NOTIFY,
@@ -167,11 +168,33 @@ void ble_svc_media_unlisten(void* context) {
 bool ble_svc_media_send(void* context, uint8_t command, bool hid) {
     if(!guard || command < BleMediaPrevious || command > BleMediaVolumeDown) return false;
     furi_mutex_acquire(guard, FuriWaitForever);
-    bool sent = active && active->context == context && active->callback &&
-                active->connection != UINT16_MAX &&
-                (hid ?
-                     music_hid_send(active->hid, command) :
-                     !ble_gatt_characteristic_update(active->handle, &active->command, &command));
+    bool sent =
+        active && active->context == context && active->callback &&
+        active->connection != UINT16_MAX &&
+        (hid ? music_hid_send(active->hid, command) :
+               aci_gatt_update_char_value(
+                   active->handle, active->command.handle, 0, 1, &command) == BLE_STATUS_SUCCESS);
+    furi_mutex_release(guard);
+    return sent;
+}
+
+bool ble_svc_media_library_request(
+    void* context,
+    uint16_t connection,
+    uint8_t op,
+    uint16_t request,
+    uint16_t page) {
+    const bool first = op == 0x10 || op == 0x15 || op == 0x16 || op == 0x18 || op == 0x19;
+    if(!guard || !request || (first ? page != 0 : page == 0) ||
+       !(first || op == 0x11 || op == 0x12 || (op >= 0x20 && op <= 0x23)))
+        return false;
+    uint8_t packet[] = {op, request, request >> 8, page, page >> 8};
+    furi_mutex_acquire(guard, FuriWaitForever);
+    bool sent = connection != UINT16_MAX && active && active->connection == connection &&
+                active->context == context && active->callback &&
+                aci_gatt_update_char_value(
+                    active->handle, active->command.handle, 0, sizeof(packet), packet) ==
+                    BLE_STATUS_SUCCESS;
     furi_mutex_release(guard);
     return sent;
 }

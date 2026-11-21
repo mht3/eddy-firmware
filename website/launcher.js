@@ -85,7 +85,8 @@ export function drawLauncher(ctx, page, selected, gridItems = layoutApps(apps)) 
       }
       ctx.stroke();
     } else if (launcherArt.naturalWidth) {
-      const index = grid ? (id==='music' ? 11 : appIndex+sections.length) : i;
+      const musicGlyphs = {music:10,spotify:11};
+      const index = grid ? (musicGlyphs[id] ?? appIndex+sections.length) : i;
       ctx.drawImage(launcherArt,index*18,0,18,18,x-9,y-9,18,18);
     }
     ctx.restore();
