@@ -1,3 +1,5 @@
+<img src="website/eddy.svg" width="64" height="64" alt="Eddy wave">
+
 # Eddy Firmware
 
 Eddy is an independent firmware fork for Flipper Zero. The main build includes an ocean desktop with Eddy the dolphin, Eddy Settings, the file browser, a receive-only Signal Meter at 433.92 MHz, and the USB updater.
