@@ -35,6 +35,10 @@ static void rpc_desktop_on_unlock_request(const PB_Main* request, void* context)
     RpcDesktop* rpc_desktop = context;
     RpcSession* session = rpc_desktop->session;
 
+    if(desktop_api_is_locked(rpc_desktop->desktop)) {
+        rpc_send_and_release_empty(session, request->command_id, PB_CommandStatus_ERROR);
+        return;
+    }
     desktop_api_unlock(rpc_desktop->desktop);
 
     rpc_send_and_release_empty(session, request->command_id, PB_CommandStatus_OK);

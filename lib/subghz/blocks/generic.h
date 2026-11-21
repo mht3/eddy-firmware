@@ -47,17 +47,10 @@ struct SubGhzBlockGenericGlobal {
 
 extern SubGhzBlockGenericGlobal subghz_block_generic_global; //global structure for subghz
 
-/**
- * Setup new_cnt and cnt_need_override flag to be used in protocols;
- * @param counter new counter value;
- */
+/** Legacy ABI. Counter overrides are ignored. */
 void subghz_block_generic_global_counter_override_set(uint32_t counter);
 
-/**
- * Return true if incomming variable was overrided by new_cnt
- * else return false and not change incomming variable
- * @param counter pointer to counter variable that must be changed
- */
+/** Returns false and leaves the counter unchanged. */
 bool subghz_block_generic_global_counter_override_get(uint32_t* counter);
 
 /**

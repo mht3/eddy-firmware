@@ -8,8 +8,7 @@ App(
         "infrared",
         "lfrfid",
         "nfc",
-        "subghz",
-        "bad_kb",
+        "eddy_signal",
         "u2f",
         "momentum_app",
         "archive",
@@ -23,6 +22,5 @@ App(
     apptype=FlipperAppType.METAPACKAGE,
     provides=[
         "cli",
-        "subghz_load_extended_settings",
     ],
 )

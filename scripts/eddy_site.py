@@ -1,6 +1,7 @@
 """Stage the website and its single matching F7 update for static hosting."""
 
 import hashlib
+import io
 import json
 import re
 import runpy
@@ -12,13 +13,64 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# These settings are opened from the system menu independently of the app picker.
+SYSTEM_APPS = {
+    "about",
+    "bt_settings",
+    "clock_settings",
+    "desktop_settings",
+    "expansion_settings",
+    "input_settings",
+    "notification_settings",
+    "passport",
+    "power_settings",
+    "storage_settings",
+    "system_settings",
+}
+
+
+def resource_index(data, profile):
+    """Locate app binaries and the SD manifest in the verified resource tar."""
+    apps = {}
+    with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as archive:
+        manifest = archive.getmember("Manifest")
+        if not manifest.isfile() or manifest.offset_data != manifest.offset + 512:
+            raise ValueError("Unsupported SD resource manifest")
+        rows = set(archive.extractfile(manifest).read().decode().splitlines())
+        for member in archive:
+            if (
+                member.name.endswith(".fal")
+                and member.name != "apps_data/cli/plugins/cli_src.fal"
+            ):
+                raise ValueError(
+                    f"Unexpected plugin in the Eddy release: {member.name}"
+                )
+            if not re.fullmatch(r"apps/[^/]+/[A-Za-z0-9_-]+\.fap", member.name):
+                if member.name.endswith(".fap"):
+                    raise ValueError(f"Unexpected app path: {member.name}")
+                continue
+            app_id = Path(member.name).stem
+            if app_id not in profile and app_id not in SYSTEM_APPS:
+                raise ValueError(f"App outside the Eddy release profile: {member.name}")
+            if (
+                not member.isfile()
+                or member.offset_data != member.offset + 512
+                or app_id in apps
+            ):
+                raise ValueError(f"Unexpected app record: {member.name}")
+            digest = hashlib.md5(
+                archive.extractfile(member).read(), usedforsecurity=False
+            )
+            if f"F:{digest.hexdigest()}:{member.size}:{member.name}" not in rows:
+                raise ValueError(f"Resource manifest mismatch: {member.name}")
+            apps[app_id] = {"name": member.name, "offset": member.offset}
+    return {"manifest": manifest.offset, "apps": apps}
+
 
 def stage(package=None):
+    options = runpy.run_path(str(ROOT / "fbt_options.py"))
     if package is None:
-        suffix = (
-            os.environ.get("DIST_SUFFIX")
-            or runpy.run_path(str(ROOT / "fbt_options.py"))["DIST_SUFFIX"]
-        )
+        suffix = os.environ.get("DIST_SUFFIX") or options["DIST_SUFFIX"]
         package = ROOT / "dist/f7-C" / f"flipper-z-f7-update-{suffix}.tgz"
         if not package.is_file():
             raise SystemExit(
@@ -70,6 +122,9 @@ def stage(package=None):
     ).strip()
     if metadata["firmware_dirty"]:
         commit = None
+    indexed_apps = resource_index(
+        components["resources.tar.gz"], options["FIRMWARE_APPS"]["eddy"]
+    )
     site = ROOT / "dist/eddy-site"
     if site.exists():
         shutil.rmtree(site)
@@ -90,6 +145,7 @@ def stage(package=None):
         )
     build = dict(
         parts=parts,
+        resourceIndex=indexed_apps,
         target="f7",
         version=version,
         file=package.name,

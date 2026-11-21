@@ -124,6 +124,28 @@ CC1101Status cc1101_flush_tx(const FuriHalSpiBusHandle* handle) {
     return cc1101_strobe(handle, CC1101_STROBE_SFTX);
 }
 
+void cc1101_write_preset_reg(const FuriHalSpiBusHandle* handle, uint8_t reg, uint8_t data) {
+    if(reg > CC1101_TEST0 || reg == CC1101_CHANNR || reg == CC1101_FSCTRL0 ||
+       (reg >= CC1101_FREQ2 && reg <= CC1101_FREQ0)) {
+        return;
+    }
+    // RX and TX may only return to idle, never automatically enter transmit.
+    if(reg == CC1101_MCSM1) data &= 0xF0;
+    cc1101_write_reg(handle, reg, data);
+}
+
+uint32_t cc1101_get_tx_frequency(const FuriHalSpiBusHandle* handle) {
+    uint8_t channel, offset, high, middle, low;
+    cc1101_read_reg(handle, CC1101_CHANNR, &channel);
+    cc1101_read_reg(handle, CC1101_FSCTRL0, &offset);
+    if(channel || offset) return 0;
+    cc1101_read_reg(handle, CC1101_FREQ2, &high);
+    cc1101_read_reg(handle, CC1101_FREQ1, &middle);
+    cc1101_read_reg(handle, CC1101_FREQ0, &low);
+    uint32_t word = ((uint32_t)high << 16) | ((uint32_t)middle << 8) | low;
+    return (uint64_t)word * CC1101_QUARTZ / CC1101_FDIV;
+}
+
 uint32_t cc1101_set_frequency(const FuriHalSpiBusHandle* handle, uint32_t value) {
     uint64_t real_value = (uint64_t)value * CC1101_FDIV / CC1101_QUARTZ;
 

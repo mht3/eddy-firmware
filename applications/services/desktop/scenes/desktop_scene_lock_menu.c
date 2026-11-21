@@ -67,7 +67,7 @@ bool desktop_scene_lock_menu_on_event(void* context, SceneManagerEvent event) {
             desktop_lock_menu_set_pin_state(desktop->lock_menu, true);
             scene_manager_set_scene_state(
                 desktop->scene_manager, DesktopSceneLockMenu, CheckPinNo);
-            desktop_lock(desktop, true);
+            desktop_lock(desktop);
             if(check_pin_changed == CheckPinLockOff) {
                 Power* power = furi_record_open(RECORD_POWER);
                 furi_delay_ms(500);
@@ -84,13 +84,13 @@ bool desktop_scene_lock_menu_on_event(void* context, SceneManagerEvent event) {
             break;
         case DesktopLockMenuEventLockKeypad:
             desktop_scene_lock_menu_save_settings(desktop);
-            desktop_lock(desktop, false);
+            desktop_lock(desktop);
             consumed = true;
             break;
         case DesktopLockMenuEventLockPinCode:
             desktop_scene_lock_menu_save_settings(desktop);
             if(desktop_pin_code_is_set()) {
-                desktop_lock(desktop, true);
+                desktop_lock(desktop);
             } else {
                 loader_start_detached_with_gui_error(
                     desktop->loader, "Desktop", DESKTOP_SETTINGS_RUN_PIN_SETUP_ARG);
@@ -102,7 +102,7 @@ bool desktop_scene_lock_menu_on_event(void* context, SceneManagerEvent event) {
         case DesktopLockMenuEventLockPinOff:
             desktop_scene_lock_menu_save_settings(desktop);
             if(desktop_pin_code_is_set()) {
-                desktop_lock(desktop, true);
+                desktop_lock(desktop);
                 Power* power = furi_record_open(RECORD_POWER);
                 furi_delay_ms(500);
                 power_off(power);

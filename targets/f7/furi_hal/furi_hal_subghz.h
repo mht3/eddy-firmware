@@ -182,14 +182,10 @@ SubGhzTx furi_hal_subghz_check_tx(uint32_t value);
  */
 bool furi_hal_subghz_is_tx_allowed(uint32_t value);
 
-/** Get the current rolling protocols counter ++/-- value
- * @return    int32_t current value
- */
+/** Return the fixed counter step of one. */
 int32_t furi_hal_subghz_get_rolling_counter_mult(void);
 
-/** Set the current rolling protocols counter ++/-- value
- * @param      mult int32_t = -1, -10, -50, 0, 1, 10, 50 
- */
+/** Legacy SDK compatibility. Counter steps are fixed at one. */
 void furi_hal_subghz_set_rolling_counter_mult(int32_t mult);
 
 /** Set frequency

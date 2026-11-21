@@ -43,6 +43,12 @@ CC1101Status cc1101_read_reg(const FuriHalSpiBusHandle* handle, uint8_t reg, uin
 
 /* High level API */
 
+/** Apply a modem preset without changing the regulated carrier or issuing commands. */
+void cc1101_write_preset_reg(const FuriHalSpiBusHandle* handle, uint8_t reg, uint8_t data);
+
+/** Read the programmed carrier. Returns zero for a channel or frequency offset. */
+uint32_t cc1101_get_tx_frequency(const FuriHalSpiBusHandle* handle);
+
 /** Reset
  *
  * @param      handle  - pointer to FuriHalSpiHandle

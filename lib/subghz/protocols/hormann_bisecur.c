@@ -60,8 +60,8 @@ const SubGhzProtocolDecoder subghz_protocol_hormann_bisecur_decoder = {
 
     .get_hash_data = NULL,
     .get_hash_data_long = subghz_protocol_decoder_hormann_bisecur_get_hash_data,
-    .serialize = subghz_protocol_decoder_hormann_bisecur_serialize,
-    .deserialize = subghz_protocol_decoder_hormann_bisecur_deserialize,
+    .serialize = NULL,
+    .deserialize = NULL,
     .get_string = subghz_protocol_decoder_hormann_bisecur_get_string,
     .get_string_brief = subghz_protocol_decoder_hormann_bisecur_get_string_brief,
 };
@@ -78,11 +78,10 @@ const SubGhzProtocolEncoder subghz_protocol_hormann_bisecur_encoder = {
 const SubGhzProtocol subghz_protocol_hormann_bisecur = {
     .name = SUBGHZ_PROTOCOL_HORMANN_BISECUR_NAME,
     .type = SubGhzProtocolTypeDynamic,
-    .flag = SubGhzProtocolFlag_868 | SubGhzProtocolFlag_FM | SubGhzProtocolFlag_Decodable |
-            SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
+    .flag = SubGhzProtocolFlag_868 | SubGhzProtocolFlag_FM | SubGhzProtocolFlag_Decodable,
 
     .decoder = &subghz_protocol_hormann_bisecur_decoder,
-    .encoder = &subghz_protocol_hormann_bisecur_encoder,
+    .encoder = NULL,
 };
 
 // there is a problem with the function in lib/toolbox/manchester_decoder, so it is reimplemented

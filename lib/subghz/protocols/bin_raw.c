@@ -98,8 +98,8 @@ const SubGhzProtocolDecoder subghz_protocol_bin_raw_decoder = {
 
     .get_hash_data = NULL,
     .get_hash_data_long = subghz_protocol_decoder_bin_raw_get_hash_data,
-    .serialize = subghz_protocol_decoder_bin_raw_serialize,
-    .deserialize = subghz_protocol_decoder_bin_raw_deserialize,
+    .serialize = NULL,
+    .deserialize = NULL,
     .get_string = subghz_protocol_decoder_bin_raw_get_string,
     .get_string_brief = NULL,
 };
@@ -118,15 +118,13 @@ const SubGhzProtocol subghz_protocol_bin_raw = {
     .type = SubGhzProtocolTypeBinRAW,
 #ifdef BIN_RAW_DEBUG
     .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_315 | SubGhzProtocolFlag_868 |
-            SubGhzProtocolFlag_AM | SubGhzProtocolFlag_FM | SubGhzProtocolFlag_Decodable |
-            SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
+            SubGhzProtocolFlag_AM | SubGhzProtocolFlag_FM | SubGhzProtocolFlag_Decodable,
 #else
     .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_315 | SubGhzProtocolFlag_868 |
-            SubGhzProtocolFlag_AM | SubGhzProtocolFlag_FM | SubGhzProtocolFlag_BinRAW |
-            SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
+            SubGhzProtocolFlag_AM | SubGhzProtocolFlag_FM | SubGhzProtocolFlag_BinRAW,
 #endif
     .decoder = &subghz_protocol_bin_raw_decoder,
-    .encoder = &subghz_protocol_bin_raw_encoder,
+    .encoder = NULL,
 };
 
 static uint16_t subghz_protocol_bin_raw_get_full_byte(uint16_t bit_count) {

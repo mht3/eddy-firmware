@@ -1,6 +1,9 @@
 # Eddy Firmware changes
 
-- Apps → Spotify adds a first-run QR, remembered Bluetooth pairing, playback buttons and an iPhone track display. The website includes handheld screen captures and a playable demo.
+- The installer lets you choose apps, try each one in the emulator, and install the same selection over USB or through qFlipper.
+- Apps → Spotify adds a first-run QR, playback controls over the Flipper’s existing phone pairing and an iPhone track display. The website includes handheld screen captures and a playable demo.
+- Sub-GHz remains a receive-only signal meter. The radio drivers enforce the factory region, and the protocol library rejects saving and transmitting decoded dynamic codes. A microSD card can no longer override these limits.
+- A configured PIN applies on boot and on lock. Unlock the handheld before using USB or Bluetooth RPC. SDK 88 removes obsolete radio APIs. Third-party native apps built for the previous major SDK need a compatible rebuild.
 
 - The home screen opens Apps, Settings, and Power off. Quick Settings controls brightness and volume.
 - Remote Builder saves six-button infrared layouts with custom labels and positions. Bluetooth Remote adds camera shutter, slide navigation, and media controls.

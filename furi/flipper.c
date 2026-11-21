@@ -46,6 +46,9 @@ static void flipper_print_version(const char* target, const Version* version) {
 #include <bt/bt_settings_filename.h>
 #include <desktop/desktop_keybinds_filename.h>
 #include <desktop/desktop_settings_filename.h>
+#ifdef SRV_DESKTOP
+#include <desktop/helpers/pin_code.h>
+#endif
 #include <dolphin/helpers/dolphin_state_filename.h>
 #include <expansion/expansion_settings_filename.h>
 #include <loader/loader_menu.h>
@@ -167,6 +170,10 @@ void flipper_start_service(const FlipperInternalApplication* service) {
 }
 
 void flipper_init(void) {
+#if defined(SRV_DESKTOP) && !defined(FURI_RAM_EXEC)
+    // Apply a configured PIN before any USB or Bluetooth session can open on boot.
+    if(desktop_pin_code_is_set()) furi_hal_rtc_set_flag(FuriHalRtcFlagLock);
+#endif
     furi_hal_light_sequence("rgb WB");
     flipper_print_version("Firmware", furi_hal_version_get_firmware_version());
     FURI_LOG_I(TAG, "Boot mode %d", furi_hal_rtc_get_boot_mode());

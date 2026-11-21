@@ -120,19 +120,17 @@ void ams_client_free(AmsClient* client) {
     free(client);
 }
 
+void ams_client_set_link(AmsClient* client, uint16_t handle) {
+    uint32_t link = __atomic_load_n(&client->link, __ATOMIC_ACQUIRE);
+    if((uint16_t)link != handle)
+        __atomic_store_n(
+            &client->link, ((link + 0x10000) & 0xffff0000u) | handle, __ATOMIC_RELEASE);
+}
+
 void ams_client_event(AmsClient* client, const void* event) {
     const hci_event_pckt* packet = (const void*)((const hci_uart_pckt*)event)->data;
     uint32_t link = __atomic_load_n(&client->link, __ATOMIC_ACQUIRE);
-    uint16_t conn = NO_HANDLE;
-    if(packet->evt == HCI_DISCONNECTION_COMPLETE_EVT_CODE) {
-        if(packet->plen < 4 || le16(packet->data + 1) != (uint16_t)link) return;
-    } else if(
-        packet->evt == HCI_LE_META_EVT_CODE && packet->plen >= 4 &&
-        (packet->data[0] == HCI_LE_CONNECTION_COMPLETE_SUBEVT_CODE ||
-         packet->data[0] == HCI_LE_ENHANCED_CONNECTION_COMPLETE_SUBEVT_CODE)) {
-        if(packet->data[1] != BLE_STATUS_SUCCESS) return;
-        conn = le16(packet->data + 2);
-    } else if(packet->evt == HCI_VENDOR_SPECIFIC_DEBUG_EVT_CODE && packet->plen >= 4) {
+    if(packet->evt == HCI_VENDOR_SPECIFIC_DEBUG_EVT_CODE && packet->plen >= 4) {
         const uint16_t code = le16(packet->data);
         switch(code) {
         case ACI_ATT_READ_BY_GROUP_TYPE_RESP_VSEVT_CODE:
@@ -154,10 +152,7 @@ void ams_client_event(AmsClient* client, const void* event) {
         if(furi_message_queue_put(client->events, &copy, 0) != FuriStatusOk)
             __atomic_store_n(&client->overflow, true, __ATOMIC_RELEASE);
         return;
-    } else {
-        return;
     }
-    __atomic_store_n(&client->link, ((link + 0x10000) & 0xffff0000u) | conn, __ATOMIC_RELEASE);
 }
 
 static void discover_services(Session* s, const uint8_t* p, size_t size) {
@@ -357,7 +352,6 @@ static void consume(Session* s, const ClientEvent* event) {
         notification(s, p, size);
         break;
     case ACI_GATT_INDICATION_VSEVT_CODE:
-        ble_gatt_client_confirm((uint16_t)s->link);
         if(size >= 7 && le16(p) == s->changed.value && p[2] == 4) s->rediscover = true;
         break;
     case ACI_ATT_READ_BY_GROUP_TYPE_RESP_VSEVT_CODE:
@@ -544,6 +538,39 @@ void ams_client_tick(AmsClient* client, bool connected, AmsReceive receive, void
         s->phase == SendCommand) &&
        (s->dirty || furi_get_tick() - s->published_at >= furi_ms_to_ticks(5000)))
         publish(s, receive, context);
+}
+
+// Closing the app keeps the phone connection alive. Stop subscriptions when the
+// peer is responsive, without blocking exit on a dropped link or busy controller.
+static bool wait_for_completion(AmsClient* client, uint32_t link, uint32_t start) {
+    uint32_t budget = furi_ms_to_ticks(400);
+    ClientEvent event;
+    while(__atomic_load_n(&client->link, __ATOMIC_ACQUIRE) == link) {
+        uint32_t elapsed = furi_get_tick() - start;
+        if(elapsed >= budget ||
+           furi_message_queue_get(client->events, &event, budget - elapsed) != FuriStatusOk)
+            break;
+        if(event.link == link && event.code == ACI_GATT_PROC_COMPLETE_VSEVT_CODE) return true;
+    }
+    return false;
+}
+
+void ams_client_close(AmsClient* client) {
+    Session* s = &client->session;
+    if((uint16_t)s->link == NO_HANDLE ||
+       s->link != __atomic_load_n(&client->link, __ATOMIC_ACQUIRE) || s->rediscover)
+        return;
+    uint32_t start = furi_get_tick();
+    if(s->busy && !wait_for_completion(client, s->link, start)) return;
+    const uint16_t handles[] = {s->update.cccd, s->command.cccd, s->changed.cccd};
+    const uint8_t disabled[2] = {0};
+    for(size_t i = 0; i < COUNT_OF(handles); ++i) {
+        if(!handles[i]) continue;
+        if(s->link != __atomic_load_n(&client->link, __ATOMIC_ACQUIRE) ||
+           !ble_gatt_client_write((uint16_t)s->link, handles[i], sizeof(disabled), disabled) ||
+           !wait_for_completion(client, s->link, start))
+            break;
+    }
 }
 
 bool ams_client_send(AmsClient* client, uint8_t command) {

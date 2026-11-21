@@ -126,10 +126,15 @@ static inline void eddy_remote_pin_erase(EddyRemotePins* pins, size_t index) {
 
 static inline bool eddy_remote_pins_load(Storage* storage, EddyRemotePins* pins) {
     if(!eddy_remote_pins_read(storage, pins, NULL)) return false;
+    if(!pins->count) return true;
+    const bool infrared = storage_file_exists(storage, EXT_PATH("apps/Infrared/infrared.fap"));
+    const bool builder =
+        storage_file_exists(storage, EXT_PATH("apps/assets/eddy_remote_builder.fap"));
     for(size_t i = pins->count; i > 0; --i) {
         const char* path = furi_string_get_cstr(pins->paths[i - 1]);
-        bool exists = eddy_layout_path_valid(path) ? eddy_layout_restore_file(storage, path) :
-                                                     storage_file_exists(storage, path);
+        bool exists = eddy_layout_path_valid(path) ?
+                          builder && eddy_layout_restore_file(storage, path) :
+                          infrared && storage_file_exists(storage, path);
         if(!exists) {
             eddy_remote_pin_erase(pins, i - 1);
         }

@@ -71,12 +71,12 @@ bool desktop_scene_main_on_event(void* context, SceneManagerEvent event) {
         } break;
 
         case DesktopMainEventLockKeypad:
-            desktop_lock(desktop, false);
+            desktop_lock(desktop);
             consumed = true;
             break;
 
         case DesktopMainEventLockWithPin:
-            desktop_lock(desktop, true);
+            desktop_lock(desktop);
             consumed = true;
             break;
 

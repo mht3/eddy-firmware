@@ -50,8 +50,8 @@ const SubGhzProtocolDecoder subghz_protocol_phoenix_v2_decoder = {
 
     .get_hash_data = NULL,
     .get_hash_data_long = subghz_protocol_decoder_phoenix_v2_get_hash_data,
-    .serialize = subghz_protocol_decoder_phoenix_v2_serialize,
-    .deserialize = subghz_protocol_decoder_phoenix_v2_deserialize,
+    .serialize = NULL,
+    .deserialize = NULL,
     .get_string = subghz_protocol_decoder_phoenix_v2_get_string,
     .get_string_brief = NULL,
 };
@@ -68,11 +68,10 @@ const SubGhzProtocolEncoder subghz_protocol_phoenix_v2_encoder = {
 const SubGhzProtocol subghz_protocol_phoenix_v2 = {
     .name = SUBGHZ_PROTOCOL_PHOENIX_V2_NAME,
     .type = SubGhzProtocolTypeDynamic,
-    .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
-            SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
+    .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable,
 
     .decoder = &subghz_protocol_phoenix_v2_decoder,
-    .encoder = &subghz_protocol_phoenix_v2_encoder,
+    .encoder = NULL,
 };
 
 void* subghz_protocol_encoder_phoenix_v2_alloc(SubGhzEnvironment* environment) {

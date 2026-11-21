@@ -534,8 +534,7 @@ static LoaderMessageLoaderStatusResult loader_start_external_app(
         FlipperApplicationPreloadStatus preload_res =
             flipper_application_preload_manifest(loader->app.fap, path);
         loader->app.unloaded_asset_packs = false;
-        if(preload_res != FlipperApplicationPreloadStatusInvalidFile &&
-           preload_res != FlipperApplicationPreloadStatusInvalidManifest) {
+        if(preload_res == FlipperApplicationPreloadStatusSuccess) {
             flags = flipper_application_get_manifest(loader->app.fap)->flags;
             if(flags & FlipperApplicationFlagUnloadAssetPacks) {
                 loader->app.unloaded_asset_packs = true;
@@ -544,12 +543,7 @@ static LoaderMessageLoaderStatusResult loader_start_external_app(
             preload_res = flipper_application_preload(loader->app.fap, path);
         }
 
-        bool api_mismatch = false;
-        if(preload_res == FlipperApplicationPreloadStatusApiTooOld ||
-           preload_res == FlipperApplicationPreloadStatusApiTooNew) {
-            api_mismatch = true;
-        } else if(preload_res != FlipperApplicationPreloadStatusSuccess) {
-        api_mismatch_bypass_failed:
+        if(preload_res != FlipperApplicationPreloadStatusSuccess) {
             const char* err_msg = flipper_application_preload_status_to_string(preload_res);
             result.value = loader_make_status_error(
                 LoaderStatusErrorInternal, error_message, "Preload failed, %s: %s", path, err_msg);
@@ -562,47 +556,11 @@ static LoaderMessageLoaderStatusResult loader_start_external_app(
             flipper_application_map_to_memory(loader->app.fap);
         FURI_LOG_I(TAG, "Loaded in %zums", (size_t)(furi_get_tick() - start));
         if(load_status != FlipperApplicationLoadStatusSuccess) {
-            if(api_mismatch) goto api_mismatch_bypass_failed;
             const char* err_msg = flipper_application_load_status_to_string(load_status);
             result.value = loader_make_status_error(
                 LoaderStatusErrorInternal, error_message, "Load failed, %s: %s", path, err_msg);
             result.error = loader_status_error_from_load_status(load_status);
             break;
-        } else if(api_mismatch) {
-            // Successful map, but found api mismatch -> warn user
-            const FlipperApplicationManifest* manifest =
-                flipper_application_get_manifest(loader->app.fap);
-
-            bool app_newer = preload_res == FlipperApplicationPreloadStatusApiTooNew;
-            const char* header = app_newer ? "App Too New" : "App Too Old";
-            char text[63];
-            snprintf(
-                text,
-                sizeof(text),
-                "APP:%i %c FW:%i\nThis app might not work\nContinue anyways?",
-                manifest->base.api_version.major,
-                app_newer ? '>' : '<',
-                firmware_api_interface->api_version_major);
-
-            DialogMessage* message = dialog_message_alloc();
-            dialog_message_set_header(message, header, 64, 0, AlignCenter, AlignTop);
-            dialog_message_set_buttons(message, "Cancel", NULL, "Continue");
-            dialog_message_set_text(message, text, 64, 32, AlignCenter, AlignCenter);
-            DialogMessageButton res =
-                dialog_message_show(furi_record_open(RECORD_DIALOGS), message);
-            dialog_message_free(message);
-            furi_record_close(RECORD_DIALOGS);
-            if(res != DialogMessageButtonRight) {
-                const char* err_msg = flipper_application_preload_status_to_string(preload_res);
-                result.value = loader_make_status_error(
-                    LoaderStatusErrorApiMismatchCanceled, // Not LoaderStatusErrorInternal since it would show another popup
-                    error_message,
-                    "Preload failed, %s: %s",
-                    path,
-                    err_msg);
-                result.error = loader_status_error_from_preload_status(preload_res);
-                break;
-            }
         }
 
         FURI_LOG_I(TAG, "Starting app");

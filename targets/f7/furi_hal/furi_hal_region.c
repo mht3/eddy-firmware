@@ -1,19 +1,6 @@
 #include <furi_hal_region.h>
 #include <furi_hal_version.h>
-#include <furi_hal_subghz.h>
 #include <furi.h>
-
-const FuriHalRegion furi_hal_region_zero = {
-    .country_code = "00",
-    .bands_count = 1,
-    .bands = {
-        {
-            .start = 0,
-            .end = 1000000000,
-            .power_limit = 12,
-            .duty_cycle = 50,
-        },
-    }};
 
 const FuriHalRegion furi_hal_region_eu_ru = {
     .country_code = "EU",
@@ -73,49 +60,24 @@ const FuriHalRegion furi_hal_region_jp = {
         }}};
 
 static const FuriHalRegion* const furi_hal_static_regions[] = {
-    [FuriHalVersionRegionUnknown] = &furi_hal_region_zero,
+    [FuriHalVersionRegionUnknown] = NULL,
     [FuriHalVersionRegionEuRu] = &furi_hal_region_eu_ru,
     [FuriHalVersionRegionUsCaAu] = &furi_hal_region_us_ca_au,
     [FuriHalVersionRegionJp] = &furi_hal_region_jp,
 };
 
-static FuriHalRegion* furi_hal_dynamic_region;
-static FuriMutex* furi_hal_dynamic_region_mutex;
-
 void furi_hal_region_init(void) {
-    furi_assert(furi_hal_dynamic_region_mutex == NULL);
-    furi_hal_dynamic_region_mutex = furi_mutex_alloc(FuriMutexTypeNormal);
+    // Factory region tables are immutable and require no initialization.
 }
 
 const FuriHalRegion* furi_hal_region_get(void) {
-    const FuriHalVersionRegion region = furi_hal_version_get_hw_region();
-    const FuriHalRegion* ret;
-
-    furi_check(furi_mutex_acquire(furi_hal_dynamic_region_mutex, FuriWaitForever) == FuriStatusOk);
-
-    if(region < FuriHalVersionRegionWorld && furi_hal_dynamic_region == NULL) {
-        ret = furi_hal_static_regions[region];
-    } else {
-        ret = furi_hal_dynamic_region;
-    }
-
-    furi_check(furi_mutex_release(furi_hal_dynamic_region_mutex) == FuriStatusOk);
-
-    return ret;
+    unsigned int region = furi_hal_version_get_hw_region();
+    return region < COUNT_OF(furi_hal_static_regions) ? furi_hal_static_regions[region] : NULL;
 }
 
 void furi_hal_region_set(FuriHalRegion* region) {
-    furi_check(region);
-
-    furi_check(furi_mutex_acquire(furi_hal_dynamic_region_mutex, FuriWaitForever) == FuriStatusOk);
-
-    if(furi_hal_dynamic_region) {
-        free(furi_hal_dynamic_region);
-    }
-
-    furi_hal_dynamic_region = region;
-
-    furi_check(furi_mutex_release(furi_hal_dynamic_region_mutex) == FuriStatusOk);
+    // Older SDK callers transfer ownership. Writable data cannot authorize radio transmission.
+    free(region);
 }
 
 bool furi_hal_region_is_provisioned(void) {
@@ -132,13 +94,8 @@ const char* furi_hal_region_get_name(void) {
     }
 }
 
-bool _furi_hal_region_is_frequency_allowed(uint32_t frequency) {
-    return furi_hal_region_get_band(frequency) != NULL;
-}
-
-// Check furi_hal_subghz settings for region bypass, if not it uses function above
 bool furi_hal_region_is_frequency_allowed(uint32_t frequency) {
-    return furi_hal_subghz_is_tx_allowed(frequency);
+    return furi_hal_region_get_band(frequency) != NULL;
 }
 
 const FuriHalRegionBand* furi_hal_region_get_band(uint32_t frequency) {

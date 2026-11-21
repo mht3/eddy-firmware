@@ -15,7 +15,6 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <m-dict.h>
-#include <momentum/momentum.h>
 
 #include <bt/bt_service/bt.h>
 
@@ -247,6 +246,8 @@ static bool rpc_pb_content_callback(pb_istream_t* stream, const pb_field_t* fiel
 
     RpcHandler* handler = RpcHandlerDict_get(session->handlers, field->tag);
 
+    if(furi_hal_rtc_is_flag_set(FuriHalRtcFlagLock)) return false;
+
     if(handler && handler->decode_submessage) {
         handler->decode_submessage(stream, field, arg);
     }
@@ -281,7 +282,12 @@ static int32_t rpc_session_worker(void* context) {
 
             if(handler && handler->message_handler) {
                 furi_check(furi_mutex_acquire(rpc->busy_mutex, FuriWaitForever) == FuriStatusOk);
-                handler->message_handler(session->decoded_message, handler->context);
+                if(furi_hal_rtc_is_flag_set(FuriHalRtcFlagLock)) {
+                    rpc_send_and_release_empty(
+                        session, session->decoded_message->command_id, PB_CommandStatus_ERROR);
+                } else {
+                    handler->message_handler(session->decoded_message, handler->context);
+                }
                 furi_check(furi_mutex_release(rpc->busy_mutex) == FuriStatusOk);
             } else if(session->decoded_message->which_content == 0) {
                 /* Receiving zeroes means message is 0-length, which
@@ -386,10 +392,7 @@ static void
 }
 
 RpcSession* rpc_session_open(Rpc* rpc, RpcOwner owner) {
-    if(furi_hal_rtc_is_flag_set(FuriHalRtcFlagLock)) {
-        if(owner == RpcOwnerUsb && !momentum_settings.allow_locked_rpc_usb) return NULL;
-        if(owner == RpcOwnerBle && !momentum_settings.allow_locked_rpc_ble) return NULL;
-    }
+    if(furi_hal_rtc_is_flag_set(FuriHalRtcFlagLock)) return NULL;
 
     furi_check(rpc);
 

@@ -15,7 +15,7 @@ static void draw_setup(Canvas* canvas) {
     canvas_set_font(canvas, FontSecondary);
     canvas_draw_str(canvas, 60, 30, "Scan to open");
     canvas_draw_str(canvas, 60, 40, "Spotify.");
-    canvas_draw_str(canvas, 60, 59, "Pair: Eddy Music");
+    canvas_draw_str(canvas, 60, 59, "OK: Continue");
 }
 
 static void draw_marquee(Canvas* canvas, int y, const char* text, uint32_t phase) {
@@ -80,7 +80,7 @@ static void draw_track(Canvas* canvas, const MusicScreen* model) {
 
 void music_screen_draw(Canvas* canvas, void* context) {
     const MusicScreen* model = context;
-    if(model->available && model->setup) {
+    if(model->setup) {
         draw_setup(canvas);
         return;
     }
@@ -106,11 +106,11 @@ void music_screen_draw(Canvas* canvas, void* context) {
         canvas_draw_str(canvas, 99, 61, "Next >");
         return;
     }
-    const char* line = model->linked ? "Waiting for your phone" : "Select Eddy Music";
-    const char* hint = model->linked ? "Keep Bluetooth turned on." : "on your phone.";
+    const char* line = model->linked ? "Waiting for your phone" : "Pair your Flipper";
+    const char* hint = model->linked ? "Keep Bluetooth turned on." : "in phone Bluetooth.";
     if(!model->available) {
         line = "Bluetooth unavailable";
-        hint = "Close and reopen the app.";
+        hint = "Open Settings > Bluetooth.";
     } else if(model->connected) {
         switch(model->state) {
         case MusicIdle:

@@ -55,7 +55,7 @@
  * Note that certain characteristics and relative descriptors are added automatically during device initialization
  * so this parameters should be 9 plus the number of user Attributes
  */
-#define CFG_BLE_NUM_GATT_ATTRIBUTES 68
+#define CFG_BLE_NUM_GATT_ATTRIBUTES 80
 
 /**
  * Maximum supported ATT_MTU size
@@ -72,7 +72,7 @@
  *  - 2, if extended properties is used
  *  The total amount of memory needed is the sum of the above quantities for each attribute.
  */
-#define CFG_BLE_ATT_VALUE_ARRAY_SIZE (1344)
+#define CFG_BLE_ATT_VALUE_ARRAY_SIZE (1600)
 
 /**
  * Prepare Write List size in terms of number of packet

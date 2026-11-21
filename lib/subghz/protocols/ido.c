@@ -45,8 +45,8 @@ const SubGhzProtocolDecoder subghz_protocol_ido_decoder = {
 
     .get_hash_data = NULL,
     .get_hash_data_long = subghz_protocol_decoder_ido_get_hash_data,
-    .deserialize = subghz_protocol_decoder_ido_deserialize,
-    .serialize = subghz_protocol_decoder_ido_serialize,
+    .deserialize = NULL,
+    .serialize = NULL,
     .get_string = subghz_protocol_decoder_ido_get_string,
     .get_string_brief = NULL,
 };
@@ -63,11 +63,10 @@ const SubGhzProtocolEncoder subghz_protocol_ido_encoder = {
 const SubGhzProtocol subghz_protocol_ido = {
     .name = SUBGHZ_PROTOCOL_IDO_NAME,
     .type = SubGhzProtocolTypeDynamic,
-    .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
-            SubGhzProtocolFlag_Save,
+    .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable,
 
     .decoder = &subghz_protocol_ido_decoder,
-    .encoder = &subghz_protocol_ido_encoder,
+    .encoder = NULL,
 };
 
 void* subghz_protocol_decoder_ido_alloc(SubGhzEnvironment* environment) {

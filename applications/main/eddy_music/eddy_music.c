@@ -1,13 +1,13 @@
-#include "music_profile.h"
+#include "ams_client.h"
+#include <profiles/serial_profile.h>
 #include "music_screen.h"
 #include <bt/bt_service/bt.h>
-#include <dialogs/dialogs.h>
+#include <furi_hal_bt.h>
 #include <furi.h>
 #include <gui/view_dispatcher.h>
 #include <storage/storage.h>
 #include <toolbox/saved_struct.h>
 
-#define MUSIC_KEYS              APP_DATA_PATH(".music.keys")
 #define MUSIC_SETUP             APP_DATA_PATH(".linked")
 #define MUSIC_BRIDGE_TIMEOUT_MS 35000U
 
@@ -26,7 +26,6 @@ typedef struct {
 typedef struct {
     Bt* bt;
     AmsClient* ams;
-    FuriHalBleProfileBase* profile;
     View* view;
     bool persisted;
     uint32_t save_attempt;
@@ -78,8 +77,22 @@ static void receive_packet(MusicApp* app, bool iphone, const uint8_t* data, size
     view_commit_model(app->view, false);
 }
 
-static void receive_bridge(const uint8_t* data, size_t size, void* context) {
-    receive_packet(context, false, data, size);
+static void media_event(BleMediaEvent event, const void* data, size_t size, void* context) {
+    MusicApp* app = context;
+    switch(event) {
+    case BleMediaLink: {
+        uint16_t handle = *(const uint16_t*)data;
+        ams_client_set_link(app->ams, handle);
+        if(handle == UINT16_MAX) receive_packet(app, false, NULL, 0);
+        break;
+    }
+    case BleMediaRadio:
+        ams_client_event(app->ams, data);
+        break;
+    case BleMediaFrame:
+        receive_packet(app, false, data, size);
+        break;
+    }
 }
 
 static void receive_iphone(const uint8_t* data, size_t size, void* context) {
@@ -89,8 +102,10 @@ static void receive_iphone(const uint8_t* data, size_t size, void* context) {
 static void music_tick(void* context) {
     MusicApp* app = context;
     uint8_t peer[GAP_MAC_ADDR_SIZE];
-    bool connected = app->profile && bt_get_connected_peer_address(app->bt, peer);
+    bool available = ble_svc_media_listen(media_event, app) && furi_hal_bt_is_active();
+    bool connected = available && bt_get_connected_peer_address(app->bt, peer);
     MusicModel* model = view_get_model(app->view);
+    model->screen.available = available;
     if(model->screen.connected &&
        (!connected || (model->screen.state != MusicWaiting &&
                        memcmp(model->sample_peer, peer, sizeof(peer)) != 0)))
@@ -120,10 +135,10 @@ static void music_tick(void* context) {
     }
     if(model->screen.failed_command && now - model->failed_tick >= furi_ms_to_ticks(1800))
         model->screen.failed_command = false;
-    bool save_setup = model->screen.linked && !app->persisted;
+    bool save_setup = !model->screen.setup && !app->persisted;
     view_commit_model(app->view, true);
 
-    if(app->profile) ams_client_tick(app->ams, try_ams, receive_iphone, app);
+    ams_client_tick(app->ams, try_ams, receive_iphone, app);
     if(save_setup && (!app->save_attempt || now - app->save_attempt >= furi_ms_to_ticks(5000))) {
         app->save_attempt = now;
         const uint8_t linked = 1;
@@ -142,10 +157,10 @@ static bool music_input(InputEvent* event, void* context) {
                    (iphone && model->screen.state == MusicIdle);
     uint8_t sample_peer[GAP_MAC_ADDR_SIZE];
     memcpy(sample_peer, model->sample_peer, sizeof(sample_peer));
-    if(event->key == InputKeyUp && model->screen.available) {
+    if(event->key == InputKeyUp) {
         model->screen.setup = !model->screen.setup;
         model->manual_setup = model->screen.setup;
-    } else if(event->key == InputKeyBack && model->manual_setup) {
+    } else if((event->key == InputKeyBack || event->key == InputKeyOk) && model->manual_setup) {
         model->manual_setup = false;
         model->screen.setup = false;
     } else if(
@@ -167,9 +182,9 @@ static bool music_input(InputEvent* event, void* context) {
         uint8_t peer[GAP_MAC_ADDR_SIZE];
         bool sent = bt_get_connected_peer_address(app->bt, peer) &&
                     memcmp(sample_peer, peer, sizeof(peer)) == 0 &&
-                    (use_hid ? music_profile_media(app->profile, command) :
+                    (use_hid ? ble_svc_media_send(app, command, true) :
                      iphone  ? ams_client_send(app->ams, command) :
-                               music_profile_command(app->profile, command));
+                               ble_svc_media_send(app, command, false));
         if(!sent) {
             with_view_model(
                 app->view,
@@ -204,9 +219,11 @@ int32_t eddy_music_app(void* argument) {
     view_dispatcher_set_tick_event_callback(dispatcher, music_tick, 200);
     view_dispatcher_add_view(dispatcher, 0, app.view);
 
-    bt_disconnect(app.bt);
-    furi_delay_ms(200); // Let the previous profile finish persisting its bond keys.
-    bt_keys_storage_set_storage_path(app.bt, MUSIC_KEYS);
+    Storage* storage = furi_record_open(RECORD_STORAGE);
+    FuriString* setup_path = furi_string_alloc_set(MUSIC_SETUP);
+    storage_common_resolve_path_and_ensure_app_directory(storage, setup_path);
+    furi_string_free(setup_path);
+    furi_record_close(RECORD_STORAGE);
     uint8_t linked = 0;
     app.persisted = saved_struct_load(MUSIC_SETUP, &linked, sizeof(linked), 0x9a, 1) &&
                     linked == 1;
@@ -216,33 +233,22 @@ int32_t eddy_music_app(void* argument) {
         {
             *model = (MusicModel){0};
             model->screen.setup = !app.persisted;
+            model->manual_setup = !app.persisted;
             model->screen.linked = app.persisted;
         },
         false);
-    MusicProfileParams params = {.receive = receive_bridge, .context = &app, .ams = app.ams};
-    app.profile = bt_profile_start(app.bt, &music_profile, &params);
-    if(app.profile) {
-        with_view_model(app.view, MusicModel * model, { model->screen.available = true; }, false);
-        furi_hal_bt_start_advertising();
-    }
-
+    music_tick(&app);
     view_dispatcher_attach_to_gui(dispatcher, gui, ViewDispatcherTypeFullscreen);
     view_dispatcher_switch_to_view(dispatcher, 0);
     view_dispatcher_run(dispatcher);
-    if(app.profile) {
-        bt_disconnect(app.bt);
-        furi_delay_ms(200);
-    }
-    bt_keys_storage_set_default_path(app.bt);
-    if(!bt_profile_restore_default(app.bt)) {
-        DialogsApp* dialogs = furi_record_open(RECORD_DIALOGS);
-        DialogMessage* message = dialog_message_alloc();
-        dialog_message_set_text(
-            message, "Restart Flipper to\nrestore Bluetooth.", 64, 30, AlignCenter, AlignCenter);
-        dialog_message_set_buttons(message, NULL, "OK", NULL);
-        dialog_message_show(dialogs, message);
-        dialog_message_free(message);
-        furi_record_close(RECORD_DIALOGS);
+    ams_client_close(app.ams);
+    ble_svc_media_unlisten(&app);
+    MusicModel* model = view_get_model(app.view);
+    bool dismissed = !model->screen.setup;
+    view_commit_model(app.view, false);
+    if(dismissed && !app.persisted) {
+        linked = 1;
+        saved_struct_save(MUSIC_SETUP, &linked, sizeof(linked), 0x9a, 1);
     }
     ams_client_free(app.ams);
     view_dispatcher_remove_view(dispatcher, 0);

@@ -52,8 +52,8 @@ const SubGhzProtocolDecoder subghz_protocol_somfy_telis_decoder = {
 
     .get_hash_data = NULL,
     .get_hash_data_long = subghz_protocol_decoder_somfy_telis_get_hash_data,
-    .serialize = subghz_protocol_decoder_somfy_telis_serialize,
-    .deserialize = subghz_protocol_decoder_somfy_telis_deserialize,
+    .serialize = NULL,
+    .deserialize = NULL,
     .get_string = subghz_protocol_decoder_somfy_telis_get_string,
     .get_string_brief = NULL,
 };
@@ -71,10 +71,10 @@ const SubGhzProtocol subghz_protocol_somfy_telis = {
     .name = SUBGHZ_PROTOCOL_SOMFY_TELIS_NAME,
     .type = SubGhzProtocolTypeDynamic,
     .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_868 | SubGhzProtocolFlag_AM |
-            SubGhzProtocolFlag_Decodable | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
+            SubGhzProtocolFlag_Decodable,
 
     .decoder = &subghz_protocol_somfy_telis_decoder,
-    .encoder = &subghz_protocol_somfy_telis_encoder,
+    .encoder = NULL,
 };
 
 void* subghz_protocol_encoder_somfy_telis_alloc(SubGhzEnvironment* environment) {

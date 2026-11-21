@@ -168,8 +168,10 @@ void desktop_lock_menu_draw_callback(Canvas* canvas, void* model) {
         }
         canvas_set_font(canvas, FontSecondary);
         elements_bold_rounded_frame(canvas, 24, 4, 80, 56);
-        canvas_draw_str_aligned(canvas, 64, 16, AlignCenter, AlignCenter, "Keypad Lock");
-        canvas_draw_str_aligned(canvas, 64, 32, AlignCenter, AlignCenter, "PIN Code Lock");
+        if(!m->pin_is_set)
+            canvas_draw_str_aligned(canvas, 64, 16, AlignCenter, AlignCenter, "Keypad Lock");
+        canvas_draw_str_aligned(
+            canvas, 64, 32, AlignCenter, AlignCenter, m->pin_is_set ? "Lock" : "Set PIN & lock");
         canvas_draw_str_aligned(canvas, 64, 48, AlignCenter, AlignCenter, "PIN Lock + OFF");
         elements_frame(canvas, 28, 8 + m->lock_popup_index * 16, 72, 15);
     }
@@ -199,15 +201,18 @@ bool desktop_lock_menu_input_callback(InputEvent* event, void* context) {
             stealth_mode = model->stealth_mode;
             if((event->type == InputTypeShort) || (event->type == InputTypeRepeat)) {
                 if(model->show_lock_popup) {
+                    const DesktopLockMenuPopupIndex first = model->pin_is_set ?
+                                                                DesktopLockMenuPopupIndexPinCode :
+                                                                DesktopLockMenuPopupIndexKeypad;
                     if(event->key == InputKeyUp) {
-                        if(model->lock_popup_index == 0) {
+                        if(model->lock_popup_index == first) {
                             model->lock_popup_index = DesktopLockMenuPopupIndexMAX - 1;
                         } else {
                             model->lock_popup_index--;
                         }
                     } else if(event->key == InputKeyDown) {
                         if(model->lock_popup_index == DesktopLockMenuPopupIndexMAX - 1) {
-                            model->lock_popup_index = 0;
+                            model->lock_popup_index = first;
                         } else {
                             model->lock_popup_index++;
                         }
@@ -216,6 +221,9 @@ bool desktop_lock_menu_input_callback(InputEvent* event, void* context) {
                     }
                 } else {
                     if(model->idx == DesktopLockMenuIndexLock && event->key == InputKeyOk) {
+                        model->lock_popup_index = model->pin_is_set ?
+                                                      DesktopLockMenuPopupIndexPinCode :
+                                                      DesktopLockMenuPopupIndexKeypad;
                         model->show_lock_popup = true;
                     } else if(model->idx < DesktopLockMenuIndexBluetooth) {
                         if(event->key == InputKeyUp || event->key == InputKeyDown) {

@@ -135,16 +135,7 @@ static bool desktop_custom_event_callback(void* context, uint32_t event) {
 
     } else if(event == DesktopGlobalAutoLock) {
         if(!desktop->app_running && !desktop->locked) {
-            // Disable AutoLock if usb_inhibit_autolock option enabled and device have active USB session.
-            if(desktop->settings.usb_inhibit_auto_lock) {
-                Rpc* rpc = furi_record_open(RECORD_RPC);
-                bool inhibit_auto_lock = furi_hal_usb_is_locked() || rpc_get_sessions_count(rpc);
-                furi_record_close(RECORD_RPC);
-                if(inhibit_auto_lock) {
-                    return true;
-                }
-            }
-            desktop_lock(desktop, desktop->settings.auto_lock_with_pin);
+            desktop_lock(desktop);
         }
 
     } else if(event == DesktopGlobalSaveSettings) {
@@ -389,10 +380,10 @@ static Desktop* desktop_alloc(void) {
  * Private API
  */
 
-void desktop_lock(Desktop* desktop, bool with_pin) {
+void desktop_lock(Desktop* desktop) {
     furi_assert(!desktop->locked);
 
-    with_pin = with_pin && desktop_pin_code_is_set();
+    const bool with_pin = desktop_pin_code_is_set();
     if(with_pin) {
         furi_hal_rtc_set_flag(FuriHalRtcFlagLock);
     } else {
@@ -401,16 +392,12 @@ void desktop_lock(Desktop* desktop, bool with_pin) {
     }
 
     if(with_pin) {
-        if(!momentum_settings.allow_locked_rpc_usb) {
-            CliVcp* cli_vcp = furi_record_open(RECORD_CLI_VCP);
-            cli_vcp_disable(cli_vcp);
-            furi_record_close(RECORD_CLI_VCP);
-        }
-        if(!momentum_settings.allow_locked_rpc_ble) {
-            Bt* bt = furi_record_open(RECORD_BT);
-            bt_close_rpc_connection(bt);
-            furi_record_close(RECORD_BT);
-        }
+        CliVcp* cli_vcp = furi_record_open(RECORD_CLI_VCP);
+        cli_vcp_disable(cli_vcp);
+        furi_record_close(RECORD_CLI_VCP);
+        Bt* bt = furi_record_open(RECORD_BT);
+        bt_close_rpc_connection(bt);
+        furi_record_close(RECORD_BT);
     }
 
     desktop_auto_lock_inhibit(desktop);
@@ -439,16 +426,12 @@ void desktop_unlock(Desktop* desktop) {
     furi_hal_rtc_set_pin_fails(0);
 
     if(with_pin) {
-        if(!momentum_settings.allow_locked_rpc_usb) {
-            CliVcp* cli_vcp = furi_record_open(RECORD_CLI_VCP);
-            cli_vcp_enable(cli_vcp);
-            furi_record_close(RECORD_CLI_VCP);
-        }
-        if(!momentum_settings.allow_locked_rpc_ble) {
-            Bt* bt = furi_record_open(RECORD_BT);
-            bt_open_rpc_connection(bt);
-            furi_record_close(RECORD_BT);
-        }
+        CliVcp* cli_vcp = furi_record_open(RECORD_CLI_VCP);
+        cli_vcp_enable(cli_vcp);
+        furi_record_close(RECORD_CLI_VCP);
+        Bt* bt = furi_record_open(RECORD_BT);
+        bt_open_rpc_connection(bt);
+        furi_record_close(RECORD_BT);
     }
 
     DesktopStatus status = {.locked = false};
@@ -546,13 +529,9 @@ int32_t desktop_srv(void* p) {
 
     scene_manager_next_scene(desktop->scene_manager, DesktopSceneMain);
 
-    bool enable_cli_vcp = true;
-    if(desktop_pin_code_is_set() &&
-       (momentum_settings.lock_on_boot || furi_hal_rtc_is_flag_set(FuriHalRtcFlagLock))) {
-        enable_cli_vcp = momentum_settings.allow_locked_rpc_usb;
-        desktop_lock(desktop, true);
-    }
-    if(enable_cli_vcp) {
+    if(desktop_pin_code_is_set()) {
+        desktop_lock(desktop);
+    } else {
         CliVcp* cli_vcp = furi_record_open(RECORD_CLI_VCP);
         cli_vcp_enable(cli_vcp);
         furi_record_close(RECORD_CLI_VCP);

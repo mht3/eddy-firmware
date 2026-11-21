@@ -17,10 +17,12 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Check radio restrictions
+        run: python3 scripts/tests/test_radio_policy.py
       - name: Fetch pinned firmware dependencies
         run: git submodule update --init --jobs 8 -- assets/protobuf lib
       - name: Build the F7 main package
-        run: FBT_NO_SYNC=1 ./fbt updater_package
+        run: FBT_NO_SYNC=1 ./fbt STRICT_FAP_IMPORT_CHECK=1 updater_package
       - name: Prepare website with matching firmware
         run: python3 scripts/eddy_site.py
       - uses: actions/upload-artifact@v4

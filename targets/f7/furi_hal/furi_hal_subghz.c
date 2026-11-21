@@ -1,6 +1,5 @@
 #include <furi_hal_subghz.h>
 #include <lib/subghz/devices/cc1101_configs.h>
-#include <furi_hal_region_i.h>
 #include <furi_hal_region.h>
 #include <furi_hal_version.h>
 #include <furi_hal_rtc.h>
@@ -52,42 +51,20 @@ typedef struct {
     volatile SubGhzRegulation regulation;
     const GpioPin* async_mirror_pin;
 
-    int32_t rolling_counter_mult;
-    bool extended_range : 1;
-    bool bypass_region  : 1;
 } FuriHalSubGhz;
 
 volatile FuriHalSubGhz furi_hal_subghz = {
     .state = SubGhzStateInit,
-    .regulation = SubGhzRegulationTxRx,
+    .regulation = SubGhzRegulationOnlyRx,
     .async_mirror_pin = NULL,
-    .rolling_counter_mult = 1,
-    .extended_range = false,
-    .bypass_region = false,
 };
 
 int32_t furi_hal_subghz_get_rolling_counter_mult(void) {
-    return furi_hal_subghz.rolling_counter_mult;
+    return 1;
 }
 
 void furi_hal_subghz_set_rolling_counter_mult(int32_t mult) {
-    furi_hal_subghz.rolling_counter_mult = mult;
-}
-
-void furi_hal_subghz_set_extended_range(bool enabled) {
-    furi_hal_subghz.extended_range = enabled;
-}
-
-bool furi_hal_subghz_get_extended_range(void) {
-    return furi_hal_subghz.extended_range;
-}
-
-void furi_hal_subghz_set_bypass_region(bool enabled) {
-    furi_hal_subghz.bypass_region = enabled;
-}
-
-bool furi_hal_subghz_get_bypass_region(void) {
-    return furi_hal_subghz.bypass_region;
+    UNUSED(mult); // Compatibility with older SDK clients.
 }
 
 void furi_hal_subghz_set_async_mirror_pin(const GpioPin* pin) {
@@ -200,7 +177,8 @@ void furi_hal_subghz_load_custom_preset(const uint8_t* preset_data) {
     uint32_t i = 0;
     uint8_t pa[8] = {0};
     while(preset_data[i]) {
-        cc1101_write_reg(&furi_hal_spi_bus_handle_subghz, preset_data[i], preset_data[i + 1]);
+        cc1101_write_preset_reg(
+            &furi_hal_spi_bus_handle_subghz, preset_data[i], preset_data[i + 1]);
         i += 2;
     }
     furi_hal_spi_release(&furi_hal_spi_bus_handle_subghz);
@@ -230,7 +208,7 @@ void furi_hal_subghz_load_registers(const uint8_t* data) {
     furi_hal_spi_acquire(&furi_hal_spi_bus_handle_subghz);
     uint32_t i = 0;
     while(data[i]) {
-        cc1101_write_reg(&furi_hal_spi_bus_handle_subghz, data[i], data[i + 1]);
+        cc1101_write_preset_reg(&furi_hal_spi_bus_handle_subghz, data[i], data[i + 1]);
         i += 2;
     }
     furi_hal_spi_release(&furi_hal_spi_bus_handle_subghz);
@@ -311,6 +289,7 @@ void furi_hal_subghz_shutdown(void) {
 
 void furi_hal_subghz_reset(void) {
     furi_hal_spi_acquire(&furi_hal_spi_bus_handle_subghz);
+    furi_hal_subghz.regulation = SubGhzRegulationOnlyRx;
     furi_hal_gpio_init(&gpio_cc1101_g0, GpioModeAnalog, GpioPullNo, GpioSpeedLow);
     cc1101_switch_to_idle(&furi_hal_spi_bus_handle_subghz);
     cc1101_reset(&furi_hal_spi_bus_handle_subghz);
@@ -336,8 +315,12 @@ void furi_hal_subghz_rx(void) {
 }
 
 bool furi_hal_subghz_tx(void) {
-    if(furi_hal_subghz.regulation != SubGhzRegulationTxRx) return false;
     furi_hal_spi_acquire(&furi_hal_spi_bus_handle_subghz);
+    if(furi_hal_subghz.regulation != SubGhzRegulationTxRx ||
+       !furi_hal_subghz_is_tx_allowed(cc1101_get_tx_frequency(&furi_hal_spi_bus_handle_subghz))) {
+        furi_hal_spi_release(&furi_hal_spi_bus_handle_subghz);
+        return false;
+    }
     cc1101_switch_to_tx(&furi_hal_spi_bus_handle_subghz);
     //waiting for the chip to switch to Tx mode
     furi_check(cc1101_wait_status_state(&furi_hal_spi_bus_handle_subghz, CC1101StateTX, 10000));
@@ -368,66 +351,31 @@ uint8_t furi_hal_subghz_get_lqi(void) {
     return data[0] & 0x7F;
 }
 
-/* 
- Modified by @tkerby & MX to the full YARD Stick One extended range of 281-361 MHz, 378-481 MHz, and 749-962 MHz. 
- These changes are at your own risk. The PLL may not lock and FZ devs have warned of possible damage!
- */
-
 bool furi_hal_subghz_is_frequency_valid(uint32_t value) {
-    if(!(value >= 281000000 && value <= 361000000) &&
-       !(value >= 378000000 && value <= 481000000) &&
-       !(value >= 749000000 && value <= 962000000)) {
-        return false;
-    }
-
-    return true;
+    return (value >= 299999755 && value <= 348000335) ||
+           (value >= 386999938 && value <= 464000000) ||
+           (value >= 778999847 && value <= 928000000);
 }
 
 uint32_t furi_hal_subghz_set_frequency_and_path(uint32_t value) {
-    // Set these values to the extended frequency range only. They dont define if you can transmit but do select the correct RF path
     value = furi_hal_subghz_set_frequency(value);
-    if(value >= 280999633 && value <= 360999938) {
+    if(value >= 299999755 && value <= 348000335) {
         furi_hal_subghz_set_path(FuriHalSubGhzPath315);
-    } else if(value >= 377999755 && value <= 481000000) {
+    } else if(value >= 386999938 && value <= 464000000) {
         furi_hal_subghz_set_path(FuriHalSubGhzPath433);
-    } else if(value >= 748999633 && value <= 962000000) {
+    } else if(value >= 778999847 && value <= 928000000) {
         furi_hal_subghz_set_path(FuriHalSubGhzPath868);
     } else {
-        furi_crash("SubGhz: Incorrect frequency during set.");
+        furi_hal_subghz_set_path(FuriHalSubGhzPathIsolate);
+        return 0;
     }
     return value;
 }
 
 SubGhzTx furi_hal_subghz_check_tx(uint32_t value) {
-    // Check against extended range of YARD Stick One, no configuration would allow this frequency
-    if(!furi_hal_subghz_is_frequency_valid(value)) {
-        FURI_LOG_I(TAG, "Frequency blocked - outside supported range");
-        return SubGhzTxUnsupported;
-    }
-
-    // Check against default range, regardless of region restrictions
-    if(!furi_hal_subghz.extended_range &&
-       !(value >= 299999755 && value <= 350000335) && // was increased from 348 to 350
-       !(value >= 386999938 && value <= 467750000) && // was increased from 464 to 467.75
-       !(value >= 778999847 && value <= 928000000)) {
-        FURI_LOG_I(TAG, "Frequency blocked - outside default range");
-        return SubGhzTxBlockedDefault;
-    }
-
-    // Check against region restrictions, tighter than extended and default
-    if(!furi_hal_subghz.bypass_region) {
-        if(!furi_hal_region_is_provisioned()) {
-            FURI_LOG_I(TAG, "Frequency blocked - region not provisioned");
-            return SubGhzTxBlockedRegionNotProvisioned;
-        }
-        if(!_furi_hal_region_is_frequency_allowed(value)) {
-            FURI_LOG_I(TAG, "Frequency blocked - outside region range");
-            return SubGhzTxBlockedRegion;
-        }
-    }
-
-    // We already checked for extended range, default range, and region range
-    return SubGhzTxAllowed;
+    if(!furi_hal_subghz_is_frequency_valid(value)) return SubGhzTxUnsupported;
+    if(!furi_hal_region_is_provisioned()) return SubGhzTxBlockedRegionNotProvisioned;
+    return furi_hal_region_is_frequency_allowed(value) ? SubGhzTxAllowed : SubGhzTxBlockedRegion;
 }
 
 bool furi_hal_subghz_is_tx_allowed(uint32_t value) {
@@ -435,14 +383,18 @@ bool furi_hal_subghz_is_tx_allowed(uint32_t value) {
 }
 
 uint32_t furi_hal_subghz_set_frequency(uint32_t value) {
-    if(furi_hal_subghz_is_tx_allowed(value)) {
-        furi_hal_subghz.regulation = SubGhzRegulationTxRx;
-    } else {
-        furi_hal_subghz.regulation = SubGhzRegulationOnlyRx;
-    }
-
     furi_hal_spi_acquire(&furi_hal_spi_bus_handle_subghz);
+    furi_hal_subghz.regulation = SubGhzRegulationOnlyRx;
+    if(!furi_hal_subghz_is_frequency_valid(value)) {
+        cc1101_switch_to_idle(&furi_hal_spi_bus_handle_subghz);
+        furi_hal_spi_release(&furi_hal_spi_bus_handle_subghz);
+        return 0;
+    }
+    cc1101_switch_to_idle(&furi_hal_spi_bus_handle_subghz);
     uint32_t real_frequency = cc1101_set_frequency(&furi_hal_spi_bus_handle_subghz, value);
+    if(furi_hal_subghz_is_tx_allowed(value) && furi_hal_subghz_is_tx_allowed(real_frequency)) {
+        furi_hal_subghz.regulation = SubGhzRegulationTxRx;
+    }
     cc1101_calibrate(&furi_hal_spi_bus_handle_subghz);
 
     furi_check(cc1101_wait_status_state(&furi_hal_spi_bus_handle_subghz, CC1101StateIDLE, 10000));
@@ -881,7 +833,10 @@ bool furi_hal_subghz_start_async_tx(FuriHalSubGhzAsyncTxCallback callback, void*
 #ifdef FURI_HAL_SUBGHZ_TX_GPIO
     furi_hal_gpio_write(&FURI_HAL_SUBGHZ_TX_GPIO, true);
 #endif
-    furi_hal_subghz_tx();
+    if(!furi_hal_subghz_tx()) {
+        furi_hal_subghz_stop_async_tx();
+        return false;
+    }
 
     LL_TIM_SetCounter(TIM2, 0); // Reset TIM2
     LL_TIM_EnableCounter(TIM2); // Start TIM2 counting.

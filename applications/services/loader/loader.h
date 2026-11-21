@@ -15,7 +15,6 @@ typedef enum {
     LoaderStatusErrorAppStarted,
     LoaderStatusErrorUnknownApp,
     LoaderStatusErrorInternal,
-    LoaderStatusErrorApiMismatchCanceled, //<! Will bypass GUI error after API mismatch warning was canceled
 } LoaderStatus;
 
 typedef enum {

@@ -77,15 +77,11 @@ void desktop_pin_lock_error_notify(void) {
 }
 
 uint32_t desktop_pin_lock_get_fail_timeout(void) {
-    uint32_t pin_fails = furi_hal_rtc_get_pin_fails();
-    if(pin_fails < 3) {
-        return 0;
-    }
-
-    // Use for loop to avoid including pow() function (4kb of dfu flash)
-    uint32_t mult = 1;
-    for(size_t i = 0; i < pin_fails - 3; i++) {
-        mult *= 2;
-    }
-    return 30 * mult;
+    const uint32_t failures = furi_hal_rtc_get_pin_fails();
+    if(failures <= 3) return 0;
+    if(failures <= 9) return (failures - 3) * 30;
+    // Stock retry schedule adds one minute after each subsequent failed attempt.
+    const uint32_t extra = failures - 9;
+    if(extra > (UINT32_MAX - 180) / 60) return UINT32_MAX;
+    return 180 + extra * 60;
 }

@@ -2,9 +2,6 @@
 
 #include "registry.h"
 
-#include <subghz/subghz_last_settings.h>
-#include <furi_hal_subghz_i.h>
-
 void subghz_devices_init(void) {
     furi_check(!subghz_device_registry_is_valid());
     subghz_device_registry_init();
@@ -35,8 +32,6 @@ bool subghz_devices_begin(const SubGhzDevice* device) {
     if(device->interconnect->begin) {
         SubGhzDeviceConf conf = {
             .ver = 1,
-            .extended_range = furi_hal_subghz_get_extended_range(),
-            .bypass_region = furi_hal_subghz_get_bypass_region(),
             .amp_and_leds = true,
         };
 

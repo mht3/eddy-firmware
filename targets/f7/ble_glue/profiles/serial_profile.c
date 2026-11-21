@@ -3,6 +3,7 @@
 #include <gap.h>
 #include <furi_ble/profile_interface.h>
 #include <services/dev_info_service.h>
+#include <services/media_service_i.h>
 #include <services/battery_service.h>
 #include <services/serial_service.h>
 #include <furi.h>
@@ -27,6 +28,7 @@ static FuriHalBleProfileBase* ble_profile_serial_start(FuriHalBleProfileParams p
     profile->dev_info_svc = ble_svc_dev_info_start();
     profile->battery_svc = ble_svc_battery_start(true);
     profile->serial_svc = ble_svc_serial_start();
+    ble_svc_media_start();
 
     return &profile->base;
 }
@@ -36,6 +38,7 @@ static void ble_profile_serial_stop(FuriHalBleProfileBase* profile) {
     furi_check(profile->config == ble_profile_serial);
 
     BleProfileSerial* serial_profile = (BleProfileSerial*)profile;
+    ble_svc_media_stop();
     ble_svc_battery_stop(serial_profile->battery_svc);
     ble_svc_dev_info_stop(serial_profile->dev_info_svc);
     ble_svc_serial_stop(serial_profile->serial_svc);
@@ -53,6 +56,7 @@ static const GapConfig serial_template_config = {
             .UUID_Type = UUID_TYPE_16,
             .Service_UUID_16 = 0x3080,
         },
+    .solicit_apple_media = true,
     .appearance_char = 0x8600,
     .bonding_mode = true,
     .pairing_method = GapPairingPinCodeShow,

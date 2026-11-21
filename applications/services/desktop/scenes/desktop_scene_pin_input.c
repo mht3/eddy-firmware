@@ -5,7 +5,6 @@
 #include <stdint.h>
 #include <notification/notification.h>
 #include <notification/notification_messages.h>
-#include <momentum/momentum.h>
 
 #include "../desktop.h"
 #include "../desktop_i.h"
@@ -57,15 +56,8 @@ static void desktop_scene_pin_input_done_callback(const DesktopPinCode* pin_code
         view_dispatcher_send_custom_event(desktop->view_dispatcher, DesktopPinInputEventUnlocked);
 
     } else {
-        uint32_t pin_fails = furi_hal_rtc_get_pin_fails() + 1;
-        if(pin_fails >= 10 && momentum_settings.bad_pins_format) {
-            Storage* storage = furi_record_open(RECORD_STORAGE);
-            storage_sd_format(storage);
-            furi_record_close(RECORD_STORAGE);
-            furi_hal_rtc_reset_registers();
-            Power* power = furi_record_open(RECORD_POWER);
-            power_reboot(power, PowerBootModeNormal);
-        }
+        uint32_t pin_fails = furi_hal_rtc_get_pin_fails();
+        if(pin_fails < UINT32_MAX) ++pin_fails;
         furi_hal_rtc_set_pin_fails(pin_fails);
         view_dispatcher_send_custom_event(
             desktop->view_dispatcher, DesktopPinInputEventUnlockFailed);
@@ -153,7 +145,6 @@ bool desktop_scene_pin_input_on_event(void* context, SceneManagerEvent event) {
             consumed = true;
             break;
         case DesktopPinInputEventUnlocked:
-        case DesktopGlobalApiUnlock:
             desktop_unlock(desktop);
             consumed = true;
             break;

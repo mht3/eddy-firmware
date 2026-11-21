@@ -2,6 +2,7 @@
 #include <lib/subghz/devices/cc1101_configs.h>
 
 #include <furi_hal_version.h>
+#include <furi_hal_subghz.h>
 #include <furi_hal_rtc.h>
 #include <furi_hal_spi.h>
 #include <furi_hal_interrupt.h>
@@ -94,8 +95,6 @@ typedef struct {
     SubGhzDeviceCC1101ExtAsyncTx async_tx;
     SubGhzDeviceCC1101ExtAsyncRx async_rx;
     bool amp_and_leds;
-    bool extended_range;
-    bool bypass_region;
 } SubGhzDeviceCC1101Ext;
 
 static SubGhzDeviceCC1101Ext* subghz_device_cc1101_ext = NULL;
@@ -217,17 +216,13 @@ bool subghz_device_cc1101_ext_alloc(SubGhzDeviceConf* conf) {
     furi_assert(subghz_device_cc1101_ext == NULL);
     subghz_device_cc1101_ext = malloc(sizeof(SubGhzDeviceCC1101Ext));
     subghz_device_cc1101_ext->state = SubGhzDeviceCC1101ExtStateInit;
-    subghz_device_cc1101_ext->regulation = SubGhzDeviceCC1101ExtRegulationTxRx;
+    subghz_device_cc1101_ext->regulation = SubGhzDeviceCC1101ExtRegulationOnlyRx;
     subghz_device_cc1101_ext->async_mirror_pin = NULL;
     subghz_device_cc1101_ext->g0_pin = SUBGHZ_DEVICE_CC1101_EXT_TX_GPIO;
     subghz_device_cc1101_ext->amp_and_leds = false;
-    subghz_device_cc1101_ext->extended_range = false;
-    subghz_device_cc1101_ext->bypass_region = false;
     if(conf) {
         if(conf->ver == SUBGHZ_DEVICE_CC1101_CONFIG_VER) {
             subghz_device_cc1101_ext->amp_and_leds = conf->amp_and_leds;
-            subghz_device_cc1101_ext->extended_range = conf->extended_range;
-            subghz_device_cc1101_ext->bypass_region = conf->bypass_region;
         } else {
             FURI_LOG_E(TAG, "Config version mismatch");
         }
@@ -327,7 +322,7 @@ void subghz_device_cc1101_ext_load_custom_preset(const uint8_t* preset_data) {
     uint32_t i = 0;
     uint8_t pa[8] = {0};
     while(preset_data[i]) {
-        cc1101_write_reg(
+        cc1101_write_preset_reg(
             subghz_device_cc1101_ext->spi_bus_handle, preset_data[i], preset_data[i + 1]);
         i += 2;
     }
@@ -356,7 +351,7 @@ void subghz_device_cc1101_ext_load_registers(const uint8_t* data) {
     furi_hal_spi_acquire(subghz_device_cc1101_ext->spi_bus_handle);
     uint32_t i = 0;
     while(data[i]) {
-        cc1101_write_reg(subghz_device_cc1101_ext->spi_bus_handle, data[i], data[i + 1]);
+        cc1101_write_preset_reg(subghz_device_cc1101_ext->spi_bus_handle, data[i], data[i + 1]);
         i += 2;
     }
     furi_hal_spi_release(subghz_device_cc1101_ext->spi_bus_handle);
@@ -432,6 +427,7 @@ void subghz_device_cc1101_ext_shutdown(void) {
 
 void subghz_device_cc1101_ext_reset(void) {
     furi_hal_spi_acquire(subghz_device_cc1101_ext->spi_bus_handle);
+    subghz_device_cc1101_ext->regulation = SubGhzDeviceCC1101ExtRegulationOnlyRx;
     furi_hal_gpio_init(subghz_device_cc1101_ext->g0_pin, GpioModeAnalog, GpioPullNo, GpioSpeedLow);
     cc1101_switch_to_idle(subghz_device_cc1101_ext->spi_bus_handle);
     cc1101_reset(subghz_device_cc1101_ext->spi_bus_handle);
@@ -477,8 +473,13 @@ void subghz_device_cc1101_ext_rx(void) {
 }
 
 bool subghz_device_cc1101_ext_tx(void) {
-    if(subghz_device_cc1101_ext->regulation != SubGhzDeviceCC1101ExtRegulationTxRx) return false;
     furi_hal_spi_acquire(subghz_device_cc1101_ext->spi_bus_handle);
+    if(subghz_device_cc1101_ext->regulation != SubGhzDeviceCC1101ExtRegulationTxRx ||
+       !furi_hal_subghz_is_tx_allowed(
+           cc1101_get_tx_frequency(subghz_device_cc1101_ext->spi_bus_handle))) {
+        furi_hal_spi_release(subghz_device_cc1101_ext->spi_bus_handle);
+        return false;
+    }
     cc1101_switch_to_tx(subghz_device_cc1101_ext->spi_bus_handle);
     //waiting for the chip to switch to Tx mode
     furi_check(
@@ -517,45 +518,11 @@ uint8_t subghz_device_cc1101_ext_get_lqi(void) {
 }
 
 bool subghz_device_cc1101_ext_is_frequency_valid(uint32_t value) {
-    if(!(value >= 281000000 && value <= 361000000) &&
-       !(value >= 378000000 && value <= 481000000) &&
-       !(value >= 749000000 && value <= 962000000)) {
-        return false;
-    }
-
-    return true;
+    return furi_hal_subghz_is_frequency_valid(value);
 }
 
 SubGhzTx subghz_device_cc1101_ext_check_tx(uint32_t value) {
-    // Check against extended range of YARD Stick One, no configuration would allow this frequency
-    if(!subghz_device_cc1101_ext_is_frequency_valid(value)) {
-        FURI_LOG_I(TAG, "Frequency blocked - outside supported range");
-        return SubGhzTxUnsupported;
-    }
-
-    // Check against default range, regardless of region restrictions
-    if(!subghz_device_cc1101_ext->extended_range &&
-       !(value >= 299999755 && value <= 350000335) && // was increased from 348 to 350
-       !(value >= 386999938 && value <= 467750000) && // was increased from 464 to 467.75
-       !(value >= 778999847 && value <= 928000000)) {
-        FURI_LOG_I(TAG, "Frequency blocked - outside default range");
-        return SubGhzTxBlockedDefault;
-    }
-
-    // Check against region restrictions, tighter than extended and default
-    if(!subghz_device_cc1101_ext->bypass_region) {
-        if(!furi_hal_region_is_provisioned()) {
-            FURI_LOG_I(TAG, "Frequency blocked - region not provisioned");
-            return SubGhzTxBlockedRegionNotProvisioned;
-        }
-        if(!furi_hal_region_is_frequency_allowed(value)) {
-            FURI_LOG_I(TAG, "Frequency blocked - outside region range");
-            return SubGhzTxBlockedRegion;
-        }
-    }
-
-    // We already checked for extended range, default range, and region range
-    return SubGhzTxAllowed;
+    return furi_hal_subghz_check_tx(value);
 }
 
 bool subghz_device_cc1101_ext_is_tx_allowed(uint32_t value) {
@@ -563,15 +530,19 @@ bool subghz_device_cc1101_ext_is_tx_allowed(uint32_t value) {
 }
 
 uint32_t subghz_device_cc1101_ext_set_frequency(uint32_t value) {
-    if(subghz_device_cc1101_ext_is_tx_allowed(value)) {
-        subghz_device_cc1101_ext->regulation = SubGhzDeviceCC1101ExtRegulationTxRx;
-    } else {
-        subghz_device_cc1101_ext->regulation = SubGhzDeviceCC1101ExtRegulationOnlyRx;
-    }
-
     furi_hal_spi_acquire(subghz_device_cc1101_ext->spi_bus_handle);
+    subghz_device_cc1101_ext->regulation = SubGhzDeviceCC1101ExtRegulationOnlyRx;
+    if(!furi_hal_subghz_is_frequency_valid(value)) {
+        cc1101_switch_to_idle(subghz_device_cc1101_ext->spi_bus_handle);
+        furi_hal_spi_release(subghz_device_cc1101_ext->spi_bus_handle);
+        return 0;
+    }
+    cc1101_switch_to_idle(subghz_device_cc1101_ext->spi_bus_handle);
     uint32_t real_frequency =
         cc1101_set_frequency(subghz_device_cc1101_ext->spi_bus_handle, value);
+    if(furi_hal_subghz_is_tx_allowed(value) && furi_hal_subghz_is_tx_allowed(real_frequency)) {
+        subghz_device_cc1101_ext->regulation = SubGhzDeviceCC1101ExtRegulationTxRx;
+    }
     cc1101_calibrate(subghz_device_cc1101_ext->spi_bus_handle);
 
     while(true) {
@@ -915,7 +886,10 @@ bool subghz_device_cc1101_ext_start_async_tx(SubGhzDeviceCC1101ExtCallback callb
     // Start counter
     LL_TIM_EnableDMAReq_UPDATE(TIM17);
 
-    subghz_device_cc1101_ext_tx();
+    if(!subghz_device_cc1101_ext_tx()) {
+        subghz_device_cc1101_ext_stop_async_tx();
+        return false;
+    }
 
     LL_TIM_SetCounter(TIM17, 0);
     LL_TIM_EnableCounter(TIM17);

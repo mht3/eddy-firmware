@@ -215,10 +215,7 @@ BleEventFlowStatus ble_event_app_notification(void* pckt) {
             memcpy(gap->service.peer_address, event->Peer_Address, GAP_MAC_ADDR_SIZE);
 
             gap_verify_connection_parameters(gap);
-            if(gap->config->pairing_method != GapPairingNone) {
-                // Start pairing by sending security request
-                aci_gap_slave_security_req(event->Connection_Handle);
-            }
+            aci_gap_slave_security_req(event->Connection_Handle);
         } break;
 
         default:
@@ -236,14 +233,12 @@ BleEventFlowStatus ble_event_app_notification(void* pckt) {
             break;
 
         case ACI_GAP_PASS_KEY_REQ_VSEVT_CODE: {
-            // Generate random PIN code
-            uint32_t pin = rand() % 999999; //-V1064
-            aci_gap_pass_key_resp(gap->service.connection_handle, pin);
             if(furi_hal_rtc_is_flag_set(FuriHalRtcFlagLock)) {
-                FURI_LOG_I(TAG, "Pass key request event. Pin: ******");
-            } else {
-                FURI_LOG_I(TAG, "Pass key request event. Pin: %06ld", pin);
+                aci_gap_terminate(gap->service.connection_handle, 0x13);
+                break;
             }
+            uint32_t pin = furi_hal_random_get() % 1000000;
+            aci_gap_pass_key_resp(gap->service.connection_handle, pin);
             GapEvent event = {.type = GapEventTypePinCodeShow, .data.pin_code = pin};
             gap->on_event_cb(event, gap->context);
         } break;
@@ -282,9 +277,9 @@ BleEventFlowStatus ble_event_app_notification(void* pckt) {
         case ACI_GAP_NUMERIC_COMPARISON_VALUE_VSEVT_CODE: {
             uint32_t pin =
                 ((aci_gap_numeric_comparison_value_event_rp0*)(blue_evt->data))->Numeric_Value;
-            FURI_LOG_I(TAG, "Verify numeric comparison: %06lu", pin);
             GapEvent event = {.type = GapEventTypePinCodeVerify, .data.pin_code = pin};
-            bool result = gap->on_event_cb(event, gap->context);
+            bool result = !furi_hal_rtc_is_flag_set(FuriHalRtcFlagLock) &&
+                          gap->on_event_cb(event, gap->context);
             aci_gap_numeric_comparison_value_confirm_yesno(gap->service.connection_handle, result);
             break;
         }
@@ -421,31 +416,16 @@ static void gap_init_svc(Gap* gap, const GapRootSecurityKeys* root_keys) {
     // Set default PHY
     hci_le_set_default_phy(ALL_PHYS_PREFERENCE, TX_2M_PREFERRED, RX_2M_PREFERRED);
     // Set I/O capability
-    uint8_t auth_req_mitm_mode = MITM_PROTECTION_REQUIRED;
-    uint8_t auth_req_use_fixed_pin = USE_FIXED_PIN_FOR_PAIRING_FORBIDDEN;
-    bool keypress_supported = false;
-    if(gap->config->pairing_method == GapPairingPinCodeShow) {
-        aci_gap_set_io_capability(IO_CAP_DISPLAY_ONLY);
-    } else if(gap->config->pairing_method == GapPairingPinCodeVerifyYesNo) {
-        aci_gap_set_io_capability(IO_CAP_DISPLAY_YES_NO);
-        keypress_supported = true;
-    } else if(gap->config->pairing_method == GapPairingNone) {
-        // "Just works" pairing method (iOS accepts it, it seems Android and Linux don't)
-        auth_req_mitm_mode = MITM_PROTECTION_NOT_REQUIRED;
-        auth_req_use_fixed_pin = USE_FIXED_PIN_FOR_PAIRING_ALLOWED;
-        // If "just works" isn't supported, we want the numeric comparaison method
-        aci_gap_set_io_capability(IO_CAP_DISPLAY_YES_NO);
-        keypress_supported = true;
-    }
-    // Setup  authentication
+    const bool display_only = gap->config->pairing_method == GapPairingPinCodeShow;
+    aci_gap_set_io_capability(display_only ? IO_CAP_DISPLAY_ONLY : IO_CAP_DISPLAY_YES_NO);
     aci_gap_set_authentication_requirement(
         gap->config->bonding_mode,
-        auth_req_mitm_mode,
+        MITM_PROTECTION_REQUIRED,
         CFG_SC_SUPPORT,
-        keypress_supported,
+        !display_only,
         CFG_ENCRYPTION_KEY_SIZE_MIN,
         CFG_ENCRYPTION_KEY_SIZE_MAX,
-        auth_req_use_fixed_pin,
+        USE_FIXED_PIN_FOR_PAIRING_FORBIDDEN,
         0,
         CFG_IDENTITY_ADDRESS);
     // Configure whitelist
@@ -483,22 +463,27 @@ static void gap_advertise_start(GapState new_state) {
     size_t name_len = strlen(gap->service.adv_name);
     uint8_t uuid_len = gap->service.adv_svc_uuid_len;
     const uint8_t* advertised_uuid = gap->service.adv_svc_uuid;
-    const uint8_t media_hid[] = {AD_TYPE_16_BIT_SERV_UUID_CMPLT_LIST, 0x12, 0x18};
+    uint8_t media_services[] = {AD_TYPE_16_BIT_SERV_UUID_CMPLT_LIST, 0x12, 0x18, 0, 0};
     if(gap->config->solicit_apple_media) {
-        // iOS discovers the accessory via service solicitation. Android uses the
-        // advertised custom service UUID and local name in the scan response.
+        // Keep the Flipper discovery UUID alongside HID and the AMS solicitation.
+        // The complete user-selected device name fits in the scan response.
         uint8_t scan_response[31];
         uint8_t scan_len = 0;
-        furi_check(1 + uuid_len + 1 + name_len <= sizeof(scan_response));
-        scan_response[scan_len++] = uuid_len;
-        memcpy(scan_response + scan_len, gap->service.adv_svc_uuid, uuid_len);
-        scan_len += uuid_len;
+        if(gap->config->adv_service.UUID_Type == UUID_TYPE_16) {
+            memcpy(media_services + 3, advertised_uuid + 1, 2);
+            uuid_len = sizeof(media_services);
+        } else {
+            furi_check(1 + uuid_len + 1 + name_len <= sizeof(scan_response));
+            scan_response[scan_len++] = uuid_len;
+            memcpy(scan_response + scan_len, advertised_uuid, uuid_len);
+            scan_len += uuid_len;
+            uuid_len = 3;
+        }
         scan_response[scan_len++] = name_len;
         memcpy(scan_response + scan_len, gap->service.adv_name, name_len);
         scan_len += name_len;
         name_len = 0;
-        uuid_len = sizeof(media_hid);
-        advertised_uuid = media_hid;
+        advertised_uuid = media_services;
         hci_le_set_scan_response_data(scan_len, scan_response);
     } else if(gap->service.mfg_data_len > 0) {
         hci_le_set_scan_response_data(gap->service.mfg_data_len, gap->service.mfg_data);

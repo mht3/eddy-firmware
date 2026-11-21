@@ -17,7 +17,9 @@ SubGhzTransmitter*
     const SubGhzProtocol* protocol =
         subghz_protocol_registry_get_by_name(protocol_registry_items, protocol_name);
 
-    if(protocol && protocol->encoder && protocol->encoder->alloc) {
+    if(protocol && protocol->type != SubGhzProtocolTypeDynamic &&
+       protocol->type != SubGhzProtocolTypeBinRAW && protocol->encoder &&
+       protocol->encoder->alloc) {
         instance = malloc(sizeof(SubGhzTransmitter));
         instance->protocol = protocol;
         instance->protocol_instance = instance->protocol->encoder->alloc(environment);
@@ -26,7 +28,7 @@ SubGhzTransmitter*
 }
 
 void subghz_transmitter_free(SubGhzTransmitter* instance) {
-    furi_check(instance);
+    if(!instance) return;
     instance->protocol->encoder->free(instance->protocol_instance);
     free(instance);
 }

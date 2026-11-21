@@ -73,8 +73,8 @@ const SubGhzProtocolDecoder subghz_protocol_x10_decoder = {
     .reset = subghz_protocol_decoder_x10_reset,
     .get_hash_data = NULL,
     .get_hash_data_long = subghz_protocol_decoder_x10_get_hash_data,
-    .serialize = subghz_protocol_decoder_x10_serialize,
-    .deserialize = subghz_protocol_decoder_x10_deserialize,
+    .serialize = NULL,
+    .deserialize = NULL,
     .get_string = subghz_protocol_decoder_x10_get_string,
     .get_string_brief = NULL,
 };
@@ -93,7 +93,7 @@ const SubGhzProtocol subghz_protocol_x10 = {
     .flag = SubGhzProtocolFlag_315 /* Technically it is 310MHz only */ | SubGhzProtocolFlag_AM |
             SubGhzProtocolFlag_Decodable,
     .decoder = &subghz_protocol_x10_decoder,
-    .encoder = &subghz_protocol_x10_encoder,
+    .encoder = NULL,
 };
 
 void* subghz_protocol_decoder_x10_alloc(SubGhzEnvironment* environment) {

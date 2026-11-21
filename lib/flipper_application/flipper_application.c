@@ -170,6 +170,18 @@ static FlipperApplicationPreloadStatus
         return FlipperApplicationPreloadStatusInvalidFile;
     }
 
+    // load manifest section
+    if(!app->preloaded_manifest &&
+       elf_process_section(
+           app->elf, ".fapmeta", flipper_application_process_manifest_section, &app->manifest) !=
+           ElfProcessSectionResultSuccess) {
+        return FlipperApplicationPreloadStatusInvalidFile;
+    }
+
+    app->preloaded_manifest = true;
+    FlipperApplicationPreloadStatus compatibility = flipper_application_validate_manifest(app);
+    if(compatibility != FlipperApplicationPreloadStatusSuccess) return compatibility;
+
     // if we are loading full file
     if(load_full) {
         // load section table
@@ -191,20 +203,7 @@ static FlipperApplicationPreloadStatus
         }
     }
 
-    // load manifest section
-    if(!app->preloaded_manifest &&
-       elf_process_section(
-           app->elf, ".fapmeta", flipper_application_process_manifest_section, &app->manifest) !=
-           ElfProcessSectionResultSuccess) {
-        return FlipperApplicationPreloadStatusInvalidFile;
-    }
-
-    // Avoid preloading manifest twice, when user calls both preload_manifest() and preload()
-    if(!load_full) {
-        app->preloaded_manifest = true;
-    }
-
-    return flipper_application_validate_manifest(app);
+    return FlipperApplicationPreloadStatusSuccess;
 }
 
 /* Parse headers, load manifest */
@@ -232,6 +231,9 @@ const FlipperApplicationManifest* flipper_application_get_manifest(FlipperApplic
 
 FlipperApplicationLoadStatus flipper_application_map_to_memory(FlipperApplication* app) {
     furi_check(app);
+
+    if(flipper_application_validate_manifest(app) != FlipperApplicationPreloadStatusSuccess)
+        return FlipperApplicationLoadStatusUnspecifiedError;
 
     ELFFileLoadStatus status = elf_file_load_sections(app->elf);
 

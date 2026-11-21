@@ -53,8 +53,7 @@ typedef enum {
 } GapState;
 
 typedef enum {
-    GapPairingNone,
-    GapPairingPinCodeShow,
+    GapPairingPinCodeShow = 1,
     GapPairingPinCodeVerifyYesNo,
     GapPairingCount,
 } GapPairing;

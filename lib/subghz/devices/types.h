@@ -97,7 +97,6 @@ struct SubGhzDevice {
 
 struct SubGhzDeviceConf {
     uint8_t ver;
-    bool extended_range;
-    bool bypass_region;
+    uint8_t reserved[2]; /**< Preserve the version 1 driver ABI. */
     bool amp_and_leds;
 };

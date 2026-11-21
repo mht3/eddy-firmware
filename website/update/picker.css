@@ -1,0 +1,115 @@
+.catalog-page {
+  max-width:92rem;
+  margin:0 auto;
+  padding:clamp(2.5rem,5vw,5rem) clamp(1.1rem,5vw,5rem) 5rem;
+}
+.catalog-intro {margin-bottom:clamp(2rem,4vw,3.5rem)}
+.catalog-intro h1 {font-size:clamp(3.25rem,6vw,6.5rem); margin:0 0 1rem}
+.catalog-intro p {max-width:55ch}
+.skip-to-install {display:none}
+.catalog-layout {
+  display:grid; grid-template-columns:minmax(0,1fr) minmax(17rem,24rem);
+  gap:clamp(1.5rem,4vw,4.25rem); align-items:start;
+}
+.catalog-library {min-width:0}
+#app-picker {margin:0; padding:0; border:0; min-width:0}
+#app-picker h2 {font-size:clamp(1.45rem,2.4vw,2rem); letter-spacing:-.045em; margin:0 0 1rem; line-height:1.15}
+#app-picker h2:not(:first-of-type) {margin-top:2.25rem}
+.app-grid {
+  display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); list-style:none;
+  margin:0; padding:0; gap:.7rem;
+}
+.app-card {
+  --card-border:#263c53; --icon-shift:0; position:relative; display:flex; flex-direction:column;
+  border:1px solid var(--card-border); border-radius:.95rem;
+  background:#101f31; padding:.9rem .95rem .85rem; min-width:0;
+}
+.app-card.included {--card-border:#34536d; background:linear-gradient(145deg,#182f46,#10263b)}
+.app-card:hover,.app-card:focus-within {border-color:#79a3c4}
+.app-toggle {
+  display:flex; align-items:flex-start; flex-direction:column; align-self:stretch;
+  padding:0; text-align:left; color:var(--light); background:none; border:0;
+}
+.app-toggle:focus-visible,.app-preview:focus-visible,.menu-preview:focus-visible {
+  outline:3px solid var(--surf); outline-offset:3px; border-radius:.3rem;
+}
+.updater .app-toggle {font-size:1rem}
+.app-icon {
+  width:3.15rem; height:3.15rem; display:grid; place-items:center; border-radius:.8rem;
+  background:#29394a; color:#a9b9c8; box-shadow:inset 0 0 0 1px #ffffff14;
+}
+.app-icon::after {
+  content:''; width:36px; height:36px; background-color:currentColor;
+  mask:url('apps.png') no-repeat calc(-36px * var(--icon-shift)) 0 / 396px 36px;
+  image-rendering:pixelated;
+}
+.included .app-icon {
+  background:linear-gradient(145deg,var(--highlight),var(--shade)); color:var(--glyph);
+  box-shadow:inset 0 0 0 1px #ffffff35, 0 2px 8px #040e1d42;
+}
+[data-id=signal]    {--highlight:#b1dcff; --shade:#5098d7; --glyph:#0c335e; --icon-shift:0}
+[data-id=rfid]      {--highlight:#bfb9ff; --shade:#8e8de1; --glyph:#322d68; --icon-shift:1}
+[data-id=nfc]       {--highlight:#9ae3d7; --shade:#51acac; --glyph:#0d454d; --icon-shift:2}
+[data-id=infrared]  {--highlight:#ffce9d; --shade:#e69968; --glyph:#642e13; --icon-shift:3}
+[data-id=gpio]      {--highlight:#c4d8aa; --shade:#88b19a; --glyph:#284a38; --icon-shift:4}
+[data-id=ibutton]   {--highlight:#bbd0f7; --shade:#8fa5cf; --glyph:#2d3b64; --icon-shift:5}
+[data-id=pomodoro]  {--highlight:#f6bab2; --shade:#ce8790; --glyph:#5d2b37; --icon-shift:6}
+[data-id=metronome] {--highlight:#dfc0ff; --shade:#ad91d9; --glyph:#493166; --icon-shift:7}
+[data-id=builder]   {--highlight:#fad4ac; --shade:#c8a07f; --glyph:#553e2d; --icon-shift:8}
+[data-id=btRemote]  {--highlight:#a8c8f8; --shade:#699ce0; --glyph:#143760; --icon-shift:9}
+[data-id=music]     {--highlight:#a2e1d0; --shade:#74bba7; --glyph:#19453b; --icon-shift:10}
+.toggle-mark {
+  position:absolute; top:.45rem; right:.45rem; width:1.85rem; height:1.85rem;
+  display:grid; place-items:center; border-radius:50%; font:500 1.4rem/1 sans-serif;
+  color:#acc1d5; border:1px solid #435a70; background:#162737;
+}
+.included .toggle-mark {color:#e3f2ff; background:#233e54; border-color:#4b6983}
+.app-toggle:hover .toggle-mark {color:#fff; border-color:#a4c9eb}
+.app-name {margin-top:.75rem; line-height:1.2; font-weight:700; letter-spacing:-.025em; overflow-wrap:anywhere}
+.app-description {font-size:.875rem; line-height:1.4; margin:.35rem 0 .85rem; color:#bccbd9}
+.app-card:hover .app-description,.app-card:focus-within .app-description {color:#e8f4ff}
+.app-preview,.excluded {margin-top:auto; font-size:.875rem; line-height:1.4}
+.app-preview {text-decoration:underline; text-underline-offset:.2em; color:#9dd4ff; align-self:flex-start}
+.excluded {color:#9cadc0}
+.app-idea {margin:1.45rem 0 0; font-size:1rem; max-width:none}
+.app-idea a,.skip-to-install {color:var(--surf); text-decoration:underline; text-underline-offset:.2em}
+.catalog-page .build-panel {
+  position:sticky; top:1.2rem; width:100%; padding:clamp(1.1rem,2.25vw,2rem);
+  border:1px solid #3f6380; border-radius:1.1rem; margin:0;
+  background:radial-gradient(ellipse at 95% 0%,#214a66,transparent 60%),#112941;
+}
+.build-panel #app-count {margin:.35rem 0 1.05rem; font-size:1rem; color:#d3e7fa}
+.menu-preview {display:block; border-radius:.75rem; color:#cae7ff}
+.flipper-preview {display:block; position:relative; overflow:hidden; border-radius:.7rem; aspect-ratio:2}
+.flipper-preview img {display:block; width:100%; height:100%}
+#selected-screen {position:absolute; left:7.58%; top:22.36%; width:44.17%; height:44.17%}
+.preview-caption {display:block; font-size:.95rem; margin-top:.55rem; text-decoration:underline; text-underline-offset:.2em}
+.build-panel .install-help {font-size:.97rem; line-height:1.5; margin:1.3rem 0 1rem}
+.build-panel #action {width:100%; margin:0}
+.build-panel #connection {font-size:.9rem; margin:.75rem 0}
+.build-panel #build-status {border-top:1px solid #35546c; padding-top:.95rem; margin:.95rem 0 .45rem; font:.86rem ui-monospace,monospace; overflow-wrap:anywhere}
+.build-panel .downloads {gap:.25rem}
+.build-panel .downloads a {margin:0}
+.updater .downloads #download {
+  display:inline; padding:0; margin:0; text-align:left; background:none; border:none;
+  font:inherit; color:var(--surf); text-decoration:underline; text-underline-offset:.15em;
+}
+#app-picker[disabled] .app-card {opacity:.65}
+@media (min-width:761px) and (max-width:1120px) {
+  .catalog-layout {grid-template-columns:minmax(0,1fr) minmax(16rem,30%); gap:1.5rem}
+  .app-grid {grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:760px) {
+  .catalog-layout {display:block}
+  .skip-to-install {display:inline-block; margin-top:1rem}
+  .app-grid {grid-template-columns:repeat(2,minmax(0,1fr))}
+  .catalog-page .build-panel {position:static; margin-top:2rem; scroll-margin-top:1rem}
+  .app-toggle .toggle-mark {width:2rem; height:2rem}
+}
+@media (max-width:360px) {
+  .app-card {padding:.75rem}
+  .app-icon {width:2.7rem; height:2.7rem}
+}
+@media (max-height:680px) {
+  .catalog-page .build-panel {position:static}
+}

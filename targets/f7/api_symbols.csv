@@ -1,5 +1,5 @@
 entry,status,name,type,params
-Version,+,87.3,,
+Version,+,88.0,,
 Header,+,applications/drivers/subghz/cc1101_ext/cc1101_ext_interconnect.h,,
 Header,+,applications/main/archive/helpers/archive_helpers_ext.h,,
 Header,+,applications/services/applications.h,,
@@ -234,7 +234,6 @@ Header,+,lib/subghz/blocks/math.h,,
 Header,+,lib/subghz/devices/cc1101_configs.h,,
 Header,+,lib/subghz/devices/cc1101_int/cc1101_int_interconnect.h,,
 Header,+,lib/subghz/environment.h,,
-Header,+,lib/subghz/protocols/public_api.h,,
 Header,+,lib/subghz/protocols/raw.h,,
 Header,+,lib/subghz/receiver.h,,
 Header,+,lib/subghz/registry.h,,
@@ -284,6 +283,7 @@ Header,+,targets/f7/ble_glue/furi_ble/profile_interface.h,,
 Header,+,targets/f7/ble_glue/profiles/serial_profile.h,,
 Header,+,targets/f7/ble_glue/services/battery_service.h,,
 Header,+,targets/f7/ble_glue/services/dev_info_service.h,,
+Header,-,targets/f7/ble_glue/services/music_hid.h,,
 Header,+,targets/f7/ble_glue/services/serial_service.h,,
 Header,+,targets/f7/furi_hal/furi_hal_bus.h,,
 Header,+,targets/f7/furi_hal/furi_hal_clock.h,,
@@ -808,6 +808,9 @@ Function,-,ble_svc_hid_stop,void,BleServiceHid*
 Function,-,ble_svc_hid_update_info,_Bool,"BleServiceHid*, uint8_t*"
 Function,-,ble_svc_hid_update_input_report,_Bool,"BleServiceHid*, uint8_t, uint8_t*, uint16_t"
 Function,-,ble_svc_hid_update_report_map,_Bool,"BleServiceHid*, const uint8_t*, uint16_t"
+Function,+,ble_svc_media_listen,_Bool,"BleMediaEventCallback, void*"
+Function,+,ble_svc_media_send,_Bool,"void*, uint8_t, _Bool"
+Function,+,ble_svc_media_unlisten,void,void*
 Function,+,ble_svc_serial_notify_buffer_is_empty,void,BleServiceSerial*
 Function,+,ble_svc_serial_set_callbacks,void,"BleServiceSerial*, uint16_t, SerialServiceEventCallback, void*"
 Function,+,ble_svc_serial_set_rpc_active,void,"BleServiceSerial*, _Bool"
@@ -1120,7 +1123,6 @@ Function,-,explicit_bzero,void,"void*, size_t"
 Function,-,expm1,double,double
 Function,-,expm1f,float,float
 Function,-,expm1l,long double,long double
-Function,+,faac_slh_reset_prog_mode,void,
 Function,-,fabs,double,double
 Function,-,fabsf,float,float
 Function,-,fabsl,long double,long double
@@ -2967,6 +2969,9 @@ Function,-,modff,float,"float, float*"
 Function,-,modfl,long double,"long double, long double*"
 Function,+,momentum_settings_save,void,
 Function,-,mrand48,long,
+Function,-,music_hid_send,_Bool,"MusicHid*, uint8_t"
+Function,-,music_hid_start,MusicHid*,
+Function,-,music_hid_stop,void,MusicHid*
 Function,-,music_worker_alloc,MusicWorker*,
 Function,-,music_worker_clear,void,MusicWorker*
 Function,-,music_worker_free,void,MusicWorker*
@@ -3700,8 +3705,6 @@ Function,+,subghz_keystore_raw_encrypted_save,_Bool,"const char*, const char*, u
 Function,+,subghz_keystore_raw_get_data,_Bool,"const char*, size_t, uint8_t*, size_t"
 Function,+,subghz_keystore_reset_kl,void,SubGhzKeystore*
 Function,+,subghz_keystore_save,_Bool,"SubGhzKeystore*, const char*, uint8_t*"
-Function,+,subghz_protocol_alutech_at_4n_create_data,_Bool,"void*, FlipperFormat*, uint32_t, uint8_t, uint16_t, SubGhzRadioPreset*"
-Function,+,subghz_protocol_beninca_arc_create_data,_Bool,"void*, FlipperFormat*, uint32_t, uint8_t, uint32_t, SubGhzRadioPreset*"
 Function,+,subghz_protocol_blocks_add_bit,void,"SubGhzBlockDecoder*, uint8_t"
 Function,+,subghz_protocol_blocks_add_bytes,uint8_t,"const uint8_t[], size_t"
 Function,+,subghz_protocol_blocks_add_to_128_bit,void,"SubGhzBlockDecoder*, uint8_t, uint64_t*"
@@ -3724,34 +3727,23 @@ Function,+,subghz_protocol_blocks_parity_bytes,uint8_t,"const uint8_t[], size_t"
 Function,+,subghz_protocol_blocks_reverse_key,uint64_t,"uint64_t, uint8_t"
 Function,+,subghz_protocol_blocks_set_bit_array,void,"_Bool, uint8_t[], size_t, size_t"
 Function,+,subghz_protocol_blocks_xor_bytes,uint8_t,"const uint8_t[], size_t"
-Function,+,subghz_protocol_came_atomo_create_data,_Bool,"void*, FlipperFormat*, uint32_t, uint16_t, SubGhzRadioPreset*"
 Function,+,subghz_protocol_decoder_base_deserialize,SubGhzProtocolStatus,"SubGhzProtocolDecoderBase*, FlipperFormat*"
 Function,+,subghz_protocol_decoder_base_get_hash_data,uint8_t,SubGhzProtocolDecoderBase*
 Function,+,subghz_protocol_decoder_base_get_hash_data_long,uint32_t,SubGhzProtocolDecoderBase*
 Function,+,subghz_protocol_decoder_base_get_string,_Bool,"SubGhzProtocolDecoderBase*, FuriString*"
 Function,+,subghz_protocol_decoder_base_serialize,SubGhzProtocolStatus,"SubGhzProtocolDecoderBase*, FlipperFormat*, SubGhzRadioPreset*"
 Function,-,subghz_protocol_decoder_base_set_decoder_callback,void,"SubGhzProtocolDecoderBase*, SubGhzProtocolDecoderBaseRxCallback, void*"
-Function,+,subghz_protocol_decoder_bin_raw_data_input_rssi,void,"SubGhzProtocolDecoderBinRAW*, float"
 Function,+,subghz_protocol_decoder_raw_alloc,void*,SubGhzEnvironment*
 Function,+,subghz_protocol_decoder_raw_deserialize,SubGhzProtocolStatus,"void*, FlipperFormat*"
 Function,+,subghz_protocol_decoder_raw_feed,void,"void*, _Bool, uint32_t"
 Function,+,subghz_protocol_decoder_raw_free,void,void*
 Function,+,subghz_protocol_decoder_raw_get_string,void,"void*, FuriString*"
 Function,+,subghz_protocol_decoder_raw_reset,void,void*
-Function,+,subghz_protocol_ditec_gol4_create_data,_Bool,"void*, FlipperFormat*, uint32_t, uint8_t, uint16_t, SubGhzRadioPreset*"
 Function,+,subghz_protocol_encoder_raw_alloc,void*,SubGhzEnvironment*
 Function,+,subghz_protocol_encoder_raw_deserialize,SubGhzProtocolStatus,"void*, FlipperFormat*"
 Function,+,subghz_protocol_encoder_raw_free,void,void*
 Function,+,subghz_protocol_encoder_raw_stop,void,void*
 Function,+,subghz_protocol_encoder_raw_yield,LevelDuration,void*
-Function,+,subghz_protocol_faac_slh_create_data,_Bool,"void*, FlipperFormat*, uint32_t, uint8_t, uint32_t, uint32_t, const char*, SubGhzRadioPreset*"
-Function,+,subghz_protocol_jarolift_create_data,_Bool,"void*, FlipperFormat*, uint32_t, uint8_t, uint16_t, SubGhzRadioPreset*"
-Function,+,subghz_protocol_keeloq_create_data,_Bool,"void*, FlipperFormat*, uint32_t, uint8_t, uint16_t, const char*, SubGhzRadioPreset*"
-Function,+,subghz_protocol_keeloq_seed_create_data,_Bool,"void*, FlipperFormat*, uint32_t, uint8_t, uint16_t, uint32_t, const char*, SubGhzRadioPreset*"
-Function,+,subghz_protocol_kinggates_stylo_4k_create_data,_Bool,"void*, FlipperFormat*, uint32_t, uint8_t, uint16_t, SubGhzRadioPreset*"
-Function,+,subghz_protocol_marantec_crc8,uint8_t,"uint8_t*, size_t"
-Function,+,subghz_protocol_nice_flor_s_create_data,_Bool,"void*, FlipperFormat*, uint32_t, uint8_t, uint16_t, SubGhzRadioPreset*, _Bool"
-Function,+,subghz_protocol_phoenix_v2_create_data,_Bool,"void*, FlipperFormat*, uint32_t, uint16_t, SubGhzRadioPreset*"
 Function,+,subghz_protocol_raw_file_encoder_worker_set_callback_end,void,"SubGhzProtocolEncoderRAW*, SubGhzProtocolEncoderRAWCallbackEnd, void*"
 Function,+,subghz_protocol_raw_gen_fff_data,void,"FlipperFormat*, const char*, const char*"
 Function,+,subghz_protocol_raw_get_sample_write,size_t,SubGhzProtocolDecoderRAW*
@@ -3761,10 +3753,6 @@ Function,+,subghz_protocol_raw_save_to_file_stop,void,SubGhzProtocolDecoderRAW*
 Function,+,subghz_protocol_registry_count,size_t,const SubGhzProtocolRegistry*
 Function,+,subghz_protocol_registry_get_by_index,const SubGhzProtocol*,"const SubGhzProtocolRegistry*, size_t"
 Function,+,subghz_protocol_registry_get_by_name,const SubGhzProtocol*,"const SubGhzProtocolRegistry*, const char*"
-Function,+,subghz_protocol_secplus_v1_check_fixed,_Bool,uint32_t
-Function,+,subghz_protocol_secplus_v2_create_data,_Bool,"void*, FlipperFormat*, uint32_t, uint8_t, uint32_t, SubGhzRadioPreset*"
-Function,+,subghz_protocol_somfy_keytis_create_data,_Bool,"void*, FlipperFormat*, uint32_t, uint8_t, uint16_t, SubGhzRadioPreset*"
-Function,+,subghz_protocol_somfy_telis_create_data,_Bool,"void*, FlipperFormat*, uint32_t, uint8_t, uint16_t, SubGhzRadioPreset*"
 Function,+,subghz_receiver_alloc_init,SubGhzReceiver*,SubGhzEnvironment*
 Function,+,subghz_receiver_decode,void,"SubGhzReceiver*, _Bool, uint32_t"
 Function,+,subghz_receiver_free,void,SubGhzReceiver*
@@ -4397,7 +4385,7 @@ Variable,+,furi_hal_spi_bus_handle_external_extra,const FuriHalSpiBusHandle,
 Variable,+,furi_hal_spi_bus_handle_nfc,const FuriHalSpiBusHandle,
 Variable,+,furi_hal_spi_bus_handle_sd_fast,const FuriHalSpiBusHandle,
 Variable,+,furi_hal_spi_bus_handle_sd_slow,const FuriHalSpiBusHandle,
-Variable,+,furi_hal_spi_bus_handle_subghz,const FuriHalSpiBusHandle,
+Variable,-,furi_hal_spi_bus_handle_subghz,const FuriHalSpiBusHandle,
 Variable,+,furi_hal_spi_bus_r,FuriHalSpiBus,
 Variable,+,furi_hal_spi_preset_1edge_low_16m,const LL_SPI_InitTypeDef,
 Variable,+,furi_hal_spi_preset_1edge_low_2m,const LL_SPI_InitTypeDef,

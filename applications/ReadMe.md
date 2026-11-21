@@ -1,6 +1,6 @@
 # Eddy applications
 
-The main build includes the following Apps tiles.
+The installer starts with Sub-GHz, RFID, NFC, Infrared, GPIO, and iButton selected. You can remove any of them and add any of the five optional apps below.
 
 | Apps tile | Source |
 | --- | --- |
@@ -16,6 +16,6 @@ The main build includes the following Apps tiles.
 | Bluetooth Remote | [eddy_bluetooth](main/eddy_bluetooth/) |
 | Spotify | [eddy_music](main/eddy_music/) |
 
-[The Eddy build profile](../fbt_options.py) selects the apps to package. [The launcher](services/loader/loader_menu.c) defines their order and displays pinned infrared remotes after the built-in tiles.
+[The Eddy build profile](../fbt_options.py) selects the apps to package. [The launcher](services/loader/loader_menu.c) shows installed apps in manifest order and adds available pinned infrared remotes after those tiles.
 
 Device settings live in [settings](settings/), background services in [services](services/), and the firmware updater in [system/updater](system/updater/). The repository also includes development tools, tests, and sources for other build profiles.

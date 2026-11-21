@@ -4,75 +4,15 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="referrer" content="no-referrer">
-    <meta name="description" content="Pair your phone with Eddy Firmware and control Spotify from your Flipper Zero.">
-    <title>Spotify on Flipper Zero · Eddy Firmware</title>
-    <link rel="icon" href="../eddy.svg">
-    <link rel="stylesheet" href="../style.css">
-    <link rel="stylesheet" href="music.css">
-    <script type="module" src="music.js"></script>
+    <title>Spotify · Eddy Firmware</title>
+    <link rel="canonical" href="https://mht3.github.io/eddy-firmware/spotify/">
+    <script>
+      const guide = new URL("../spotify/", location.href);
+      guide.search = location.search;
+      guide.hash = location.hash;
+      location.replace(guide.href);
+    </script>
+    <noscript><meta http-equiv="refresh" content="0;url=../spotify/"></noscript>
   </head>
-  <body>
-    <header><div class="bar">
-      <a class="brand" href="../"><img src="../eddy.svg" alt=""> Eddy <span>Firmware</span></a>
-      <nav aria-label="Main"><a href="../wiki/">Wiki</a><a class="small-cta" href="../update/">Install</a></nav>
-    </div></header>
-    <main class="music">
-      <h1>Spotify on Flipper Zero.</h1>
-      <p class="intro">Control Spotify from your Flipper while your phone plays the music.</p>
-
-      <div class="platforms" id="platforms" aria-label="Choose your phone" hidden>
-        <button type="button" id="choose-iphone" aria-controls="iphone" aria-pressed="false">iPhone</button>
-        <button type="button" id="choose-android" aria-controls="android" aria-pressed="false">Android</button>
-      </div>
-
-      <section id="iphone" aria-labelledby="iphone-title">
-        <h2 id="iphone-title">Pair your iPhone</h2>
-        <ol>
-          <li>Open <strong>Apps → Spotify</strong> on your Flipper. Scan the QR code with your iPhone to open Spotify.</li>
-          <li>On your iPhone, open <strong>Settings → Bluetooth</strong> and select <strong>Eddy Music</strong>. Confirm the pairing code if prompted.</li>
-          <li>Return to Spotify on your iPhone and play a song. Its title, artist and playback clock appear on your Flipper.</li>
-        </ol>
-        <a class="cta spotify-launch" href="https://open.spotify.com/">Open Spotify</a>
-        <p class="note">Eddy follows the active player on your iPhone. Choose Spotify for its music, then close this guide.</p>
-      </section>
-
-      <section id="android" aria-labelledby="android-title">
-        <h2 id="android-title">Pair your Android phone</h2>
-        <ol>
-          <li>Open <strong>Apps → Spotify</strong> on your Flipper. Scan the QR code with your phone to open Spotify.</li>
-          <li>In your phone’s Bluetooth settings, choose <strong>Pair new device → Eddy Music</strong>. Confirm the pairing code if prompted.</li>
-          <li>Return to Spotify and play a song. Use <strong>Left</strong>, <strong>OK</strong> and <strong>Right</strong> on the Flipper to control playback.</li>
-        </ol>
-        <a class="cta spotify-launch" href="https://open.spotify.com/">Open Spotify</a>
-        <p class="note" id="android-mode">Android pairs as a button remote. This build shows playback controls on the Flipper. Track details are available with iPhone pairing.</p>
-        <div id="bridge" hidden>
-          <h3>Show track details</h3>
-          <p>Link Spotify, then choose your Flipper. Keep this Chrome tab active while you use the remote. Spotify playback controls require Premium and an account eligible for this integration.</p>
-          <div class="bridge-actions">
-            <button id="link" class="cta" type="button">Link Spotify</button>
-            <button id="pair" class="cta" type="button" hidden>Choose Flipper</button>
-            <button id="disconnect" type="button" hidden>Disconnect Flipper</button>
-            <button id="unlink" type="button" hidden>Unlink Spotify</button>
-          </div>
-          <p id="notice" role="status"></p>
-          <div id="track" hidden>
-            <img src="spotify-white.svg" width="92" height="25" alt="Spotify">
-            <a id="song" target="_blank" rel="noopener"><strong id="title"></strong><span id="artist"></span></a>
-            <p id="times"></p>
-          </div>
-        </div>
-      </section>
-
-      <section class="controls" aria-labelledby="controls-title">
-        <h2 id="controls-title">On your Flipper</h2>
-        <div class="screens">
-          <figure><img src="handheld-setup.png" width="256" height="128" alt="Flipper setup screen with the QR code that opens Spotify."><figcaption>Scan to open Spotify</figcaption></figure>
-          <figure><img src="handheld-track.png" width="256" height="128" alt="Flipper track view showing a song, artist and playback progress."><figcaption>Flipper track view · sample song</figcaption></figure>
-        </div>
-        <p class="note">This first release has passed simulated playback tests. Pairing and reconnecting after a power cycle still need confirmation on physical phones and Flippers.</p>
-        <p>Eddy remembers your pairing. Press <strong>Up</strong> to see the Spotify QR code again.</p>
-        <dl><div><dt>Left</dt><dd>Previous</dd></div><div><dt>OK</dt><dd>Play / pause</dd></div><div><dt>Right</dt><dd>Next</dd></div></dl>
-      </section>
-    </main>
-  </body>
+  <body><p><a href="../spotify/">Open the Spotify guide</a></p></body>
 </html>

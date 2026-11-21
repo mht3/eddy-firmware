@@ -4,8 +4,7 @@
 
 typedef struct {
     uint32_t auto_lock_delay_ms;
-    uint8_t auto_lock_with_pin;
-    uint8_t usb_inhibit_auto_lock;
+    uint8_t reserved[2]; // Preserve the saved settings layout.
     uint8_t display_clock;
 } DesktopSettings;
 

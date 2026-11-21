@@ -1,3 +1,4 @@
+#include <storage/storage.h>
 #include "../desktop_settings_app.h"
 #include "applications.h"
 #include "desktop_settings_scene.h"
@@ -35,7 +36,9 @@ void desktop_settings_scene_keybinds_action_on_enter(void* context) {
                 pre_select_item = (uint32_t)FLIPPER_APPS[i].name;
             }
         }
+        Storage* storage = furi_record_open(RECORD_STORAGE);
         for(size_t i = 0; i < FLIPPER_EXTERNAL_APPS_COUNT; i++) {
+            if(!storage_file_exists(storage, FLIPPER_EXTERNAL_APPS[i].path)) continue;
             submenu_add_item(
                 submenu,
                 FLIPPER_EXTERNAL_APPS[i].name,
@@ -48,6 +51,7 @@ void desktop_settings_scene_keybinds_action_on_enter(void* context) {
                 pre_select_item = (uint32_t)FLIPPER_EXTERNAL_APPS[i].name;
             }
         }
+        furi_record_close(RECORD_STORAGE);
     } else if(action_type == DesktopSettingsAppKeybindActionTypeMoreActions) {
         for(size_t i = 0; i < EXTRA_KEYBINDS_COUNT; i++) {
             submenu_add_item(

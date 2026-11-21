@@ -1,3 +1,4 @@
+#include <storage/storage.h>
 #include "loader.h"
 
 #include <furi.h>
@@ -25,9 +26,12 @@ static void loader_cli_list(void) {
     for(size_t i = 0; i < FLIPPER_APPS_COUNT; i++) {
         printf("\t%s\r\n", FLIPPER_APPS[i].name);
     }
+    Storage* storage = furi_record_open(RECORD_STORAGE);
     for(size_t i = 0; i < FLIPPER_EXTERNAL_APPS_COUNT; i++) {
+        if(!storage_file_exists(storage, FLIPPER_EXTERNAL_APPS[i].path)) continue;
         printf("\t%s\r\n", FLIPPER_EXTERNAL_APPS[i].name);
     }
+    furi_record_close(RECORD_STORAGE);
     printf("Settings:\r\n");
     for(size_t i = 0; i < FLIPPER_SETTINGS_APPS_COUNT; i++) {
         printf("\t%s\r\n", FLIPPER_SETTINGS_APPS[i].name);

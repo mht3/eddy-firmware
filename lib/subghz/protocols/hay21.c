@@ -45,8 +45,8 @@ const SubGhzProtocolDecoder subghz_protocol_hay21_decoder = {
 
     .get_hash_data = NULL,
     .get_hash_data_long = subghz_protocol_decoder_hay21_get_hash_data,
-    .serialize = subghz_protocol_decoder_hay21_serialize,
-    .deserialize = subghz_protocol_decoder_hay21_deserialize,
+    .serialize = NULL,
+    .deserialize = NULL,
     .get_string = subghz_protocol_decoder_hay21_get_string,
     .get_string_brief = NULL,
 };
@@ -63,11 +63,10 @@ const SubGhzProtocolEncoder subghz_protocol_hay21_encoder = {
 const SubGhzProtocol subghz_protocol_hay21 = {
     .name = SUBGHZ_PROTOCOL_HAY21_NAME,
     .type = SubGhzProtocolTypeDynamic,
-    .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
-            SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
+    .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable,
 
     .decoder = &subghz_protocol_hay21_decoder,
-    .encoder = &subghz_protocol_hay21_encoder,
+    .encoder = NULL,
 };
 
 void* subghz_protocol_encoder_hay21_alloc(SubGhzEnvironment* environment) {

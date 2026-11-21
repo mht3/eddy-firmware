@@ -66,24 +66,6 @@ bool eddy_settings_app_apply(EddySettingsApp* app) {
         flipper_format_free(file);
     }
 
-    if(app->save_subghz) {
-        FlipperFormat* file = flipper_format_file_alloc(app->storage);
-        do {
-            if(!flipper_format_file_open_always(file, "/ext/subghz/assets/extend_range.txt"))
-                break;
-            if(!flipper_format_write_header_cstr(file, "Flipper SubGhz Setting File", 1)) break;
-            if(!flipper_format_write_comment_cstr(
-                   file, "Whether to allow extended ranges that can break your flipper"))
-                break;
-            if(!flipper_format_write_bool(
-                   file, "use_ext_range_at_own_risk", &app->subghz_extend, 1))
-                break;
-            if(!flipper_format_write_bool(file, "ignore_default_tx_region", &app->subghz_bypass, 1))
-                break;
-        } while(0);
-        flipper_format_free(file);
-    }
-
     if(app->save_name) {
         if(strcmp(app->device_name, "") == 0) {
             storage_simply_remove(app->storage, NAMESPOOF_PATH);
@@ -388,13 +370,6 @@ EddySettingsApp* eddy_settings_app_alloc() {
             }
         }
     } while(false);
-    flipper_format_free(file);
-
-    file = flipper_format_file_alloc(app->storage);
-    if(flipper_format_file_open_existing(file, "/ext/subghz/assets/extend_range.txt")) {
-        flipper_format_read_bool(file, "use_ext_range_at_own_risk", &app->subghz_extend, 1);
-        flipper_format_read_bool(file, "ignore_default_tx_region", &app->subghz_bypass, 1);
-    }
     flipper_format_free(file);
 
     strlcpy(app->device_name, furi_hal_version_get_name_ptr(), FURI_HAL_VERSION_ARRAY_NAME_LENGTH);

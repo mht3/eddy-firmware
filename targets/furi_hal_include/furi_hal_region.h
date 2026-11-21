@@ -32,7 +32,7 @@ void furi_hal_region_init(void);
  */
 const FuriHalRegion* furi_hal_region_get(void);
 
-/** Set device region data
+/** Release legacy region data without changing factory radio permissions.
  *
  * @param      region  pointer to the FuriHalRegion
  */
@@ -47,10 +47,7 @@ bool furi_hal_region_is_provisioned(void);
 /** Get region name
  * 
  * 2 letter Region code according to iso 3166 standard
- * There are 2 extra values that we use in special cases:
- * - "00" - developer edition, unlocked
- * - "WW" - world wide, region provisioned by default
- * - "--" - no provisioned region
+ * "--" indicates the device has no provisioned factory region.
  *
  * @return     Pointer to string
  */

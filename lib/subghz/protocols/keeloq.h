@@ -1,7 +1,6 @@
 #pragma once
 
 #include "base.h"
-#include "public_api.h"
 
 #define SUBGHZ_PROTOCOL_KEELOQ_NAME "KeeLoq"
 

@@ -68,8 +68,8 @@ const SubGhzProtocolDecoder subghz_protocol_nice_flor_s_decoder = {
 
     .get_hash_data = NULL,
     .get_hash_data_long = subghz_protocol_decoder_nice_flor_s_get_hash_data,
-    .serialize = subghz_protocol_decoder_nice_flor_s_serialize,
-    .deserialize = subghz_protocol_decoder_nice_flor_s_deserialize,
+    .serialize = NULL,
+    .deserialize = NULL,
     .get_string = subghz_protocol_decoder_nice_flor_s_get_string,
     .get_string_brief = NULL,
 };
@@ -87,11 +87,10 @@ const SubGhzProtocol subghz_protocol_nice_flor_s = {
     .name = SUBGHZ_PROTOCOL_NICE_FLOR_S_NAME,
     .type = SubGhzProtocolTypeDynamic,
     .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_868 | SubGhzProtocolFlag_AM |
-            SubGhzProtocolFlag_Decodable | SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save |
-            SubGhzProtocolFlag_Send,
+            SubGhzProtocolFlag_Decodable,
 
     .decoder = &subghz_protocol_nice_flor_s_decoder,
-    .encoder = &subghz_protocol_nice_flor_s_encoder,
+    .encoder = NULL,
 
     .filter = SubGhzProtocolFilter_NiceFlorS,
 };

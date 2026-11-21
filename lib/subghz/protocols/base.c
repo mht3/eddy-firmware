@@ -40,8 +40,9 @@ SubGhzProtocolStatus subghz_protocol_decoder_base_serialize(
 
     SubGhzProtocolStatus status = SubGhzProtocolStatusError;
 
-    if(decoder_base->protocol && decoder_base->protocol->decoder &&
-       decoder_base->protocol->decoder->serialize) {
+    if(decoder_base->protocol && decoder_base->protocol->type != SubGhzProtocolTypeDynamic &&
+       decoder_base->protocol->type != SubGhzProtocolTypeBinRAW &&
+       decoder_base->protocol->decoder && decoder_base->protocol->decoder->serialize) {
         status = decoder_base->protocol->decoder->serialize(decoder_base, flipper_format, preset);
     }
 
@@ -55,8 +56,9 @@ SubGhzProtocolStatus subghz_protocol_decoder_base_deserialize(
 
     SubGhzProtocolStatus status = SubGhzProtocolStatusError;
 
-    if(decoder_base->protocol && decoder_base->protocol->decoder &&
-       decoder_base->protocol->decoder->deserialize) {
+    if(decoder_base->protocol && decoder_base->protocol->type != SubGhzProtocolTypeDynamic &&
+       decoder_base->protocol->type != SubGhzProtocolTypeBinRAW &&
+       decoder_base->protocol->decoder && decoder_base->protocol->decoder->deserialize) {
         status = decoder_base->protocol->decoder->deserialize(decoder_base, flipper_format);
     }
 

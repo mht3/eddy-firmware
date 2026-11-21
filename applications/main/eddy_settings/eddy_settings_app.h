@@ -75,8 +75,6 @@ typedef struct {
     uint8_t subghz_static_index;
     FrequencyList_t subghz_hopper_freqs;
     uint8_t subghz_hopper_index;
-    bool subghz_extend;
-    bool subghz_bypass;
     RgbColor lcd_color;
     RgbColor vgm_color;
     char device_name[FURI_HAL_VERSION_ARRAY_NAME_LENGTH];
@@ -87,7 +85,6 @@ typedef struct {
     bool save_mainmenu_apps;
     bool save_desktop;
     bool save_subghz_freqs;
-    bool save_subghz;
     bool save_name;
     bool save_xp;
     bool save_angry;

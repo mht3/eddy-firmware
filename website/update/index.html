@@ -3,9 +3,11 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Web updater · Eddy Firmware</title>
+    <title>Choose your apps · Eddy Firmware</title>
     <link rel="icon" href="../eddy.svg">
     <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="picker.css">
+    <script type="module" src="picker.js"></script>
     <script type="module" src="update.js"></script>
   </head>
   <body>
@@ -21,26 +23,46 @@
         </nav>
       </div>
     </header>
-    <main class="install-wrap updater">
-      <div>
-        <div class="eyebrow"><i></i> FLIPPER ZERO · F7</div>
-        <h1>Eddy updater.</h1>
-        <p>Insert a microSD card, connect your Flipper with a USB data cable, and close qFlipper and Flipper Lab.</p>
+    <main class="updater catalog-page">
+      <div class="catalog-intro">
+        <h1>Choose your apps.</h1>
+        <p>Pick the tools you want on your Flipper Zero. Try them in the emulator before you install.</p>
+        <a class="skip-to-install" href="#your-build">Go to installation</a>
       </div>
-      <section class="release" aria-labelledby="release-title">
-        <h2 id="release-title">Main build</h2>
-        <p>Includes Sub-GHz, RFID, NFC, Infrared, GPIO, iButton, and Pomodoro Timer.</p>
-        <p id="build-status" role="status">Checking for a release…</p>
-        <button class="cta" id="action" disabled>Connect Flipper Zero</button>
-        <p id="connection" role="status"></p>
-        <progress id="progress" aria-label="Transfer progress" hidden></progress>
-        <div class="downloads">
-          <a id="download" hidden>Download for qFlipper</a>
-          <a id="lab" hidden>Open in Flipper Lab</a>
-          <a id="source" hidden>Source for this build</a>
+      <div class="catalog-layout">
+        <div class="catalog-library">
+          <fieldset id="app-picker">
+            <legend class="sr-only">Apps to install</legend>
+            <h2 id="core-heading">Core tools</h2>
+            <ul id="core-apps" class="app-grid" aria-labelledby="core-heading"></ul>
+            <h2 id="extras-heading">Extras</h2>
+            <ul id="extra-apps" class="app-grid" aria-labelledby="extras-heading"></ul>
+          </fieldset>
+          <p class="app-idea">Another app idea? <a href="https://github.com/mht3/eddy-firmware/issues/new?template=02_enhancements.yml">Make a feature request!</a></p>
         </div>
-        <noscript>Enable JavaScript to load the current build.</noscript>
-      </section>
+        <section class="release build-panel" id="your-build" aria-labelledby="release-title">
+          <h2 id="release-title">Your build</h2>
+          <p id="app-count" role="status"></p>
+          <a class="menu-preview" id="try-app-menu" href="../#home-screen">
+            <span class="flipper-preview" aria-hidden="true">
+              <img src="../models/front.webp" width="1600" height="800" alt="">
+              <canvas width="384" height="192" id="selected-screen"></canvas>
+            </span>
+            <span class="preview-caption">Try my Apps menu</span>
+          </a>
+          <p class="install-help">Insert your microSD card and connect your Flipper with a USB data cable. Close qFlipper and Flipper Lab before connecting.</p>
+          <button class="cta" id="action" disabled>Connect Flipper Zero</button>
+          <p id="connection" role="status"></p>
+          <progress id="progress" aria-label="Transfer progress" hidden></progress>
+          <p id="build-status" role="status">Checking for a release…</p>
+          <div class="downloads">
+            <button id="download" type="button" hidden disabled>Download for qFlipper</button>
+            <a id="lab" hidden>Open in Flipper Lab</a>
+            <a id="source" hidden>Source for this build</a>
+          </div>
+          <noscript>Enable JavaScript to choose apps and load the current build.</noscript>
+        </section>
+      </div>
     </main>
   </body>
 </html>

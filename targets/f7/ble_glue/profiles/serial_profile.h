@@ -18,6 +18,23 @@ typedef enum {
 /** Serial service callback type */
 typedef SerialServiceEventCallback FuriHalBtSerialCallback;
 
+/** Shared music accessory on the normal, bonded Flipper connection.
+ * A listener receives the current uint16_t handle (UINT16_MAX when disconnected),
+ * controller events for AMS, and authenticated playback frames.
+ * The callback must not call these functions. Unlisten before freeing its context.
+ */
+typedef enum {
+    BleMediaLink,
+    BleMediaRadio,
+    BleMediaFrame,
+} BleMediaEvent;
+typedef void (
+    *BleMediaEventCallback)(BleMediaEvent event, const void* data, size_t size, void* context);
+
+bool ble_svc_media_listen(BleMediaEventCallback callback, void* context);
+void ble_svc_media_unlisten(void* context);
+bool ble_svc_media_send(void* context, uint8_t command, bool hid);
+
 /** Serial profile descriptor */
 extern const FuriHalBleProfileTemplate* const ble_profile_serial;
 

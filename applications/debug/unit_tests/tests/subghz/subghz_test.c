@@ -763,10 +763,10 @@ MU_TEST(subghz_encoder_nice_flo_test) {
         "Test encoder " SUBGHZ_PROTOCOL_NICE_FLO_NAME " error\r\n");
 }
 
-MU_TEST(subghz_encoder_keeloq_test) {
+MU_TEST(subghz_keeloq_encoder_unavailable_test) {
     mu_assert(
-        subghz_encoder_test(EXT_PATH("unit_tests/subghz/doorhan.sub")),
-        "Test encoder " SUBGHZ_PROTOCOL_KEELOQ_NAME " error\r\n");
+        !subghz_transmitter_alloc_init(environment_handler, SUBGHZ_PROTOCOL_KEELOQ_NAME),
+        "Dynamic encoder must be unavailable");
 }
 
 MU_TEST(subghz_encoder_linear_test) {
@@ -793,16 +793,16 @@ MU_TEST(subghz_encoder_holtek_test) {
         "Test encoder " SUBGHZ_PROTOCOL_HOLTEK_NAME " error\r\n");
 }
 
-MU_TEST(subghz_encoder_secplus_v1_test) {
+MU_TEST(subghz_secplus_v1_encoder_unavailable_test) {
     mu_assert(
-        subghz_encoder_test(EXT_PATH("unit_tests/subghz/security_pls_1_0.sub")),
-        "Test encoder " SUBGHZ_PROTOCOL_SECPLUS_V1_NAME " error\r\n");
+        !subghz_transmitter_alloc_init(environment_handler, SUBGHZ_PROTOCOL_SECPLUS_V1_NAME),
+        "Dynamic encoder must be unavailable");
 }
 
-MU_TEST(subghz_encoder_secplus_v2_test) {
+MU_TEST(subghz_secplus_v2_encoder_unavailable_test) {
     mu_assert(
-        subghz_encoder_test(EXT_PATH("unit_tests/subghz/security_pls_2_0.sub")),
-        "Test encoder " SUBGHZ_PROTOCOL_SECPLUS_V2_NAME " error\r\n");
+        !subghz_transmitter_alloc_init(environment_handler, SUBGHZ_PROTOCOL_SECPLUS_V2_NAME),
+        "Dynamic encoder must be unavailable");
 }
 
 MU_TEST(subghz_encoder_power_smart_test) {
@@ -829,10 +829,10 @@ MU_TEST(subghz_encoder_doitrand_test) {
         "Test encoder " SUBGHZ_PROTOCOL_DOITRAND_NAME " error\r\n");
 }
 
-MU_TEST(subghz_encoder_phoenix_v2_test) {
+MU_TEST(subghz_phoenix_v2_encoder_unavailable_test) {
     mu_assert(
-        subghz_encoder_test(EXT_PATH("unit_tests/subghz/phoenix_v2.sub")),
-        "Test encoder " SUBGHZ_PROTOCOL_PHOENIX_V2_NAME " error\r\n");
+        !subghz_transmitter_alloc_init(environment_handler, SUBGHZ_PROTOCOL_PHOENIX_V2_NAME),
+        "Dynamic encoder must be unavailable");
 }
 
 MU_TEST(subghz_encoder_honeywell_wdb_test) {
@@ -1011,18 +1011,18 @@ MU_TEST_SUITE(subghz) {
     MU_RUN_TEST(subghz_encoder_came_twee_test);
     MU_RUN_TEST(subghz_encoder_gate_tx_test);
     MU_RUN_TEST(subghz_encoder_nice_flo_test);
-    MU_RUN_TEST(subghz_encoder_keeloq_test);
+    MU_RUN_TEST(subghz_keeloq_encoder_unavailable_test);
     MU_RUN_TEST(subghz_encoder_linear_test);
     MU_RUN_TEST(subghz_encoder_linear_delta3_test);
     MU_RUN_TEST(subghz_encoder_megacode_test);
     MU_RUN_TEST(subghz_encoder_holtek_test);
-    MU_RUN_TEST(subghz_encoder_secplus_v1_test);
-    MU_RUN_TEST(subghz_encoder_secplus_v2_test);
+    MU_RUN_TEST(subghz_secplus_v1_encoder_unavailable_test);
+    MU_RUN_TEST(subghz_secplus_v2_encoder_unavailable_test);
     MU_RUN_TEST(subghz_encoder_power_smart_test);
     MU_RUN_TEST(subghz_encoder_marantec_test);
     MU_RUN_TEST(subghz_encoder_bett_test);
     MU_RUN_TEST(subghz_encoder_doitrand_test);
-    MU_RUN_TEST(subghz_encoder_phoenix_v2_test);
+    MU_RUN_TEST(subghz_phoenix_v2_encoder_unavailable_test);
     MU_RUN_TEST(subghz_encoder_honeywell_wdb_test);
     MU_RUN_TEST(subghz_encoder_magellan_test);
     MU_RUN_TEST(subghz_encoder_intertechno_v3_test);

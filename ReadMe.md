@@ -10,9 +10,9 @@ Eddy is a new firmware for Flipper Zero! Eddy started from Next-Flip’s Momentu
 
 [Install the main build](https://mht3.github.io/eddy-firmware/update/) · [Try the home screen](https://mht3.github.io/eddy-firmware/#home-screen) · [Read the wiki](https://mht3.github.io/eddy-firmware/wiki/)
 
-**Apps → Spotify** shows a QR code on the Flipper that opens Spotify on your phone. Pair **Eddy Music** in the phone’s Bluetooth settings and start a song. On iPhone, the screen shows the current song, artist and playback time using Apple Media Service. **Left / Right** select the previous / next track. **OK** plays or pauses. Audio stays on the phone or its chosen speaker. Eddy remembers the pairing across power cycles. Press **Up** in the Flipper app to see the QR again. [Setup guide and screen captures](https://mht3.github.io/eddy-firmware/music/)
+Pair your phone with your Flipper once in Bluetooth settings. Spotify uses the same connection after a power cycle. [Bluetooth pairing guide](https://mht3.github.io/eddy-firmware/bluetooth/)
 
-Android supports the three playback buttons on phones that accept Bluetooth media controls. Track information on Android requires the optional browser connection and publisher access to the Spotify Web API. See the setup guide for its availability.
+Open **Apps → Spotify** on the Flipper. Scan its first-run QR code to open Spotify on your phone, press **OK** on the Flipper to dismiss the code, and play a song. **Left / Right** skip tracks and **OK** plays or pauses. Press **Up** to see the QR code again. On iPhone, the current song, artist and playback time appear on the Flipper through Apple Media Service. Android phones with Bluetooth media controls support the three playback buttons. [Spotify guide and screen captures](https://mht3.github.io/eddy-firmware/spotify/) · [Apple Media Service reference](https://developer.apple.com/library/archive/documentation/CoreBluetooth/Reference/AppleMediaService_Reference/Introduction/Introduction.html)
 
 Other apps include Sub-GHz, RFID, NFC, Infrared, GPIO, iButton, Pomodoro Timer, Metronome, Remote Builder, and Bluetooth Remote. In Infrared, choose **Learn a remote** to save your own buttons. Saved remotes appear under **My remotes**.
 
@@ -33,7 +33,7 @@ git submodule update --init --jobs 8 -- assets/protobuf lib
 FBT_NO_SYNC=1 ./fbt updater_package
 ```
 
-FBT downloads the Flipper toolchain on its first run. The update archive appears under `dist/f7-C/flipper-z-f7-update-eddy-*.tgz`. The main build selects its applications explicitly. The inherited third-party app collection is optional source and is outside the main package.
+FBT downloads the Flipper toolchain on its first run. The update archive appears under `dist/f7-C/flipper-z-f7-update-eddy-*.tgz`. The main build selects its applications explicitly. The website lets you choose which of the eleven app binaries to install.
 
 Use qFlipper’s **Install from file** with the TGZ, or connect the powered-on device with its microSD card installed, close qFlipper, and use the build tool.
 
@@ -56,7 +56,7 @@ python3 scripts/eddy_site.py
 python3 -m http.server --bind 127.0.0.1 --directory dist/eddy-site 8000
 ```
 
-Open `http://127.0.0.1:8000/update/` in desktop Chrome or Edge. The Eddy updater uses Web Serial on localhost or HTTPS. It verifies the downloaded components, copies them to the microSD card, and asks the Flipper to verify the package and restart. The same page offers the full TGZ for qFlipper.
+Open `http://127.0.0.1:8000/update/` in desktop Chrome or Edge. The Eddy updater uses Web Serial on localhost or HTTPS. It verifies the downloaded components, copies them to the microSD card, and asks the Flipper to verify the package and restart. The same page offers your selected apps as a TGZ for qFlipper.
 
 The public updater and its firmware are hosted on GitHub Pages. Each published build links back to its source revision.
 

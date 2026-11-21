@@ -1,56 +1,10 @@
 #include "../eddy_settings_app.h"
 
-enum VarItemListIndex {
-    VarItemListIndexLockOnBoot,
-    VarItemListIndexFormatOn10BadPins,
-    VarItemListIndexPinUnlockFromApp,
-    VarItemListIndexShowTime,
-    VarItemListIndexShowSeconds,
-    VarItemListIndexShowDate,
-    VarItemListIndexShowStatusbar,
-    VarItemListIndexUnlockPrompt,
-};
-
 void eddy_settings_app_scene_interface_lockscreen_var_item_list_callback(
     void* context,
     uint32_t index) {
     EddySettingsApp* app = context;
     view_dispatcher_send_custom_event(app->view_dispatcher, index);
-}
-
-static void eddy_settings_app_scene_interface_lockscreen_lock_on_boot_changed(VariableItem* item) {
-    EddySettingsApp* app = variable_item_get_context(item);
-    bool value = variable_item_get_current_value_index(item);
-    variable_item_set_current_value_text(item, value ? "ON" : "OFF");
-    momentum_settings.lock_on_boot = value;
-    app->save_settings = true;
-}
-
-static void
-    eddy_settings_app_scene_interface_lockscreen_bad_pins_format_changed(VariableItem* item) {
-    EddySettingsApp* app = variable_item_get_context(item);
-    bool value = variable_item_get_current_value_index(item);
-    variable_item_set_current_value_text(item, value ? "ON" : "OFF");
-    momentum_settings.bad_pins_format = value;
-    app->save_settings = true;
-}
-
-static void
-    eddy_settings_app_scene_interface_lockscreen_allow_locked_rpc_usb_changed(VariableItem* item) {
-    EddySettingsApp* app = variable_item_get_context(item);
-    bool value = variable_item_get_current_value_index(item);
-    variable_item_set_current_value_text(item, value ? "ON" : "OFF");
-    momentum_settings.allow_locked_rpc_usb = value;
-    app->save_settings = true;
-}
-
-static void
-    eddy_settings_app_scene_interface_lockscreen_allow_locked_rpc_ble_changed(VariableItem* item) {
-    EddySettingsApp* app = variable_item_get_context(item);
-    bool value = variable_item_get_current_value_index(item);
-    variable_item_set_current_value_text(item, value ? "ON" : "OFF");
-    momentum_settings.allow_locked_rpc_ble = value;
-    app->save_settings = true;
 }
 
 static void
@@ -129,44 +83,6 @@ void eddy_settings_app_scene_interface_lockscreen_on_enter(void* context) {
     EddySettingsApp* app = context;
     VariableItemList* var_item_list = app->var_item_list;
     VariableItem* item;
-
-    item = variable_item_list_add(
-        var_item_list,
-        "Lock on Boot if PIN set",
-        2,
-        eddy_settings_app_scene_interface_lockscreen_lock_on_boot_changed,
-        app);
-    variable_item_set_current_value_index(item, momentum_settings.lock_on_boot);
-    variable_item_set_current_value_text(item, momentum_settings.lock_on_boot ? "ON" : "OFF");
-
-    item = variable_item_list_add(
-        var_item_list,
-        "Format on 10 Bad PINs",
-        2,
-        eddy_settings_app_scene_interface_lockscreen_bad_pins_format_changed,
-        app);
-    variable_item_set_current_value_index(item, momentum_settings.bad_pins_format);
-    variable_item_set_current_value_text(item, momentum_settings.bad_pins_format ? "ON" : "OFF");
-
-    item = variable_item_list_add(
-        var_item_list,
-        "Allow USB RPC While Locked",
-        2,
-        eddy_settings_app_scene_interface_lockscreen_allow_locked_rpc_usb_changed,
-        app);
-    variable_item_set_current_value_index(item, momentum_settings.allow_locked_rpc_usb);
-    variable_item_set_current_value_text(
-        item, momentum_settings.allow_locked_rpc_usb ? "ON" : "OFF");
-
-    item = variable_item_list_add(
-        var_item_list,
-        "Allow BLE RPC While Locked",
-        2,
-        eddy_settings_app_scene_interface_lockscreen_allow_locked_rpc_ble_changed,
-        app);
-    variable_item_set_current_value_index(item, momentum_settings.allow_locked_rpc_ble);
-    variable_item_set_current_value_text(
-        item, momentum_settings.allow_locked_rpc_ble ? "ON" : "OFF");
 
     item = variable_item_list_add(
         var_item_list,

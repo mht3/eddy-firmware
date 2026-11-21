@@ -61,8 +61,8 @@ const SubGhzProtocolDecoder subghz_protocol_alutech_at_4n_decoder = {
 
     .get_hash_data = NULL,
     .get_hash_data_long = subghz_protocol_decoder_alutech_at_4n_get_hash_data,
-    .serialize = subghz_protocol_decoder_alutech_at_4n_serialize,
-    .deserialize = subghz_protocol_decoder_alutech_at_4n_deserialize,
+    .serialize = NULL,
+    .deserialize = NULL,
     .get_string = subghz_protocol_decoder_alutech_at_4n_get_string,
     .get_string_brief = NULL,
 };
@@ -79,11 +79,10 @@ const SubGhzProtocolEncoder subghz_protocol_alutech_at_4n_encoder = {
 const SubGhzProtocol subghz_protocol_alutech_at_4n = {
     .name = SUBGHZ_PROTOCOL_ALUTECH_AT_4N_NAME,
     .type = SubGhzProtocolTypeDynamic,
-    .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
-            SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
+    .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable,
 
     .decoder = &subghz_protocol_alutech_at_4n_decoder,
-    .encoder = &subghz_protocol_alutech_at_4n_encoder,
+    .encoder = NULL,
 };
 
 static void subghz_protocol_alutech_at_4n_remote_controller(

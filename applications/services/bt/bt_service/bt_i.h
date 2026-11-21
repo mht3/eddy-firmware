@@ -87,7 +87,6 @@ struct Bt {
     BtStatusChangedCallback status_changed_cb;
     void* status_changed_ctx;
 
-    bool suppress_pin_screen;
     bool has_connected_peer;
     uint8_t connected_peer[GAP_MAC_ADDR_SIZE];
 };

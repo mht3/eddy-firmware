@@ -92,7 +92,7 @@ bool desktop_scene_locked_on_event(void* context, SceneManagerEvent event) {
         }
         case DesktopLockedEventUnlocked:
         case DesktopGlobalApiUnlock:
-            desktop_unlock(desktop);
+            if(!furi_hal_rtc_is_flag_set(FuriHalRtcFlagLock)) desktop_unlock(desktop);
             consumed = true;
             break;
         case DesktopLockedEventCoversClosed:

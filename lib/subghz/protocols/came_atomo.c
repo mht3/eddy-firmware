@@ -53,8 +53,8 @@ const SubGhzProtocolDecoder subghz_protocol_came_atomo_decoder = {
 
     .get_hash_data = NULL,
     .get_hash_data_long = subghz_protocol_decoder_came_atomo_get_hash_data,
-    .serialize = subghz_protocol_decoder_came_atomo_serialize,
-    .deserialize = subghz_protocol_decoder_came_atomo_deserialize,
+    .serialize = NULL,
+    .deserialize = NULL,
     .get_string = subghz_protocol_decoder_came_atomo_get_string,
     .get_string_brief = NULL,
 };
@@ -71,11 +71,10 @@ const SubGhzProtocolEncoder subghz_protocol_came_atomo_encoder = {
 const SubGhzProtocol subghz_protocol_came_atomo = {
     .name = SUBGHZ_PROTOCOL_CAME_ATOMO_NAME,
     .type = SubGhzProtocolTypeDynamic,
-    .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
-            SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save | SubGhzProtocolFlag_Send,
+    .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable,
 
     .decoder = &subghz_protocol_came_atomo_decoder,
-    .encoder = &subghz_protocol_came_atomo_encoder,
+    .encoder = NULL,
 };
 
 static void subghz_protocol_came_atomo_remote_controller(SubGhzBlockGeneric* instance);

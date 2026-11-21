@@ -68,8 +68,8 @@ const SubGhzProtocolDecoder subghz_protocol_secplus_v1_decoder = {
 
     .get_hash_data = NULL,
     .get_hash_data_long = subghz_protocol_decoder_secplus_v1_get_hash_data,
-    .serialize = subghz_protocol_decoder_secplus_v1_serialize,
-    .deserialize = subghz_protocol_decoder_secplus_v1_deserialize,
+    .serialize = NULL,
+    .deserialize = NULL,
     .get_string = subghz_protocol_decoder_secplus_v1_get_string,
     .get_string_brief = NULL,
 };
@@ -86,11 +86,10 @@ const SubGhzProtocolEncoder subghz_protocol_secplus_v1_encoder = {
 const SubGhzProtocol subghz_protocol_secplus_v1 = {
     .name = SUBGHZ_PROTOCOL_SECPLUS_V1_NAME,
     .type = SubGhzProtocolTypeDynamic,
-    .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable |
-            SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Send | SubGhzProtocolFlag_Save,
+    .flag = SubGhzProtocolFlag_315 | SubGhzProtocolFlag_AM | SubGhzProtocolFlag_Decodable,
 
     .decoder = &subghz_protocol_secplus_v1_decoder,
-    .encoder = &subghz_protocol_secplus_v1_encoder,
+    .encoder = NULL,
 };
 
 void* subghz_protocol_encoder_secplus_v1_alloc(SubGhzEnvironment* environment) {

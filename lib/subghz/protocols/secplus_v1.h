@@ -1,7 +1,6 @@
 #pragma once
 
 #include "base.h"
-#include "public_api.h"
 
 #define SUBGHZ_PROTOCOL_SECPLUS_V1_NAME "Security+ 1.0"
 

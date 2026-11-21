@@ -67,8 +67,8 @@ const SubGhzProtocolDecoder subghz_protocol_faac_slh_decoder = {
 
     .get_hash_data = NULL,
     .get_hash_data_long = subghz_protocol_decoder_faac_slh_get_hash_data,
-    .serialize = subghz_protocol_decoder_faac_slh_serialize,
-    .deserialize = subghz_protocol_decoder_faac_slh_deserialize,
+    .serialize = NULL,
+    .deserialize = NULL,
     .get_string = subghz_protocol_decoder_faac_slh_get_string,
     .get_string_brief = NULL,
 };
@@ -86,11 +86,10 @@ const SubGhzProtocol subghz_protocol_faac_slh = {
     .name = SUBGHZ_PROTOCOL_FAAC_SLH_NAME,
     .type = SubGhzProtocolTypeDynamic,
     .flag = SubGhzProtocolFlag_433 | SubGhzProtocolFlag_868 | SubGhzProtocolFlag_AM |
-            SubGhzProtocolFlag_Decodable | SubGhzProtocolFlag_Load | SubGhzProtocolFlag_Save |
-            SubGhzProtocolFlag_Send,
+            SubGhzProtocolFlag_Decodable,
 
     .decoder = &subghz_protocol_faac_slh_decoder,
-    .encoder = &subghz_protocol_faac_slh_encoder,
+    .encoder = NULL,
 };
 
 /** 

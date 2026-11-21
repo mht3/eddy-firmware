@@ -11,21 +11,12 @@
 SubGhzBlockGenericGlobal subghz_block_generic_global; //global structure for subghz
 
 void subghz_block_generic_global_counter_override_set(uint32_t counter) {
-    subghz_block_generic_global.new_cnt = counter; // set global variable
-    subghz_block_generic_global.cnt_need_override = true; // set flag for protocols
+    UNUSED(counter); // Compatibility with older SDK clients.
 }
 
 bool subghz_block_generic_global_counter_override_get(uint32_t* counter) {
-    // if override flag was enabled then return succes TRUE and return overrided counter, else return success = FALSE
-    // we cut counter bits length to available protocol bits length by the logical AND function
-    if(subghz_block_generic_global.cnt_need_override) {
-        *counter = subghz_block_generic_global.new_cnt &
-                   ((0xFFFFFFFF >> (32 - subghz_block_generic_global.cnt_length_bit)));
-        subghz_block_generic_global.cnt_need_override = false;
-        return true;
-    } else {
-        return false;
-    }
+    UNUSED(counter);
+    return false;
 }
 
 void subghz_block_generic_global_button_override_set(uint8_t button) {

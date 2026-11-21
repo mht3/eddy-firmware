@@ -69,10 +69,7 @@ typedef struct {
     int32_t cycle_anims;
     bool unlock_anims;
     MenuStyle menu_style;
-    bool lock_on_boot;
-    bool bad_pins_format;
-    bool allow_locked_rpc_usb;
-    bool allow_locked_rpc_ble;
+    bool reserved_lock[4]; // Preserve the SDK structure layout.
     bool lockscreen_poweroff;
     bool lockscreen_time;
     bool lockscreen_seconds;
