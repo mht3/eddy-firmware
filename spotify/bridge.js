@@ -99,8 +99,9 @@ async function connect(device, onCommand, onDrop) {
 
 export async function startBridge(id, scanned = false) {
   let session, lastDevice, pending = false, cooldown = 0;
-  let attempt = 0;
-  const droppedMessage = 'Bluetooth disconnected. Open Apps → Spotify on your Flipper, then select Reconnect Flipper here.';
+  let attempt = 0, retryTimer, retryIndex = 0;
+  const retryDelays = [1000, 3000, 6000, 12000, 24000, 30000];
+  const droppedMessage = 'Waiting for your Flipper. Leave this tab open and turn your Flipper back on.';
   const notice = text => { get('notice').textContent = text; };
   function render() {
     const ready = linked(id);
@@ -108,7 +109,8 @@ export async function startBridge(id, scanned = false) {
     get('pair').hidden = !ready || Boolean(session);
     get('pair').textContent = lastDevice ? 'Reconnect Flipper' : 'Choose Flipper';
     get('unlink').hidden = !ready;
-    get('disconnect').hidden = !session;
+    get('disconnect').hidden = !session && !retryIndex;
+    get('disconnect').textContent = session ? 'Disconnect Flipper' : 'Stop reconnecting';
     get('pair').disabled = get('link').disabled = get('unlink').disabled = get('disconnect').disabled = pending;
   }
   async function disconnect(message, goodbye = false) {
@@ -134,6 +136,28 @@ export async function startBridge(id, scanned = false) {
     render();
     notice(message);
   }
+  function cancelReconnect() {
+    clearTimeout(retryTimer);
+    retryIndex = 0;
+  }
+  function scheduleReconnect() {
+    if (!lastDevice || !linked(id)) return;
+    if (retryIndex === retryDelays.length) {
+      cancelReconnect();
+      render();
+      notice('Open Apps → Spotify on your Flipper, then select Reconnect Flipper here.');
+      return;
+    }
+    clearTimeout(retryTimer);
+    retryTimer = setTimeout(() => {
+      if (lastDevice && !session && !pending && linked(id)) pair(true);
+    }, retryDelays[retryIndex++]);
+    render();
+  }
+  function lostConnection() {
+    disconnect(droppedMessage);
+    scheduleReconnect();
+  }
   function forgetPage(current) {
     current.controller?.abort();
     current.active = current.waiting = current.page = null;
@@ -146,7 +170,7 @@ export async function startBridge(id, scanned = false) {
       const op = Date.now() - current.lastSeen >= 40000 ? 0x15 : 0x17;
       if (op === hello) forgetPage(current);
       try { await current.device.write(Uint8Array.of(op), () => session === current); }
-      catch { if (session === current) disconnect(droppedMessage); return; }
+      catch { if (session === current) lostConnection(); return; }
       if (session === current) {
         current.lastSeen = Date.now();
         heartbeat(current);
@@ -163,7 +187,7 @@ export async function startBridge(id, scanned = false) {
     if (op === hello) {
       forgetPage(current);
       try { await current.device.write(Uint8Array.of(hello), () => session === current); }
-      catch { if (session === current) disconnect(droppedMessage); }
+      catch { if (session === current) lostConnection(); }
       return;
     }
     const first = categories.has(op);
@@ -223,12 +247,12 @@ export async function startBridge(id, scanned = false) {
     } catch (error) {
       if (!active()) return;
       showLibraryLinks();
-      if (writing) { disconnect(droppedMessage); return; }
+      if (writing) { lostConnection(); return; }
       const issue = error instanceof PlaybackError ? error : new PlaybackError(2, 'Connection interrupted. Retry on your Flipper.');
       if (issue.retryMs) cooldown = Date.now() + issue.retryMs;
       notice(issue.message);
       try { await send(packet(0x13, token, issue.code)); }
-      catch { if (active()) disconnect(droppedMessage); return; }
+      catch { if (active()) lostConnection(); return; }
       if (active() && issue.code === 1) { lastDevice = null; unlink(); disconnect(issue.message); }
     } finally {
       if (active()) {
@@ -244,7 +268,8 @@ export async function startBridge(id, scanned = false) {
     try { await authorize(id); }
     catch { pending = false; render(); notice('Allow session storage in this tab and try linking Spotify again.'); }
   };
-  get('pair').onclick = async () => {
+  async function pair(recovering = false) {
+    if (!recovering) cancelReconnect();
     pending = true;
     render();
     notice(lastDevice ? 'Reconnecting to your Flipper…' : 'Choose your Flipper and leave Apps → Spotify open.');
@@ -252,7 +277,7 @@ export async function startBridge(id, scanned = false) {
     const sequence = ++attempt;
     try {
       current.device = await connect(lastDevice, request => respond(current, request), () => {
-        if (session === current) disconnect(droppedMessage);
+        if (session === current) lostConnection();
       });
       if (sequence !== attempt || !linked(id)) { current.device.close(); return; }
       session = current;
@@ -260,11 +285,18 @@ export async function startBridge(id, scanned = false) {
       notice('Connected to ' + current.device.name + '. Open Apps → Spotify to browse your library.');
       await current.device.write(Uint8Array.of(0x15));
       if (session === current) {
+        cancelReconnect();
         current.lastSeen = Date.now();
         heartbeat(current);
       }
     } catch (error) {
       if (sequence !== attempt) return;
+      if (recovering && lastDevice && linked(id)) {
+        if (session === current) disconnect(droppedMessage);
+        else notice(droppedMessage);
+        scheduleReconnect();
+        return;
+      }
       // Allow a fresh chooser after a failed reconnect (for example, a forgotten OS pairing).
       lastDevice = null;
       const message = error.name === 'NotFoundError' ? 'No Flipper selected. You can choose again.' :
@@ -272,10 +304,11 @@ export async function startBridge(id, scanned = false) {
       if (session === current) disconnect(message);
       else notice(message);
     } finally { pending = false; render(); }
-  };
-  get('disconnect').onclick = () => { lastDevice = null; return disconnect('Flipper disconnected.', true); };
-  get('unlink').onclick = () => { ++attempt; lastDevice = null; unlink(); return disconnect('Spotify unlinked from this tab.', true); };
-  window.addEventListener('pagehide', () => { ++attempt; lastDevice = null; disconnect(''); });
+  }
+  get('pair').onclick = () => pair();
+  get('disconnect').onclick = () => { cancelReconnect(); lastDevice = null; return disconnect('Flipper disconnected.', true); };
+  get('unlink').onclick = () => { cancelReconnect(); ++attempt; lastDevice = null; unlink(); return disconnect('Spotify unlinked from this tab.', true); };
+  window.addEventListener('pagehide', () => { cancelReconnect(); ++attempt; lastDevice = null; disconnect(''); });
   get('bridge').hidden = false;
   pending = true;
   render();

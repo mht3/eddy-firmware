@@ -11,7 +11,10 @@ function loadNotes() {
 
 export function listNotes(category) {
   return loadNotes().filter(note => note.category === category)
-    .sort((a,b) => a.name.localeCompare(b.name));
+    .sort((a,b) => {
+      const left = a.name.toLowerCase(), right = b.name.toLowerCase();
+      return left < right ? -1 : left > right ? 1 : 0;
+    });
 }
 
 export function nameNote(category, detail, saved) {

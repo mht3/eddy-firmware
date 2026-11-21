@@ -2,9 +2,9 @@
   "parts": [
     {
       "name": "firmware.dfu",
-      "size": 800353,
-      "sha256": "1b82b6fbd19926fde441d975b5838ddf9da1405d6907c44a57c92aa72981ec7c",
-      "md5": "1def685021179207a584da15dfb394b9"
+      "size": 800433,
+      "sha256": "10c8c564c0e1ee5e2e1b015f2746547762d22337f3211e8d3c56d148f94b7b51",
+      "md5": "e528bf1da34cca593e8f51c6c380cac6"
     },
     {
       "name": "firstboot.bin",
@@ -20,9 +20,9 @@
     },
     {
       "name": "resources.tar.gz",
-      "size": 208733,
-      "sha256": "de22c42f8a9692446475120fe1685e1ee1310bffedd133e97e92d144809bb09e",
-      "md5": "0cd924b0b20ddb637373deaab64a55e4"
+      "size": 210551,
+      "sha256": "dcfc1f5baa2c33036e35e022a67c5359685ff8856a94f9561d06fadccee90d0c",
+      "md5": "f6155feef59c26519122e323cff18b30"
     },
     {
       "name": "splash.bin",
@@ -33,19 +33,19 @@
     {
       "name": "update.fuf",
       "size": 1589,
-      "sha256": "9933236fed67ffaa0070eb51639e4a21f9995c6b214dd694c4d0267b39e91942",
-      "md5": "a6ecbfccdf327063c96e2af97351211e"
+      "sha256": "fbed11af0f110e239a470a723cb8ce7216bd7b1c599bc5aba13018d08dce2547",
+      "md5": "b7af54f52f78aa543fa82d70ea43227e"
     },
     {
       "name": "updater.bin",
       "size": 120833,
-      "sha256": "806dff0755699ac8c95a234aef8325cef4491eda98a16560a056ba63cf7c017b",
-      "md5": "2478945f24a7d62d39cd5a1d4bff9cb2"
+      "sha256": "c40a380676b3dbc9ea71085747baa4c3906f2f3ae09727e5e7bacc9223e5d0db",
+      "md5": "52031294f5684969a1a29010fd67c303"
     }
   ],
   "resourceIndex": {
     "manifest": 512,
-    "launcherOrder": 503808,
+    "launcherOrder": 507392,
     "apps": {
       "gpio": {
         "name": "apps/GPIO/gpio.fap",
@@ -81,69 +81,69 @@
       },
       "eddy_metronome": {
         "name": "apps/assets/eddy_metronome.fap",
-        "offset": 241664
+        "offset": 242176
       },
       "eddy_music": {
         "name": "apps/assets/eddy_music.fap",
-        "offset": 247296
+        "offset": 248832
       },
       "eddy_nfc": {
         "name": "apps/assets/eddy_nfc.fap",
-        "offset": 263168
+        "offset": 264704
       },
       "eddy_pomodoro": {
         "name": "apps/assets/eddy_pomodoro.fap",
-        "offset": 274944
+        "offset": 276992
       },
       "eddy_remote_builder": {
         "name": "apps/assets/eddy_remote_builder.fap",
-        "offset": 279552
+        "offset": 281600
       },
       "eddy_rfid": {
         "name": "apps/assets/eddy_rfid.fap",
-        "offset": 350720
+        "offset": 352768
       },
       "eddy_signal": {
         "name": "apps/assets/eddy_signal.fap",
-        "offset": 363008
+        "offset": 365568
       },
       "eddy_spotify": {
         "name": "apps/assets/eddy_spotify.fap",
-        "offset": 376832
+        "offset": 379904
       },
       "expansion_settings": {
         "name": "apps/assets/expansion_settings.fap",
-        "offset": 386560
+        "offset": 390144
       },
       "input_settings": {
         "name": "apps/assets/input_settings.fap",
-        "offset": 391168
+        "offset": 394752
       },
       "notification_settings": {
         "name": "apps/assets/notification_settings.fap",
-        "offset": 396800
+        "offset": 400384
       },
       "passport": {
         "name": "apps/assets/passport.fap",
-        "offset": 406016
+        "offset": 409600
       },
       "power_settings": {
         "name": "apps/assets/power_settings.fap",
-        "offset": 411136
+        "offset": 414720
       },
       "storage_settings": {
         "name": "apps/assets/storage_settings.fap",
-        "offset": 438784
+        "offset": 442368
       },
       "system_settings": {
         "name": "apps/assets/system_settings.fap",
-        "offset": 466432
+        "offset": 470016
       }
     }
   },
   "target": "f7",
-  "version": "eddy-dev-533f584b",
-  "file": "flipper-z-f7-update-eddy-dev-533f584b.tgz",
-  "commit": "533f584bf3813e7d29dfd809af940e8814dc7ea2",
-  "sha256": "c5818bdb37b92d3ff2fce991c500b75c1939b35e2d2736bf5ccee80a9f02742b"
+  "version": "eddy-dev-bc5479fa",
+  "file": "flipper-z-f7-update-eddy-dev-bc5479fa.tgz",
+  "commit": "bc5479fac5a7b96f1c9a66a9fc1ca557653900a4",
+  "sha256": "209450d6926037eedfab0b0425fa0d0267e4787b29a200fea080ae566cecfcb3"
 }

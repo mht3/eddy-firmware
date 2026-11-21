@@ -12,8 +12,8 @@ const savedPins=Array.isArray(saved?.pins) ? saved.pins : [saved?.pin];
 let pins=savedPins.map(p=>typeof p==='string'?[p,'remote']:p).filter(p=>Array.isArray(p) &&
   (p[1]==='layout'?layouts:p[1]==='remote'?remotes:[]).some(r=>r.name===p[0])).slice(0,16);
 let active=null;
-function save() {
-  try { localStorage.setItem('eddy-preview-remotes',JSON.stringify({remotes,layouts,pins:pins.map(p=>p[1]==='remote'?p[0]:p)})); }
+function save(nextRemotes=remotes,nextPins=pins) {
+  try { localStorage.setItem('eddy-preview-remotes',JSON.stringify({remotes:nextRemotes,layouts,pins:nextPins.map(p=>p[1]==='remote'?p[0]:p)})); }
   catch { return false; }
   return true;
 }
@@ -95,21 +95,20 @@ export const remoteDemo = {
     button=button.trim();
     if (action!=='add' && (!validName(name) || remotes.some(r=>r.name===name && (action==='create'|| r!==active)))) return 'Choose a different remote name.';
     if (action!=='rename' && (!validName(button) || (action==='add' && active.buttons.includes(button)))) return 'Choose a different button name.';
-    if (action==='rename') {
-      const i=pinIndex(active.name,'remote');
-      if (i>=0) pins[i][0]=name;
-      active.name=name;
-    } else if (action==='add') active.buttons.push(button);
-    else { active={name,buttons:[button]}; remotes.push(active); }
-    save();
+    const editing=action==='rename' || action==='add';
+    const updated=editing ? {...active} : {name,buttons:[button]};
+    if(action==='rename') updated.name=name;
+    if(action==='add') updated.buttons=[...active.buttons,button];
+    const nextRemotes=editing ? remotes.map(r=>r===active?updated:r) : [...remotes,updated];
+    const nextPins=action==='rename' ? pins.map(p=>p[0]===active.name && p[1]==='remote'?[name,'remote']:p) : pins;
+    if(!save(nextRemotes,nextPins)) return 'Could not save in this browser.';
+    remotes=nextRemotes;
+    pins=nextPins;
+    active=updated;
     return '';
   },
   remove() {
-    const i=pinIndex(active.name,'remote');
-    if (i>=0) pins.splice(i,1);
-    remotes=remotes.filter(r=>r!==active);
-    active=null;
-    save();
+    return active && layoutDemo.remove(active.name,'remote');
   },
   setPinned(pin) {
     this.pinError=setPin(active.name,'remote',pin);

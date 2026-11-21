@@ -19,7 +19,7 @@
     </div></header>
     <main class="music">
       <h1>Spotify library.</h1>
-      <p class="intro">Anyone can try the sample library of Liked Songs, playlists and albums. Invited testers with Spotify Premium can play their selections on an active Spotify device.</p>
+      <p class="intro">Try Liked Songs, playlists and albums in the sample library. To use your own music, sign in with an invited account or <a href="#developer-setup">set up your own development app</a>.</p>
       <section>
         <h2>Explore the library</h2>
         <img class="library-device" src="liked-songs.webp" width="1080" height="540" alt="Flipper Zero showing a sample Liked Songs library with Dolphin Days selected.">
@@ -32,10 +32,13 @@
         <p><a href="https://open.spotify.com/collection/tracks">Open my Liked Songs in Spotify</a></p>
         <div id="bridge" hidden>
           <ol>
-            <li>Add <strong>Spotify</strong> in the <a href="../update/#app-picker">installer</a>. On the Flipper, open <strong>Apps → Spotify</strong>.</li>
+            <li>Keep <strong>Spotify</strong> selected in the <a href="../update/#app-picker">installer</a>. On the Flipper, open <strong>Apps → Spotify</strong>.</li>
             <li>Scan the Flipper’s QR code with an Android phone using Chrome, or choose <strong>Link Spotify</strong> here. Spotify asks for permission in your browser. After approval, choose your Flipper in the Bluetooth prompt and keep this tab open.</li>
-            <li>Start Spotify on the device you want to hear. The song, playlist or album you select on the Flipper will play there.</li>
+            <li>Start Spotify on the device you want to hear. If you use a computer for the Bluetooth connection, you can still play the music on your iPhone.</li>
           </ol>
+          <details><summary>Reconnecting after a restart</summary>
+            <p>Keep this tab open and reopen Spotify on your Flipper. The tab will try to reconnect using your existing sign-in. If your Flipper is connected to a different phone or computer, disconnect it there first. Use <strong>Reconnect Flipper</strong> to try again.</p>
+          </details>
           <div class="bridge-actions">
             <button id="link" class="cta" type="button">Link Spotify</button>
             <button id="pair" class="cta" type="button" hidden>Choose Flipper</button>
@@ -50,6 +53,45 @@
             <p>Choose <strong>Unlink Spotify</strong> to remove the sign-in from this tab. You can also remove Eddy from <a href="https://www.spotify.com/account/apps/">your Spotify account’s apps</a> to revoke access.</p>
           </details>
         </div>
+      </section>
+      <section id="developer-setup">
+        <h2>Run your own development app</h2>
+        <p>With a Spotify Premium account and your own GitHub fork, you can develop a personal library companion. GitHub builds your firmware and the matching website. Your Flipper gets a QR code for your Spotify app, with nothing to type during installation.</p>
+        <ol>
+          <li><strong>Set up your fork.</strong> <a href="https://github.com/mht3/eddy-firmware/fork">Fork Eddy on GitHub</a>. In your fork’s <strong>Actions</strong> tab, enable workflows. Under <strong>Settings → Pages → Source</strong>, select <strong>GitHub Actions</strong>.</li>
+          <li><strong>Register your app.</strong> In the <a href="https://developer.spotify.com/dashboard">Spotify Developer Dashboard</a>, sign in with your Premium account and choose <strong>Create app</strong>. Replace <code>YOUR-NAME</code> and <code>YOUR-REPO</code> below with your GitHub username and your fork’s name.
+            <dl class="registration">
+              <dt>App name</dt><dd>My Flipper Library</dd>
+              <dt>App description</dt><dd>Browse my saved music and control playback from my Flipper Zero.</dd>
+              <dt>Website</dt><dd><code>https://YOUR-NAME.github.io/YOUR-REPO/</code></dd>
+              <dt>Redirect URI</dt><dd><code>https://YOUR-NAME.github.io/YOUR-REPO/spotify/</code> · choose <strong>Add</strong>. Include the trailing slash.</dd>
+              <dt>APIs / SDKs</dt><dd>Web API</dd>
+            </dl>
+            Review Spotify’s terms and save your app. In its <strong>Settings</strong>, copy the <strong>Client ID</strong>. Keep the client secret private.
+          </li>
+          <li><strong>Connect your fork to your app.</strong> In your GitHub fork, open <strong>Settings → Secrets and variables → Actions → Variables → New repository variable</strong>. Name it <code>EDDY_SPOTIFY_CLIENT_ID</code>, paste your Client ID as the value and save.</li>
+          <li><strong>Build and install.</strong> Open <strong>Actions → Build Eddy → Run workflow</strong>. Select <strong>dev</strong> and run it. When the publish job has a green check, open your fork’s Pages site and choose <strong>Install</strong>. Leave Spotify selected and install this build on your Flipper.</li>
+          <li><strong>Scan and connect.</strong> Open <strong>Apps → Spotify</strong>. Scan the Flipper’s QR code with Chrome on Android. Spotify shows your app’s name and asks for permission. Approve it, choose your Flipper in the Bluetooth prompt, and keep the tab open. For iPhone playback, open your companion’s <code>/spotify/</code> page in Chrome on a Mac or PC, choose <strong>Link Spotify</strong>, and start a song on your iPhone.</li>
+        </ol>
+        <details><summary>Use a custom domain</summary>
+          <p>Set up the domain for your Pages site. In Spotify, enter its website and exact HTTPS <code>/spotify/</code> redirect URI. In the fork’s Actions variables, set <code>EDDY_SPOTIFY_SITE</code> to that redirect URI before running the workflow.</p>
+        </details>
+        <details><summary>Keep an existing Eddy install</summary>
+          <p>Once your personal site is online, you can load its QR code onto an Eddy release that supports personal QR files. In a local copy of your fork, run these commands from the source folder on macOS or Linux, using your site and Client ID.</p>
+          <pre><code>python3 -m venv .venv
+.venv/bin/python -m pip install 'segno&gt;=1.6,&lt;2'
+.venv/bin/python scripts/setup_spotify.py --site https://YOUR-NAME.github.io/YOUR-REPO/spotify/ --client-id YOUR_CLIENT_ID</code></pre>
+          <p>On Windows, create the environment with <code>py -m venv .venv</code> and run the remaining commands in PowerShell using <code>.venv&#92;Scripts&#92;python.exe</code>. In qFlipper’s file manager, copy the resulting <code>setup.qr</code> into <strong>SD Card → apps_data → eddy_spotify</strong>. Create the folder if needed and reopen Spotify. Remove that file to return to the QR code included in your firmware.</p>
+        </details>
+        <details><summary>Develop locally on your computer</summary>
+          <p>For a desktop-only test, register <code>http://127.0.0.1:8000/spotify/</code> as your redirect URI. In your own <code>website/spotify/config.js</code>, set <code>spotifyClientId</code> to your app’s Client ID. From the source folder, start the site below.</p>
+          <pre><code>python3 -m http.server 8000 --bind 127.0.0.1 --directory website</code></pre>
+          <p>Open that exact local address in Chrome on the same computer and choose <strong>Link Spotify</strong>. To scan from a phone, use the hosted setup above.</p>
+        </details>
+        <details><summary>Sign-in or playback trouble?</summary>
+          <p>For a redirect error, compare the page address with the registered URI, including its port, path and trailing slash. For an access error, check the account under <strong>Settings → Users Management</strong> in your Spotify app and start playback on an active Premium device.</p>
+          <p>Spotify caps each development app at five authorized users. A public app needs Spotify’s approval for extended access. See <a href="https://developer.spotify.com/documentation/web-api/concepts/quota-modes">Spotify’s quota modes</a> and <a href="https://developer.spotify.com/documentation/web-api/concepts/redirect_uri">redirect URI requirements</a>.</p>
+        </details>
       </section>
       <a href="../music/">Control Spotify or Apple Music with the Bluetooth Music app</a>
     </main>

@@ -35,12 +35,17 @@ class EddyDevice extends HTMLElement {
     const root = this.attachShadow({mode:'open'});
     root.innerHTML = `<style>
       :host {display:block;width:100%;aspect-ratio:749/404}
-      canvas,img {position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:contain}
-      canvas,img {filter:drop-shadow(0 1.1rem 1rem rgba(0,9,10,.44))}
+      canvas:not(.film),img {position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:contain;
+        filter:drop-shadow(0 1.1rem 1rem rgba(0,9,10,.44))}
       .film {position:absolute;top:50%;left:50%;width:100%;width:min(100cqw,200cqh);aspect-ratio:2;
-        transform:translate(-50%,-50%);background-size:400% 400%;background-repeat:no-repeat;pointer-events:none}
+        transform:translate(-50%,-50%);will-change:transform;pointer-events:none}
+      @media (max-width:500px) and (orientation:portrait), (max-width:960px) and (orientation:landscape) and (max-height:500px) {
+        .film {transform-origin:0 0;
+          transform:translate(calc(-50% - 36.1111% * var(--framing,0)),calc(-50% - 19.58335% * var(--framing,0)))
+            scale(calc(1 + .5 * var(--framing,0)))}
+      }
       [hidden] {display:none}
-    </style><img alt="" hidden><canvas aria-hidden="true"></canvas><div class="film" hidden></div>`;
+    </style><img alt="" hidden><canvas aria-hidden="true"></canvas><canvas class="film" aria-hidden="true" hidden></canvas>`;
     this.canvas = root.querySelector('canvas');
     this.poster = root.querySelector('img');
     this.film = root.querySelector('.film');
@@ -111,8 +116,7 @@ class EddyDevice extends HTMLElement {
     this.canvas.hidden = true;
   }
 
-  // Each transparent sheet holds sixteen CAD renders. On a phone, scrolling
-  // changes only the crop of the decoded image, leaving the GPU free for scrolling.
+  // Each transparent sheet holds sixteen CAD renders.
   sheet(name) {
     if (!this.sheets.has(name)) {
       const image = new Image();
@@ -127,6 +131,9 @@ class EddyDevice extends HTMLElement {
 
   drawFilm(phase,still) {
     clearTimeout(this.idleTimer);
+    // Ease into the same LCD and button coordinates as the interactive face.
+    const t = clamp((phase - 1.48) / (2.72 - 1.48),0,1);
+    this.film.style.setProperty('--framing',t*t*(3-2*t));
     const idle = phase === 0;
     const index = idle ? (still ? 4 : Math.floor(performance.now()/167)%16) :
       Math.round(clamp(phase/2.72,0,1)*47);
@@ -134,8 +141,18 @@ class EddyDevice extends HTMLElement {
     const sheet = this.sheet(idle ? 'idle' : group);
     if (sheet.ready) {
       const frame = index%16;
-      this.film.style.backgroundImage = 'url("'+sheet.image.src+'")';
-      this.film.style.backgroundPosition = (frame%4)*100/3+'% '+Math.floor(frame/4)*100/3+'%';
+      if (sheet !== this.drawnSheet || frame !== this.drawnFrame) {
+        const width = sheet.image.naturalWidth/4, height = sheet.image.naturalHeight/4;
+        if (this.film.width !== width || this.film.height !== height) {
+          this.film.width = width;
+          this.film.height = height;
+        }
+        const ctx = this.film.getContext('2d');
+        ctx.clearRect(0,0,width,height);
+        ctx.drawImage(sheet.image,frame%4*width,Math.floor(frame/4)*height,width,height,0,0,width,height);
+        this.drawnSheet = sheet;
+        this.drawnFrame = frame;
+      }
       this.film.hidden = false;
       this.poster.hidden = true;
       if (idle) this.sheet(0);

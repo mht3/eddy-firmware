@@ -1,5 +1,5 @@
 const step = 5000;
-const max = 99 * 60000;
+const maxMinutes = 99;
 const durations = [25 * 60000, 5 * 60000];
 export const focus = {rest:false, left:durations[0], deadline:0, muted:false};
 
@@ -40,10 +40,10 @@ export function remaining() {
   }
   return focus.deadline ? Math.min(focus.left,focus.deadline-now) : focus.left;
 }
-export function pomodoroKey(key, held=false) {
+export function pomodoroKey(key) {
   const left=remaining();
-  if (key==='up') focus.muted=!focus.muted;
-  if ((key==='ok' || key==='up') && !focus.muted && window.AudioContext) {
+  if (key==='down') focus.muted=!focus.muted;
+  if ((key==='ok' || key==='down') && !focus.muted && window.AudioContext) {
     try {
       audio ??= new AudioContext();
       if (audio.state==='suspended') audio.resume().catch(()=>{});
@@ -54,11 +54,16 @@ export function pomodoroKey(key, held=false) {
     else focus.deadline=Date.now()+left;
     arm();
   }
-  if ((key==='left' || key==='right') && !focus.deadline) {
-    if (key==='left' && left<=step) return;
-    const delta=held?60000:step;
-    focus.left=Math.max(step,Math.min(max,left+(key==='right'?delta:-delta)));
-    durations[Number(focus.rest)]=focus.left;
+  if (!focus.deadline && ['left','right','up'].includes(key)) {
+    let minutes=Math.floor(left/60000), seconds=Math.ceil(left/1000)%60;
+    if (key==='left') minutes=Math.max(0,minutes-1);
+    if (key==='right') minutes=Math.min(maxMinutes,minutes+1);
+    if (key==='up') seconds=(Math.floor(seconds/5)*5+5)%60;
+    const adjusted=minutes*60000+seconds*1000 || step;
+    if (adjusted!==left) {
+      focus.left=adjusted;
+      durations[Number(focus.rest)]=adjusted;
+    }
   }
 }
 export function drawPomodoro(ctx) {
@@ -73,14 +78,14 @@ export function drawPomodoro(ctx) {
   ctx.fillText(clock,64,17);
   if (!focus.deadline) {
     ctx.beginPath();
-    if (left>step) { ctx.moveTo(18,26); ctx.lineTo(12,32); ctx.lineTo(18,38); }
-    if (left<max) { ctx.moveTo(109,26); ctx.lineTo(115,32); ctx.lineTo(109,38); }
+    if (sec>=60) { ctx.moveTo(18,26); ctx.lineTo(12,32); ctx.lineTo(18,38); }
+    if (Math.floor(sec/60)<maxMinutes) { ctx.moveTo(109,26); ctx.lineTo(115,32); ctx.lineTo(109,38); }
     ctx.stroke();
   }
   ctx.font='8px sans-serif';
-  if (!focus.deadline) ctx.fillText('Tap 5s / Hold 1m',64,44);
+  if (!focus.deadline) ctx.fillText('L/R: minutes   Up: +5s',64,44);
   ctx.textAlign='left';
-  ctx.fillText(focus.muted?'Up: muted':'Up: sound on',2,53);
+  ctx.fillText(focus.muted?'Down: muted':'Down: sound on',2,53);
   ctx.textAlign='right';
   const verb=focus.deadline?'pause':focus.left<durations[Number(focus.rest)]?'resume':'start';
   ctx.fillText('OK '+verb,126,53);

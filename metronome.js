@@ -1,14 +1,47 @@
-// Only the physical Flipper pulses its motor. The preview shows the same beat on the LCD.
+const outputs = ['Sound + buzz','Sound','Vibration','Silent'];
+const outputPreference = 'eddy-metronome-output';
+let output = 0;
+let audio;
 const preference = 'eddy-metronome-bpm';
 let bpm = 96;
 try {
+  const storedOutput=Number(localStorage.getItem(outputPreference));
+  if (Number.isInteger(storedOutput) && storedOutput>=0 && storedOutput<outputs.length) output=storedOutput;
   const stored = Number(localStorage.getItem(preference));
   if (Number.isInteger(stored) && stored>=40 && stored<=220) bpm=stored;
 } catch {}
 
+function unlockAudio() {
+  if (output>1 || !window.AudioContext) return;
+  try {
+    audio ??= new AudioContext();
+    if (audio.state==='suspended') audio.resume().catch(()=>{});
+  } catch {}
+}
+
+function playBeat() {
+  if (output===0 || output===2) navigator.vibrate?.(50);
+  if (output>1 || !audio || audio.state==='closed') return;
+  const start=audio.currentTime, tone=audio.createOscillator(), gain=audio.createGain();
+  tone.frequency.value=1046.5;
+  gain.gain.setValueAtTime(0,start);
+  gain.gain.linearRampToValueAtTime(.16,start+.003);
+  gain.gain.exponentialRampToValueAtTime(.001,start+.05);
+  tone.connect(gain); gain.connect(audio.destination);
+  tone.start(start); tone.stop(start+.05);
+}
+
 export function metronomeInput(state, key, now) {
+  if (key==='down') {
+    output=(output+1)%outputs.length;
+    try { localStorage.setItem(outputPreference,String(output)); } catch {}
+    unlockAudio();
+    return;
+  }
   if (key==='ok') {
     state.taps=[];
+    state.lastBeat=undefined;
+    unlockAudio();
     state.started = state.started === undefined ? now : undefined;
     return;
   }
@@ -37,7 +70,7 @@ export function metronomeInput(state, key, now) {
 
 export function metronomeStatus(state) {
   return bpm+' BPM. '+(state.started===undefined?'Stopped.':'Playing.')+
-    ' Up to tap tempo, Left or Right to adjust, OK to start or stop.';
+    ' '+outputs[output]+'. Down to change sound and vibration. Up to tap tempo, Left or Right to adjust, OK to start or stop.';
 }
 
 export function drawMetronome(ctx, state, now) {
@@ -45,6 +78,10 @@ export function drawMetronome(ctx, state, now) {
   const period=60000/bpm;
   const elapsed=playing?now-state.started:0;
   const step=Math.floor(elapsed/period);
+  if (playing && state.lastBeat!==step) {
+    state.lastBeat=step;
+    playBeat();
+  }
   ctx.save();
   ctx.font='bold 9px monospace';
   ctx.fillText('Metronome',2,0);
@@ -60,9 +97,10 @@ export function drawMetronome(ctx, state, now) {
   if (bpm<220) arrow(117,-4);
   for (let i=0;i<4;i++) {
     ctx.beginPath();
-    ctx.roundRect(30.5+18*i,39.5,13,6,2);
+    ctx.roundRect(30.5+18*i,34.5,13,5,2);
     if (playing && i===step%4) ctx.fill(); else ctx.stroke();
   }
+  ctx.fillText('Down: '+outputs[output],64,42);
   ctx.textAlign='left';
   ctx.fillText(state.taps?.length===1?'Tap Up again':'Up: tap tempo',3,53);
   ctx.textAlign='right';

@@ -1,4 +1,4 @@
-import {catalog, getAppOrder} from './app-catalog.js';
+import {catalog, getAppOrder, launcherColumns, launcherPageSize} from './app-catalog.js';
 // Icons and positions match the device launcher in loader_menu.c.
 export const launcherArt = new Image();
 launcherArt.src = new URL('launcher.png', import.meta.url).href;
@@ -22,10 +22,10 @@ export function layoutApps(items, order = getAppOrder()) {
 
 export function verticalApp(items,index,key) {
   if (!items.length) return 0;
-  const rows = Math.ceil(items.length/4);
-  const row = Math.floor(index/4);
+  const rows = Math.ceil(items.length/launcherColumns);
+  const row = Math.floor(index/launcherColumns);
   const nextRow = (row + (key === 'up' ? rows-1 : 1)) % rows;
-  return Math.min(nextRow*4 + index%4, items.length-1);
+  return Math.min(nextRow*launcherColumns + index%launcherColumns, items.length-1);
 }
 
 export function drawLauncher(ctx, page, selected, gridItems = layoutApps(apps)) {
@@ -39,17 +39,17 @@ export function drawLauncher(ctx, page, selected, gridItems = layoutApps(apps)) 
     ctx.textAlign = 'start';
     return;
   }
-  const pageNumber = grid ? Math.floor(items[selected][2]/8) : 0;
-  const pageCount = grid ? Math.floor(items.at(-1)[2]/8)+1 : 1;
+  const pageNumber = grid ? Math.floor(items[selected][2]/launcherPageSize) : 0;
+  const pageCount = grid ? Math.floor(items.at(-1)[2]/launcherPageSize)+1 : 1;
   if (pageCount>1) {
     ctx.textAlign = 'left';
     ctx.fillText('Apps '+(pageNumber+1)+'/'+pageCount,2,0);
     ctx.textAlign = 'center';
   }
   items.forEach(([name,id,cell],i) => {
-    if (grid && Math.floor(cell/8)!==pageNumber) return;
-    const x = grid ? 16 + 32*(cell%4) : 21 + 42*i;
-    const y = grid ? 18 + 20*Math.floor((cell%8)/4) : 26;
+    if (grid && Math.floor(cell/launcherPageSize)!==pageNumber) return;
+    const x = grid ? 21 + 42*(cell%launcherColumns) : 21 + 42*i;
+    const y = grid ? 18 + 20*Math.floor((cell%launcherPageSize)/launcherColumns) : 26;
     ctx.save();
     ctx.beginPath();
     ctx.roundRect(x-12,y-(grid?9:10),25,grid?19:21,4);

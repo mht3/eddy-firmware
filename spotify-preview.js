@@ -79,16 +79,23 @@ export function drawSpotify(ctx,s) {
   ctx.save();
   ctx.textBaseline='alphabetic';
   ctx.font='bold 8px sans-serif';
+  if(s.overlay==='setup') {
+    if(setupQr.naturalWidth) {
+      ctx.imageSmoothingEnabled=false;
+      ctx.drawImage(setupQr,0,0,64,64);
+    }
+    ctx.fillText('Spotify',66,20);
+    ctx.font='8px sans-serif';
+    ctx.fillText('Scan to link',66,33);
+    ctx.fillText('in browser',66,44);
+    ctx.fillText('OK: Continue',66,60);
+    ctx.restore();
+    return !setupQr.complete;
+  }
   ctx.fillText(heading+' · demo',2,8);
   ctx.fillRect(1,11,126,1);
   const rows=currentRows(s);
-  if(s.overlay==='setup') {
-    if(setupQr.naturalWidth) ctx.drawImage(setupQr,2,18,setupQr.naturalWidth,setupQr.naturalHeight);
-    ctx.fillText('Spotify setup',46,24);
-    ctx.font='8px sans-serif';
-    ctx.fillText('Scan to link',46,37);
-    ctx.fillText('OK: Done',46,55);
-  } else if(s.overlay==='playing') {
+  if(s.overlay==='playing') {
     ctx.font='8px sans-serif';
     ctx.fillText('Playing in demo',4,26);
     ctx.font='bold 11px sans-serif';
@@ -115,5 +122,5 @@ export function drawSpotify(ctx,s) {
     ctx.fillText(collection?'OK: Play':'OK: Open',89,63);
   }
   ctx.restore();
-  return s.overlay==='setup' && !setupQr.complete;
+  return false;
 }
