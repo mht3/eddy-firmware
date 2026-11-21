@@ -1,16 +1,36 @@
 export const sampleCharge = 84;
 
+export function drawBattery(ctx, charging = false) {
+  ctx.save();
+  ctx.fillStyle = ctx.strokeStyle = '#432a14';
+  ctx.font = 'bold 8px monospace';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'top';
+  ctx.fillText(sampleCharge+'%',127,0);
+  if (charging) {
+    ctx.beginPath();
+    ctx.moveTo(105,0); ctx.lineTo(100,4); ctx.lineTo(104,4); ctx.lineTo(101,8);
+    ctx.stroke();
+  } else {
+    ctx.lineWidth = 1;
+    ctx.strokeRect(97.5,1.5,8,5);
+    ctx.fillRect(106,3,1,2);
+    ctx.fillRect(99,3,4,2);
+  }
+  ctx.restore();
+}
+
 // The same 16-frame animation shipped on Eddy's microSD image.
 export const ocean = new Image();
 ocean.src = new URL('eddy-ocean.png', import.meta.url).href;
 
-export function drawHome(ctx, frame) {
+export function drawHome(ctx, frame, charging = false) {
   ctx.fillStyle = '#432a14';
   ctx.font = 'bold 8px monospace';
   ctx.textBaseline = 'top';
   ctx.fillText('EDDY', 5, 2);
   ctx.fillRect(0, 11, 128, 1);
-  ctx.fillText(sampleCharge+'%',106,2);
+  drawBattery(ctx, charging);
   if (ocean.naturalWidth) {
     ctx.drawImage(ocean, frame * 128, 0, 128, 50, 0, 14, 128, 50);
   }
@@ -24,7 +44,7 @@ const eye = new Path2D('M73.7 25.8 Q74.7 24.7 75 23.9 C74.2 17.6 77.6 13.8 82.2 
 const fin = new Path2D('M29.7 41.9 C27.6 39.2 29.7 33.2 32.8 32.9 Q35.2 32.2 37 33.1 Q35.9 28.2 38.1 27.6 Q41.6 26 41.4 30.7 L41.5 37.7 Q43.7 40.1 46.8 42.8 M37 33 Q40.4 36.9 35.5 42.8');
 const ripples = new Path2D('M0 15.5 Q10.5 13.7 17.5 15.6 M19.5 11.4 Q27.2 9.5 36.5 11.5 M97.4 12.5 Q102 12.2 106.5 13.6 M117 17.5 Q124 16 128 16.6 M7.4 6.5 Q9.5 6.4 11.6 8.4 Q13.4 6.5 15.5 6.3 M104.5 4.6 Q106.6 4.7 108.5 6.6 Q110.5 4.7 112.5 4.5');
 
-export function drawCloseUpHome(ctx, frame) {
+export function drawCloseUpHome(ctx, frame, charging = false) {
   const ink = '#432a14';
   ctx.save();
   ctx.strokeStyle = ctx.fillStyle = ink;
@@ -32,7 +52,7 @@ export function drawCloseUpHome(ctx, frame) {
   ctx.textBaseline = 'top';
   ctx.fillText('EDDY',5,1);
   ctx.fillRect(0,11,128,0.8);
-  ctx.fillText(sampleCharge+'%',106,1);
+  drawBattery(ctx, charging);
   ctx.translate(0,14);
   ctx.lineWidth = .86;
   ctx.lineCap = ctx.lineJoin = 'round';

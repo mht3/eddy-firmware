@@ -2,7 +2,7 @@ import {drawLauncher, sections, apps, launcherArt} from './launcher.js';
 import {settingsRows, settingsSamples, drawQuick, quickStatus, adjustQuick} from './quick-settings.js';
 import {remoteDemo} from './remote-preview.js';
 import {powerLists, powerSamples, powerTitles, powerAction} from './power-preview.js';
-import {drawCloseUpHome, sampleCharge} from './home-screen.js';
+import {drawCloseUpHome, drawBattery, sampleCharge} from './home-screen.js';
 
 const panel = document.querySelector('#playable');
 const display = panel.querySelector('canvas');
@@ -17,13 +17,24 @@ const titles = {
   off:'Powered off', about:'About', clock:'Clock & Alarm', passport:'Passport', remotes:'My remotes',
   replacePin:'Replace home shortcut?', deleteRemote:'Delete this remote?', tester:'Button tester', detected:'Signal detected', quick:'Quick settings', remote:'Remote', command:'Demo button', editRemote:'Edit remote', learn:'Learn a demo remote', pins:'GPIO pins', uart:'USB to UART',
 };
+const readerArt = {};
+for (const kind of ['card','contact']) {
+  const image = new Image();
+  image.src = new URL('reader-'+kind+'.png',import.meta.url).href;
+  image.addEventListener('load',draw);
+  readerArt[kind] = image;
+}
+const readers = {
+  rfid:['card','Hold tag to',"Flipper’s back"],
+  nfc:['card','Hold card to',"Flipper’s back"],
+  ibutton:['contact','Touch key to','the contacts'],
+};
 const samples = {
   replacePin:['Left: Cancel','Right: Replace'], deleteRemote:['Left: Cancel','Right: Delete'],
   tester:['Try a demo IR button','OK for a sample signal'], detected:['Sample IR detected','OK to test another'],
-  rfid:['Ready to scan','Hold a tag near the back'], nfc:['Ready to scan','Hold a card near the back'],
-  ibutton:['Ready to scan','Touch a key to the contacts'], remotes:['No remotes yet'],
+  remotes:['No remotes yet'],
   learn:['Point your remote','at the Flipper'], pins:['No module attached'], uart:['Connect via USB'],
-  battery:[sampleCharge+'% charged','Sample battery'], about:['Eddy Firmware','Flipper Zero F7'],
+  battery:[sampleCharge+'% charged','On battery power'], about:['Eddy Firmware','Flipper Zero F7'],
   passport:['Eddy the dolphin','Level 1'], restart:['OK to restart preview'], shutdown:['OK to power off preview'],
   off:['OK to wake preview'],
 };
@@ -82,6 +93,17 @@ function drawPomodoro() {
   ctx.textAlign = 'start';
 }
 
+function drawReader(page) {
+  const [kind,first,second] = readers[page];
+  const image = readerArt[kind];
+  if (image.naturalWidth) ctx.drawImage(image,1,64-image.naturalHeight);
+  ctx.font = 'bold 8px sans-serif';
+  ctx.fillText('Ready to scan',64,17);
+  ctx.font = '8px sans-serif';
+  ctx.fillText(first,64,32);
+  ctx.fillText(second,64,42);
+}
+
 function drawList(page,row) {
   const start=Math.max(0,row-2);
   lists[page].slice(start,start+3).forEach(([label],offset) => {
@@ -95,7 +117,7 @@ function drawList(page,row) {
 
 function drawMeter(tick) {
   ctx.font = '8px monospace';
-  ctx.fillText('433.92 MHz', 76, 3);
+  ctx.fillText('433.92 MHz', 76, 54);
   ctx.strokeRect(2.5, 15.5, 123, 36);
   for (let x=0; x<120; x++) {
     const t = (x + tick) * 0.11;
@@ -139,14 +161,17 @@ function draw() {
   } else if (page === 'pomodoro') {
     drawPomodoro();
   } else {
-    ctx.fillText(titles[page],3,2);
-    ctx.fillRect(0,13,128,1);
+    if (readers[page]) ctx.font = 'bold 8px monospace';
+    ctx.fillText(titles[page],3,readers[page]?0:2,88);
+    if (!readers[page]) ctx.fillRect(0,13,128,1);
     ctx.font = 'bold 9px monospace';
-    if (lists[page]) drawList(page,row);
+    if (readers[page]) drawReader(page);
+    else if (lists[page]) drawList(page,row);
     else if (page === 'signal') drawMeter(tick);
     else if (page === 'clock') ctx.fillText(new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}),5,24);
     else samples[page]?.forEach((line,i) => ctx.fillText(line,4,22+i*14));
   }
+  if (page !== 'home' && page !== 'off') drawBattery(ctx);
   if (page === 'clock' || (page === 'pomodoro' && focus.deadline)) timer=setTimeout(draw,250);
   else if (!reducedMotion.matches && (page==='signal' || page==='home')) {
     timer=setTimeout(draw,167);
@@ -156,12 +181,14 @@ function draw() {
 function announce() {
   const {page,row} = current();
   let text = titles[page];
+  if (readers[page]) text += '. Ready to scan. '+readers[page].slice(1).join(' ');
   if (samples[page]) text += '. '+samples[page].join('. ');
   if (lists[page]) text += ', '+lists[page][row][0];
   if (page==='replacePin' || page==='deleteRemote') text+='. Left to cancel. Right to confirm.';
   if (page==='quick') text+=', '+quickStatus(row);
   if (page==='home' && remoteDemo.pin) text+='. Down opens '+remoteDemo.pin;
-  if (page==='home') text += '. Sample battery '+sampleCharge+'%. Press OK for the launcher or Up for quick settings.';
+  if (page!=='off') text += '. Sample battery '+sampleCharge+'%, not charging.';
+  if (page==='home') text += ' Press OK for the launcher or Up for quick settings.';
   if (page==='signal') text+='. Sample signal at 433.92 MHz.';
   if (page==='pomodoro') text += '. '+Math.ceil(remaining()/1000)+' seconds. '+(focus.deadline?'Running':'Paused');
   status.textContent=text;
@@ -281,8 +308,8 @@ display.addEventListener('click', event=>{
   const x=(event.clientX-box.left)*128/box.width;
   const y=(event.clientY-box.top)*64/box.height;
   const grid=state.page==='apps';
-  if(y>=50 || (state.page==='menu' && y<12)) return;
-  const index=grid ? Math.floor(y/24)*4+Math.floor(x/32) : Math.min(2,Math.floor(x/42));
+  if(y>=(grid?48:50) || y<(state.page==='menu'?12:8)) return;
+  const index=grid ? Math.floor((y-8)/20)*4+Math.floor(x/32) : Math.min(2,Math.floor(x/42));
   if(grid && index>=lists.apps.length) return;
   state.row=index;
   if(state.page==='quick' && index<2) { draw(); announce(); }

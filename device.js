@@ -1,4 +1,4 @@
-import {drawHome, drawCloseUpHome, ocean} from './home-screen.js';
+import {drawHome, drawCloseUpHome, drawBattery, ocean} from './home-screen.js';
 import {DeviceRenderer, loadGeometry} from './models/renderer.js';
 
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
@@ -14,10 +14,11 @@ function screen(ctx, phase, frame) {
   ctx.textBaseline = 'top';
   ctx.font = 'bold 8px monospace';
   if (phase < 0.65 || phase >= 1.55) {
-    if (phase >= 1.55) drawCloseUpHome(ctx,frame);
-    else drawHome(ctx,frame);
+    if (phase >= 1.55) drawCloseUpHome(ctx,frame,phase < 1.72);
+    else drawHome(ctx,frame,phase >= 0.64);
   } else if (phase < 1.55) {
     const progress = Math.round(clamp((phase - 0.65) / 0.9, 0, 1) * 100);
+    drawBattery(ctx,true);
     ctx.fillText('EDDY UPDATER', 8, 9);
     ctx.fillRect(8, 21, 110, 1);
     ctx.fillText('Writing ' + progress + '%', 8, 30);
