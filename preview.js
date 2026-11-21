@@ -1,3 +1,4 @@
+import {tvPresetRows, tvPadStatus, tvPadKey, drawTvPad, tvPadHit, tvNavigationHit} from './tv-presets.js';
 import {openBuilder, builderKey, builderStatus, drawBuilder} from './builder-preview.js';
 import {bluetoothKey, bluetoothStatus, drawBluetooth} from './bluetooth-preview.js';
 import {drawMetronome, metronomeInput, metronomeStatus} from './metronome.js';
@@ -15,7 +16,7 @@ const status = document.querySelector('#preview-state');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const ink = '#432a14';
 const titles = {
-  builder:'Remote Builder', btRemote:'Bluetooth Remote', noteList:'Saved observations', noteDetail:'Saved observation',
+  tvPresets:'Choose your TV', tvPad:'TV remote', builder:'Remote Builder', btRemote:'Bluetooth Remote', noteList:'Saved observations', noteDetail:'Saved observation',
   home:'Home screen', menu:'Launcher', apps:'Apps', settings:'Settings', power:'Power',
   signal:'Sub-GHz', rfid:'RFID', nfc:'NFC', infrared:'Infrared', gpio:'GPIO', ibutton:'iButton',
   metronome:'Metronome', pomodoro:'Pomodoro Timer', battery:'Battery info', restart:'Restart?', shutdown:'Power off?',
@@ -48,7 +49,7 @@ Object.assign(titles,Object.fromEntries(settingsRows.map(([name,page])=>[page,na
 Object.assign(samples,settingsSamples,powerSamples);
 const lists = {
   menu:sections.map(([name,page])=>[name,page==='settings'?'quick':page]), apps, settings:settingsRows,
-  infrared:[['My remotes','remotes'],['Learn a remote','learn'],['Button tester','tester']],
+  infrared:[['My remotes','remotes'],['Learn a remote','learn'],['TV presets','tvPresets'],['Button tester','tester']], tvPresets:tvPresetRows,
   gpio:[['GPIO pins','pins'],['USB to UART','uart']],
   editRemote:[['Rename remote','rename'],['Delete remote','deleteRemote']],
   ...powerLists,
@@ -219,7 +220,7 @@ function draw() {
   }
   ctx.setTransform(width/128,0,0,height/64,0,0);
   const {page,row} = current();
-  display.classList.toggle('selectable',['menu','apps','quick'].includes(page) || (page==='pomodoro' && !focus.deadline));
+  display.classList.toggle('selectable',['menu','apps','quick','tvPad'].includes(page) || (page==='pomodoro' && !focus.deadline));
   const tick = reducedMotion.matches ? 4 : Math.floor(performance.now()/167);
   ctx.clearRect(0,0,128,64);
   ctx.fillStyle = ctx.strokeStyle = ink;
@@ -232,6 +233,9 @@ function draw() {
     drawLauncher(ctx,page,row,lists.apps);
   } else if (page === 'quick') {
     drawQuick(ctx,row);
+  } else if (page === 'tvPad') {
+    const delay=drawTvPad(ctx,current());
+    if(delay) timer=setTimeout(draw,delay);
   } else if (page === 'builder') {
     drawBuilder(ctx,current());
   } else if (page === 'btRemote') {
@@ -287,6 +291,7 @@ function announce() {
   if (page==='deleteRemote') text+='. Left to cancel. Right to confirm.';
   if (page==='quick') text+=', '+quickStatus(row);
   if (page==='home' && remoteDemo.shortcuts.length) text+='. Down opens '+remoteDemo.shortcuts.at(-1)[0];
+  if (page==='tvPad') text+='. '+tvPadStatus(current());
   if (page==='builder') text+='. '+(current().name || '')+' '+builderStatus(current());
   if (page==='btRemote') text+='. '+bluetoothStatus(current());
   if (page!=='off') text += '. Sample battery '+sampleCharge+'%, not charging.';
@@ -299,6 +304,9 @@ function announce() {
 
 function press(key) {
   const state=current(), page=state.page, rows=lists[page];
+  if(page==='tvPad' && state.navigation && key==='back') {
+    tvPadKey(state,key); draw(); announce(); return;
+  }
   if(page==='builder' && builderKey(state,key,()=>{refreshHistory(); draw(); announce();})) {
     refreshHistory(); draw(); announce(); return;
   }
@@ -320,6 +328,8 @@ function press(key) {
     }
     const next={ok:'menu',up:'quick',down:'apps',right:'passport',left:'clock'}[key];
     if(next) history.push({page:next,row:0});
+  } else if(page==='tvPad') {
+    tvPadKey(state,key);
   } else if(page==='signal') {
     if(key==='ok' && Number.isFinite(signalDbm)) beginNote(page,signalDbm+' dBm at 433.92 MHz');
     if(key==='right') browseNotes(page);
@@ -378,6 +388,7 @@ function press(key) {
       else {
         if(next==='remote') { remoteDemo.select(name); refreshRemotes(); }
         if(next==='layout' || next==='builder') history.push(openBuilder(next==='layout'?name:undefined));
+        else if(next==='tvPad') history.push({page:next,profile:state.row,row:2});
         else history.push({page:next,row:0});
       }
     }
@@ -442,6 +453,16 @@ display.addEventListener('click', event=>{
   const box=display.getBoundingClientRect();
   const x=(event.clientX-box.left)*128/box.width;
   const y=(event.clientY-box.top)*64/box.height;
+  if(state.page==='tvPad') {
+    if(state.navigation) {
+      const arrow=tvNavigationHit(x,y);
+      if(arrow) press(arrow);
+      return;
+    }
+    const button=tvPadHit(x,y);
+    if(button>=0) { state.row=button; press('ok'); }
+    return;
+  }
   if (state.page==='pomodoro' && !focus.deadline && y>=20 && y<=44) {
     if (x<=26) press('left');
     if (x>=102) press('right');
