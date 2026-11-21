@@ -23,20 +23,21 @@ static void power_draw_battery_callback(Canvas* canvas, void* context) {
     const unsigned charge = display & 0x7F;
     char text[6] = "--";
     if(charge <= 100) snprintf(text, sizeof(text), "%u%%", charge);
-    canvas_set_font(canvas, FontSecondary);
-    canvas_draw_str_aligned(canvas, canvas_width(canvas) - 1, 7, AlignRight, AlignBottom, text);
-
+    // Keep the percentage inside the cell at every charge level.
+    canvas_draw_rframe(canvas, 6, 0, 26, 8, 2);
+    canvas_draw_box(canvas, 32, 2, 2, 4);
+    if(charge <= 100) {
+        const unsigned fill = (24 * charge + 50) / 100;
+        if(fill) canvas_draw_box(canvas, 7, 1, fill, 6);
+    }
+    canvas_set_font(canvas, FontBatteryPercent);
+    canvas_set_color(canvas, ColorXOR);
+    canvas_draw_str_aligned(canvas, 19, 7, AlignCenter, AlignBottom, text);
+    canvas_set_color(canvas, ColorBlack);
     if(display & 0x80) {
-        canvas_draw_line(canvas, 6, 0, 2, 4);
-        canvas_draw_line(canvas, 2, 4, 6, 4);
-        canvas_draw_line(canvas, 6, 4, 3, 7);
-    } else {
-        canvas_draw_frame(canvas, 0, 1, 9, 6);
-        canvas_draw_box(canvas, 9, 3, 1, 2);
-        if(charge <= 100) {
-            const unsigned fill = (charge * 5 + 50) / 100;
-            if(fill) canvas_draw_box(canvas, 2, 3, fill, 2);
-        }
+        canvas_draw_line(canvas, 4, 0, 0, 4);
+        canvas_draw_line(canvas, 0, 4, 4, 4);
+        canvas_draw_line(canvas, 4, 4, 1, 7);
     }
 }
 

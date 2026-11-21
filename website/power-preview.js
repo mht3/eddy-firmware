@@ -15,7 +15,6 @@ function readPreferences() {
 const prefs = readPreferences();
 export const powerLists = {
   power: [
-    ['Power off','shutdown'],
     ['Restart','restartOptions'],
     ['Battery info','battery'],
     ['', 'autoPower'],
@@ -34,8 +33,8 @@ export const powerSamples = {
 };
 
 function updateLabels() {
-  powerLists.power[3][0] = 'Auto off  '+delays[prefs.delay];
-  powerLists.power[4][0] = 'Charge limit  '+prefs.limit+'%';
+  powerLists.power[2][0] = 'Auto off  '+delays[prefs.delay];
+  powerLists.power[3][0] = 'Charge limit  '+prefs.limit+'%';
 }
 updateLabels();
 

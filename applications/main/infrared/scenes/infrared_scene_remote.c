@@ -1,6 +1,4 @@
 #include "../infrared_app_i.h"
-#include <toolbox/eddy_remote_shortcut.h>
-#include <toolbox/path.h>
 
 typedef enum {
     ButtonIndexPin = -3,
@@ -61,7 +59,7 @@ void infrared_scene_remote_on_enter(void* context) {
 
     button_menu_add_item(
         button_menu,
-        infrared_remote_is_pinned(infrared) ? "Unpin from Home" : "Pin to Home",
+        infrared_remote_is_pinned(infrared) ? "Unpin from Apps" : "Pin to Apps",
         ButtonIndexPin,
         infrared_scene_remote_button_menu_callback,
         ButtonMenuItemTypeControl,
@@ -74,36 +72,6 @@ void infrared_scene_remote_on_enter(void* context) {
     scene_manager_set_scene_state(scene_manager, InfraredSceneRemote, ButtonIndexNA);
 
     view_dispatcher_switch_to_view(infrared->view_dispatcher, InfraredViewButtonMenu);
-}
-
-static void change_home_shortcut(InfraredApp* infrared) {
-    FuriString* current = furi_string_alloc();
-    bool has_pin = eddy_remote_shortcut_get(infrared->storage, current);
-    const char* path = infrared_remote_get_path(infrared->remote);
-    bool remove_pin = has_pin && furi_string_equal_str(current, path);
-    bool confirmed = true;
-    if(has_pin && !remove_pin) {
-        FuriString* label = furi_string_alloc();
-        path_extract_filename(current, label, true);
-        DialogMessage* dialog = dialog_message_alloc();
-        dialog_message_set_header(dialog, "Replace Home shortcut?", 64, 3, AlignCenter, AlignTop);
-        dialog_message_set_text(
-            dialog, furi_string_get_cstr(label), 64, 31, AlignCenter, AlignCenter);
-        dialog_message_set_buttons(dialog, "Cancel", NULL, "Replace");
-        confirmed = dialog_message_show(infrared->dialogs, dialog) == DialogMessageButtonRight;
-        dialog_message_free(dialog);
-        furi_string_free(label);
-    }
-    if(confirmed) {
-        if(eddy_remote_shortcut_set(infrared->storage, remove_pin ? NULL : path)) {
-            button_menu_reset(infrared->button_menu);
-            infrared_scene_remote_on_enter(infrared);
-        } else {
-            infrared_show_error_message(
-                infrared, "Could not save shortcut.\nCheck the microSD card.");
-        }
-    }
-    furi_string_free(current);
 }
 
 bool infrared_scene_remote_on_event(void* context, SceneManagerEvent event) {
@@ -147,7 +115,10 @@ bool infrared_scene_remote_on_event(void* context, SceneManagerEvent event) {
                     scene_manager_next_scene(scene_manager, InfraredSceneLearn);
                     consumed = true;
                 } else if(button_index == ButtonIndexPin) {
-                    change_home_shortcut(infrared);
+                    if(infrared_set_apps_shortcut(infrared, !infrared_remote_is_pinned(infrared))) {
+                        button_menu_reset(infrared->button_menu);
+                        infrared_scene_remote_on_enter(infrared);
+                    }
                     consumed = true;
                 } else if(button_index == ButtonIndexEdit) {
                     scene_manager_next_scene(scene_manager, InfraredSceneEdit);

@@ -179,6 +179,7 @@ typedef enum {
 } InfraredNotificationMessage;
 
 bool infrared_remote_is_pinned(const InfraredApp* infrared);
+bool infrared_set_apps_shortcut(InfraredApp* infrared, bool pin);
 bool infrared_validate_remote_name(const char* name, FuriString* error, void* context);
 
 /**

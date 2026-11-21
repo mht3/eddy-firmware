@@ -35,13 +35,15 @@ static void quick_draw(Canvas* canvas, void* context) {
     const Icon* icons[] = {&I_Pin_star_7x7, &I_Volup_8x6, &I_CC_Settings_16x16};
     for(size_t i = 0; i < QuickCount; i++) {
         const int x = 21 + i * 42;
-        canvas_draw_rframe(canvas, x - 13, 10, 27, 29, 5);
-        if(i == model->selected) canvas_draw_rframe(canvas, x - 15, 8, 31, 33, 6);
+        const int width = i == QuickDetails ? 27 : 15;
+        canvas_draw_rframe(canvas, x - width / 2, 10, width, 29, 4);
+        if(i == model->selected)
+            canvas_draw_rframe(canvas, x - width / 2 - 2, 8, width + 4, 33, 5);
         if(i != QuickDetails) {
             unsigned pct = level_percent(
                 i == QuickBrightness ? settings->display_brightness : settings->speaker_volume);
             int height = (23 * pct + 50) / 100;
-            if(height) canvas_draw_box(canvas, x - 10, 36 - height, 21, height);
+            if(height) canvas_draw_box(canvas, x - 5, 36 - height, 11, height);
             canvas_set_color(canvas, ColorXOR);
         }
         canvas_draw_icon(

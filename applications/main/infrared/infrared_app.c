@@ -272,11 +272,25 @@ static void infrared_free(InfraredApp* infrared) {
 }
 
 bool infrared_remote_is_pinned(const InfraredApp* infrared) {
-    FuriString* pin = furi_string_alloc();
-    bool pinned = eddy_remote_shortcut_get(infrared->storage, pin) &&
-                  furi_string_equal_str(pin, infrared_remote_get_path(infrared->remote));
-    furi_string_free(pin);
+    EddyRemotePins pins = {0};
+    eddy_remote_pins_read(infrared->storage, &pins, NULL);
+    bool pinned = eddy_remote_pin_index(&pins, infrared_remote_get_path(infrared->remote)) <
+                  pins.count;
+    eddy_remote_pins_clear(&pins);
     return pinned;
+}
+
+bool infrared_set_apps_shortcut(InfraredApp* infrared, bool pin) {
+    const char* path = infrared_remote_get_path(infrared->remote);
+    EddyPinResult result =
+        eddy_remote_pins_update(infrared->storage, pin ? NULL : path, pin ? path : NULL);
+    if(result == EddyPinOk) return true;
+    if(result == EddyPinFull) {
+        infrared_show_error_message(infrared, "Apps shortcuts full.\nUnpin another remote.");
+    } else {
+        infrared_show_error_message(infrared, "Could not save shortcut.\nCheck the microSD card.");
+    }
+    return false;
 }
 
 bool infrared_validate_remote_name(const char* name, FuriString* error, void* context) {
@@ -298,7 +312,7 @@ InfraredErrorCode infrared_rename_current_remote(InfraredApp* infrared, const ch
     InfraredRemote* remote = infrared->remote;
     if(!strcmp(infrared_remote_get_name(remote), new_name)) return InfraredErrorCodeNone;
 
-    bool pinned = infrared_remote_is_pinned(infrared);
+    FuriString* old_path = furi_string_alloc_set_str(infrared_remote_get_path(remote));
     FuriString* path = furi_string_alloc();
     path_extract_dirname(infrared_remote_get_path(remote), path);
     path_append(path, new_name);
@@ -306,11 +320,14 @@ InfraredErrorCode infrared_rename_current_remote(InfraredApp* infrared, const ch
     InfraredErrorCode error = infrared_remote_rename(remote, furi_string_get_cstr(path));
     if(!INFRARED_ERROR_PRESENT(error)) {
         furi_string_set(infrared->file_path, path);
-        if(pinned && !eddy_remote_shortcut_set(infrared->storage, furi_string_get_cstr(path))) {
+        if(eddy_remote_pins_update(
+               infrared->storage, furi_string_get_cstr(old_path), furi_string_get_cstr(path)) !=
+           EddyPinOk) {
             infrared_show_error_message(
                 infrared, "Renamed. Pin the remote\nagain from its controls.");
         }
     }
+    furi_string_free(old_path);
     furi_string_free(path);
     return error;
 }

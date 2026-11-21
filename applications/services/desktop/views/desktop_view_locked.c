@@ -42,7 +42,6 @@ typedef enum {
 typedef struct {
     bool pin_locked;
     int8_t cover_offset;
-    char shortcut[19];
     DesktopViewLockedState view_state;
 } DesktopViewLockedModel;
 
@@ -186,19 +185,6 @@ void desktop_view_locked_update(DesktopViewLocked* locked_view) {
     }
 }
 
-void desktop_view_locked_set_shortcut(DesktopViewLocked* locked_view, const char* label) {
-    with_view_model(
-        locked_view->view,
-        DesktopViewLockedModel * model,
-        {
-            if(strlcpy(model->shortcut, label, sizeof(model->shortcut)) >=
-               sizeof(model->shortcut)) {
-                strcpy(model->shortcut + sizeof(model->shortcut) - 4, "...");
-            }
-        },
-        true);
-}
-
 static void desktop_view_locked_draw(Canvas* canvas, void* model) {
     DesktopViewLockedModel* m = model;
     DesktopViewLockedState view_state = m->view_state;
@@ -209,16 +195,6 @@ static void desktop_view_locked_draw(Canvas* canvas, void* model) {
        view_state == DesktopViewLockedStateCoverClosing ||
        view_state == DesktopViewLockedStateCoverOpening) {
         desktop_view_locked_draw_lockscreen(canvas, m);
-    } else if(view_state == DesktopViewLockedStateUnlocked) {
-        const char* label = m->shortcut[0] ? m->shortcut : "Apps";
-        canvas_set_font(canvas, FontSecondary);
-        int bottom = canvas_height(canvas);
-        int width = MIN(126U, canvas_string_width(canvas, label) + 14U);
-        canvas_draw_rbox(canvas, 1, bottom - 11, width, 11, 3);
-        canvas_set_color(canvas, ColorWhite);
-        canvas_draw_icon(canvas, 3, bottom - 7, &I_ButtonDown_7x4);
-        canvas_draw_str(canvas, 12, bottom - 2, label);
-        canvas_set_color(canvas, ColorBlack);
     }
 }
 

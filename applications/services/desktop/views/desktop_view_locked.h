@@ -12,7 +12,6 @@ void desktop_view_locked_set_callback(
     DesktopViewLocked* locked_view,
     DesktopViewLockedCallback callback,
     void* context);
-void desktop_view_locked_set_shortcut(DesktopViewLocked* locked_view, const char* label);
 void desktop_view_locked_update(DesktopViewLocked* locked_view);
 View* desktop_view_locked_get_view(DesktopViewLocked* locked_view);
 DesktopViewLocked* desktop_view_locked_alloc(void);

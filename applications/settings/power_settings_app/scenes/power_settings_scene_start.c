@@ -3,7 +3,6 @@
 #include <lib/toolbox/value_index.h>
 
 enum PowerSettingsSubmenuIndex {
-    PowerSettingsSubmenuIndexOff,
     PowerSettingsSubmenuIndexReboot,
     PowerSettingsSubmenuIndexBatteryInfo,
     PowerSettingsSubmenuIndexAutoPowerOff,
@@ -78,8 +77,6 @@ void power_settings_scene_start_on_enter(void* context) {
     VariableItem* item;
     uint8_t value_index;
 
-    variable_item_list_add(variable_item_list, "Power off", 1, NULL, NULL);
-
     variable_item_list_add(variable_item_list, "Restart", 1, NULL, NULL);
 
     variable_item_list_add(variable_item_list, "Battery info", 1, NULL, NULL);
@@ -130,8 +127,6 @@ bool power_settings_scene_start_on_event(void* context, SceneManagerEvent event)
             scene_manager_next_scene(app->scene_manager, PowerSettingsAppSceneBatteryInfo);
         } else if(event.event == PowerSettingsSubmenuIndexReboot) {
             scene_manager_next_scene(app->scene_manager, PowerSettingsAppSceneReboot);
-        } else if(event.event == PowerSettingsSubmenuIndexOff) {
-            scene_manager_next_scene(app->scene_manager, PowerSettingsAppScenePowerOff);
         }
         scene_manager_set_scene_state(app->scene_manager, PowerSettingsAppSceneStart, event.event);
         consumed = true;

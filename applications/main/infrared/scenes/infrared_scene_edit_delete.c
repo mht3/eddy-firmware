@@ -17,12 +17,15 @@ static int32_t infrared_scene_edit_delete_task_callback(void* context) {
         furi_assert(app_state->current_button_index != InfraredButtonIndexNone);
         error = infrared_remote_delete_signal(infrared->remote, app_state->current_button_index);
     } else if(edit_target == InfraredEditTargetRemote) {
-        bool pinned = infrared_remote_is_pinned(infrared);
+        FuriString* old_path =
+            furi_string_alloc_set_str(infrared_remote_get_path(infrared->remote));
         error = infrared_remote_remove(infrared->remote);
-        if(!INFRARED_ERROR_PRESENT(error) && pinned &&
-           !eddy_remote_shortcut_set(infrared->storage, NULL)) {
+        if(!INFRARED_ERROR_PRESENT(error) &&
+           eddy_remote_pins_update(infrared->storage, furi_string_get_cstr(old_path), NULL) !=
+               EddyPinOk) {
             infrared_show_error_message(infrared, "Deleted. Could not clear\nthe saved shortcut.");
         }
+        furi_string_free(old_path);
     } else {
         furi_crash();
     }

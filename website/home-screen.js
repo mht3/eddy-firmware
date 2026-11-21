@@ -3,19 +3,29 @@ export const sampleCharge = 84;
 export function drawBattery(ctx, charging = false) {
   ctx.save();
   ctx.fillStyle = ctx.strokeStyle = '#432a14';
-  ctx.font = 'bold 8px monospace';
-  ctx.textAlign = 'right';
-  ctx.textBaseline = 'top';
-  ctx.fillText(sampleCharge+'%',127,0);
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(100.5,.5,25,7,1.5);
+  ctx.stroke();
+  ctx.fillRect(126,2,2,4);
+  const fill = Math.round(24*sampleCharge/100);
+  ctx.fillRect(101,1,fill,6);
+  ctx.font = 'bold 7px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const label = sampleCharge+'%';
+  ctx.fillText(label,113,4.3);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(101,1,fill,6);
+  ctx.clip();
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.fillText(label,113,4.3);
+  ctx.restore();
   if (charging) {
     ctx.beginPath();
-    ctx.moveTo(105,0); ctx.lineTo(100,4); ctx.lineTo(104,4); ctx.lineTo(101,8);
+    ctx.moveTo(98,0); ctx.lineTo(94,4); ctx.lineTo(98,4); ctx.lineTo(95,7);
     ctx.stroke();
-  } else {
-    ctx.lineWidth = 1;
-    ctx.strokeRect(97.5,1.5,8,5);
-    ctx.fillRect(106,3,1,2);
-    ctx.fillRect(99,3,4,2);
   }
   ctx.restore();
 }
