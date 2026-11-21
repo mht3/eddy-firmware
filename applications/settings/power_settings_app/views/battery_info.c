@@ -109,7 +109,7 @@ static void battery_info_draw_callback(Canvas* canvas, void* context) {
 
     canvas_clear(canvas);
     canvas_set_color(canvas, ColorBlack);
-    draw_battery(canvas, model, 0, model->alt ? 0 : 5);
+    draw_battery(canvas, model, 0, model->alt ? 6 : 10);
 
     char batt_level[10];
     char temperature[10];

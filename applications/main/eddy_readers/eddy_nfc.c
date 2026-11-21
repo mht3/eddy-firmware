@@ -1,4 +1,5 @@
 #include "reader.h"
+#include <assets_icons.h>
 #include <nfc/nfc_device.h>
 #include <nfc/nfc_scanner.h>
 
@@ -11,7 +12,7 @@ static void nfc_detected(NfcScannerEvent event, void* ctx) {
 int32_t eddy_nfc_app(void* arg) {
     UNUSED(arg);
     EddyReader reader;
-    eddy_reader_init(&reader, "NFC", "Hold a card near the back");
+    eddy_reader_init(&reader, "NFC", "Hold card to\nFlipper's back", &I_NFC_manual_60x50);
     Nfc* nfc = nfc_alloc();
     NfcScanner* scanner = nfc_scanner_alloc(nfc);
     nfc_scanner_start(scanner, nfc_detected, &reader);

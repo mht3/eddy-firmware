@@ -66,6 +66,32 @@ void gui_ascii_events_callback(const void* value, void* ctx) {
     furi_thread_flags_set(gui->thread_id, GUI_THREAD_FLAG_ASCII);
 }
 
+// Fullscreen apps own the whole framebuffer. Eddy pages reserve this corner;
+// legacy artwork and third-party controls take precedence when they occupy it.
+static void gui_redraw_fullscreen_battery(Gui* gui) {
+    ViewPort* battery = gui_view_port_find_enabled(gui->layers[GuiLayerBattery]);
+    if(!battery) return;
+    const bool flipped = furi_hal_rtc_is_flag_set(FuriHalRtcFlagHandOrient);
+    if(canvas_get_orientation(gui->canvas) !=
+       (flipped ? CanvasOrientationHorizontalFlip : CanvasOrientationHorizontal))
+        return;
+
+    const size_t width = view_port_get_width(battery);
+    if(!width || width > GUI_DISPLAY_WIDTH) return;
+    const size_t x = GUI_DISPLAY_WIDTH - width;
+    // The LCD stores each eight-pixel column of a tile row in one byte.
+    const uint8_t* buffer = canvas_get_buffer(gui->canvas);
+    const size_t offset = flipped ? (GUI_DISPLAY_HEIGHT / 8 - 1) * GUI_DISPLAY_WIDTH : x;
+    const uint8_t background = momentum_settings.dark_mode ? 0xFF : 0;
+    for(size_t i = 0; i < width; ++i) {
+        if(buffer[offset + i] != background) return;
+    }
+    canvas_frame_set(gui->canvas, x, 0, width, GUI_STATUS_BAR_WORKAREA_HEIGHT);
+    canvas_set_color(gui->canvas, ColorBlack);
+    canvas_set_font_direction(gui->canvas, CanvasDirectionLeftToRight);
+    view_port_draw(battery, gui->canvas);
+}
+
 // Only Fullscreen supports vertical display for now
 static bool gui_redraw_fs(Gui* gui) {
     canvas_set_orientation(gui->canvas, CanvasOrientationHorizontal);
@@ -73,6 +99,7 @@ static bool gui_redraw_fs(Gui* gui) {
     ViewPort* view_port = gui_view_port_find_enabled(gui->layers[GuiLayerFullscreen]);
     if(view_port) {
         view_port_draw(view_port, gui->canvas);
+        gui_redraw_fullscreen_battery(gui);
         return true;
     } else {
         return false;
@@ -113,7 +140,18 @@ static void gui_redraw_status_bar(Gui* gui, bool need_attention) {
     canvas_set_bitmap_mode(gui->canvas, 0);
 
     // Right side
-    uint8_t x = GUI_DISPLAY_WIDTH - 1;
+    ViewPort* battery = gui_view_port_find_enabled(gui->layers[GuiLayerBattery]);
+    if(battery) {
+        width = view_port_get_width(battery);
+        right_used = width + 2;
+        canvas_frame_set(
+            gui->canvas, GUI_DISPLAY_WIDTH - width - 3, 2, width, GUI_STATUS_BAR_WORKAREA_HEIGHT);
+        canvas_set_color(gui->canvas, ColorWhite);
+        canvas_draw_box(gui->canvas, 0, 0, width, GUI_STATUS_BAR_WORKAREA_HEIGHT);
+        canvas_set_color(gui->canvas, ColorBlack);
+        view_port_draw(battery, gui->canvas);
+    }
+    uint8_t x = GUI_DISPLAY_WIDTH - 1 - right_used;
     ViewPortArray_it(it, gui->layers[GuiLayerStatusBarRight]);
     while(!ViewPortArray_end_p(it) && right_used < GUI_STATUS_BAR_WIDTH) {
         ViewPort* view_port = *ViewPortArray_ref(it);

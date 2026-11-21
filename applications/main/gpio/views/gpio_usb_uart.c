@@ -34,8 +34,8 @@ static void gpio_usb_uart_draw_callback(Canvas* canvas, void* _model) {
     canvas_draw_str(canvas, 3, 42, "RX:");
 
     canvas_set_font(canvas, FontSecondary);
-    snprintf(temp_str, 18, "COM PORT:%u", model->vcp_port);
-    canvas_draw_str_aligned(canvas, 126, 8, AlignRight, AlignBottom, temp_str);
+    snprintf(temp_str, 18, "COM %u", model->vcp_port);
+    canvas_draw_str_aligned(canvas, 91, 8, AlignRight, AlignBottom, temp_str);
     snprintf(temp_str, 18, "Pin %u", model->tx_pin);
     canvas_draw_str(canvas, 22, 25, temp_str);
     snprintf(temp_str, 18, "Pin %u", model->rx_pin);

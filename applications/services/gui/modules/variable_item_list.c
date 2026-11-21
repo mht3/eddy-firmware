@@ -47,8 +47,8 @@ static void variable_item_list_process_right(VariableItemList* variable_item_lis
 static void variable_item_list_process_ok(VariableItemList* variable_item_list);
 
 static size_t variable_item_list_items_on_screen(VariableItemListModel* model) {
-    size_t res = 4;
-    return (furi_string_empty(model->header)) ? res : res - 1;
+    UNUSED(model);
+    return 3;
 }
 
 static void variable_item_list_draw_callback(Canvas* canvas, void* _model) {
@@ -61,7 +61,7 @@ static void variable_item_list_draw_callback(Canvas* canvas, void* _model) {
 
     if(!furi_string_empty(model->header)) {
         canvas_set_font(canvas, FontPrimary);
-        canvas_draw_str(canvas, 4, 11, furi_string_get_cstr(model->header));
+        elements_scrollable_text_line(canvas, 4, 11, 86, model->header, 0, true);
     }
 
     uint8_t position = 0;
@@ -72,7 +72,7 @@ static void variable_item_list_draw_callback(Canvas* canvas, void* _model) {
         VariableItemArray_next(it)) {
         uint8_t item_position = position - model->window_position;
         uint8_t items_on_screen = variable_item_list_items_on_screen(model);
-        uint8_t y_offset = furi_string_empty(model->header) ? 0 : item_height;
+        uint8_t y_offset = item_height;
 
         if(item_position < items_on_screen) {
             const VariableItem* item = VariableItemArray_cref(it);
@@ -144,7 +144,13 @@ static void variable_item_list_draw_callback(Canvas* canvas, void* _model) {
         position++;
     }
 
-    elements_scrollbar(canvas, model->position, VariableItemArray_size(model->items));
+    elements_scrollbar_pos(
+        canvas,
+        canvas_width(canvas),
+        16,
+        canvas_height(canvas) - 16,
+        model->position,
+        VariableItemArray_size(model->items));
 
     if(model->locked_message_visible) {
         if(momentum_settings.popup_overlay) {

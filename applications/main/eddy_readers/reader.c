@@ -1,29 +1,29 @@
 #include "reader.h"
 #include <stdio.h>
+#include <gui/elements.h>
 
 typedef struct {
     const char* title;
     const char* hint;
+    const Icon* art;
     char type[40];
 } ReaderModel;
 
 static void reader_draw(Canvas* canvas, void* context) {
     const ReaderModel* model = context;
     canvas_set_font(canvas, FontPrimary);
-    canvas_draw_str(canvas, 3, 11, model->title);
-    canvas_draw_line(canvas, 2, 15, 125, 15);
+    canvas_draw_str(canvas, 2, 9, model->title);
     canvas_set_font(canvas, FontSecondary);
-    canvas_draw_str_aligned(
-        canvas,
-        64,
-        32,
-        AlignCenter,
-        AlignBottom,
-        model->type[0] ? "Type detected" : "Ready to scan");
-    canvas_draw_str_aligned(
-        canvas, 64, 46, AlignCenter, AlignBottom, model->type[0] ? model->type : model->hint);
-    if(model->type[0])
-        canvas_draw_str_aligned(canvas, 64, 61, AlignCenter, AlignBottom, "Back to finish");
+    if(model->type[0]) {
+        canvas_draw_str(canvas, 3, 24, "Type detected");
+        elements_text_box(canvas, 3, 26, 122, 25, AlignLeft, AlignCenter, model->type, true);
+        canvas_draw_str(canvas, 3, 61, "Back to finish");
+    } else {
+        canvas_draw_icon(
+            canvas, 1, canvas_height(canvas) - icon_get_height(model->art), model->art);
+        canvas_draw_str(canvas, 64, 24, "Ready to scan");
+        elements_multiline_text(canvas, 64, 39, model->hint);
+    }
 }
 
 static uint32_t reader_back(void* context) {
@@ -31,7 +31,7 @@ static uint32_t reader_back(void* context) {
     return VIEW_NONE;
 }
 
-void eddy_reader_init(EddyReader* reader, const char* title, const char* hint) {
+void eddy_reader_init(EddyReader* reader, const char* title, const char* hint, const Icon* art) {
     reader->gui = furi_record_open(RECORD_GUI);
     reader->dispatcher = view_dispatcher_alloc();
     reader->view = view_alloc();
@@ -42,6 +42,7 @@ void eddy_reader_init(EddyReader* reader, const char* title, const char* hint) {
         {
             m->title = title;
             m->hint = hint;
+            m->art = art;
             m->type[0] = 0;
         },
         false);

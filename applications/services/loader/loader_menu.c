@@ -151,12 +151,12 @@ static void launcher_draw(Canvas* canvas, void* context) {
         const Icon* icon = grid ? (i < COUNT_OF(apps) ? apps[i].icon : &I_xremote_10px) :
                                   sections[i].icon;
         int x = grid ? 16 + 32 * (i % 4) : 21 + 42 * i;
-        int y = grid ? 12 + 24 * (i / 4) : 26;
+        int y = grid ? 18 + 20 * (i / 4) : 26;
         if(i == selected) {
-            canvas_draw_rbox(canvas, x - 12, y - 10, 25, 21, 4);
+            canvas_draw_rbox(canvas, x - 12, y - (grid ? 9 : 10), 25, grid ? 19 : 21, 4);
             canvas_set_color(canvas, ColorWhite);
         } else {
-            canvas_draw_rframe(canvas, x - 12, y - 10, 25, 21, 4);
+            canvas_draw_rframe(canvas, x - 12, y - (grid ? 9 : 10), 25, grid ? 19 : 21, 4);
         }
         canvas_draw_icon(
             canvas, x - icon_get_width(icon) / 2, y - icon_get_height(icon) / 2, icon);

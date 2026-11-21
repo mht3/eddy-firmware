@@ -23,6 +23,8 @@ typedef enum {
 
     GuiLayerFullscreen, /**< Fullscreen layer, no status bar */
 
+    GuiLayerBattery, /**< Battery indicator, anchored at the right edge */
+
     GuiLayerMAX /**< Don't use or move, special value */
 } GuiLayer;
 

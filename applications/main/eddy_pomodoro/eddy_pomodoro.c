@@ -47,12 +47,7 @@ static void timer_draw(Canvas* canvas, void* context) {
     snprintf(time, sizeof(time), "%02lu:%02lu", seconds / 60, seconds % 60);
     canvas_set_font(canvas, FontSecondary);
     canvas_draw_str_aligned(
-        canvas,
-        64,
-        11,
-        AlignCenter,
-        AlignBottom,
-        timer->on_break ? "Short break" : "Focus session");
+        canvas, 3, 11, AlignLeft, AlignBottom, timer->on_break ? "Short break" : "Focus session");
     canvas_set_font(canvas, FontBigNumbers);
     canvas_draw_str_aligned(canvas, 64, 42, AlignCenter, AlignBottom, time);
     canvas_set_font(canvas, FontSecondary);

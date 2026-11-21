@@ -34,30 +34,30 @@ export function drawQuick(ctx, row) {
   labels.forEach((label,i)=>{
     const x=21+42*i;
     ctx.beginPath();
-    ctx.roundRect(x-13,3,27,35,5);
+    ctx.roundRect(x-13,10,27,29,5);
     ctx.stroke();
     if (row===i) {
       ctx.beginPath();
-      ctx.roundRect(x-15,1,31,39,6);
+      ctx.roundRect(x-15,8.5,31,32,6);
       ctx.stroke();
     }
     if (i<2) {
-      const height=Math.round(29*levels[i]/100);
-      ctx.fillRect(x-10,35-height,21,height);
+      const height=Math.round(23*levels[i]/100);
+      ctx.fillRect(x-10,36-height,21,height);
       // Amber ink remains visible over the filled part of each meter.
       ctx.save();
       ctx.font='bold 13px sans-serif';
       const symbol=i===0?'☼':'♪';
-      ctx.fillText(symbol,x,13);
+      ctx.fillText(symbol,x,17);
       ctx.beginPath();
-      ctx.rect(x-10,35-height,21,height);
+      ctx.rect(x-10,36-height,21,height);
       ctx.clip();
       ctx.globalCompositeOperation='destination-out';
-      ctx.fillText(symbol,x,13);
+      ctx.fillText(symbol,x,17);
       ctx.restore();
     } else {
       ctx.font='18px sans-serif';
-      ctx.fillText('⚙',x,10);
+      ctx.fillText('⚙',x,14);
     }
     ctx.font='7px sans-serif';
     ctx.fillText(label,x,41);

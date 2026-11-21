@@ -16,10 +16,10 @@ export function drawLauncher(ctx, page, selected, gridItems = apps) {
   ctx.textAlign = 'center';
   items.forEach(([name],i) => {
     const x = grid ? 16 + 32*(i%4) : 21 + 42*i;
-    const y = grid ? 12 + 24*Math.floor(i/4) : 26;
+    const y = grid ? 18 + 20*Math.floor(i/4) : 26;
     ctx.save();
     ctx.beginPath();
-    ctx.roundRect(x-12,y-10,25,21,4);
+    ctx.roundRect(x-12,y-(grid?9:10),25,grid?19:21,4);
     if (i === selected) {
       ctx.fill();
       ctx.globalCompositeOperation = 'destination-out';

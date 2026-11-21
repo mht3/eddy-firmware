@@ -1,4 +1,5 @@
 #include "reader.h"
+#include <assets_icons.h>
 #include <ibutton/ibutton_worker.h>
 
 typedef struct {
@@ -17,7 +18,7 @@ static void contact_detected(void* ctx) {
 int32_t eddy_ibutton_app(void* arg) {
     UNUSED(arg);
     ContactReader app;
-    eddy_reader_init(&app.reader, "iButton", "Touch a key to the contacts");
+    eddy_reader_init(&app.reader, "iButton", "Touch key to\nthe contacts", &I_DolphinWait_59x54);
     app.protocols = ibutton_protocols_alloc();
     app.key = ibutton_key_alloc(ibutton_protocols_get_max_data_size(app.protocols));
     iButtonWorker* worker = ibutton_worker_alloc(app.protocols);

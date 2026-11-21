@@ -1,4 +1,5 @@
 #pragma once
+#include <stdatomic.h>
 
 #include "power.h"
 
@@ -31,6 +32,7 @@ struct Power {
 
     PowerEvent event;
     PowerState state;
+    atomic_uchar battery_display;
     PowerInfo info;
 
     bool battery_low;

@@ -14,16 +14,16 @@ void power_settings_scene_reboot_confirm_on_enter(void* context) {
         scene_manager_get_scene_state(app->scene_manager, PowerSettingsAppSceneRebootConfirm);
 
     if(reboot_type == RebootTypeDFU) {
-        dialog_ex_set_header(dialog, "Enter upgrade mode?", 64, 0, AlignCenter, AlignTop);
+        dialog_ex_set_header(dialog, "Enter upgrade mode?", 64, 10, AlignCenter, AlignTop);
         dialog_ex_set_text(
             dialog,
             "Needed for device maintenance\nor firmware upgrades",
             64,
-            14,
+            23,
             AlignCenter,
             AlignTop);
     } else if(reboot_type == RebootTypeNormal) {
-        dialog_ex_set_header(dialog, "Restart device?", 64, 0, AlignCenter, AlignTop);
+        dialog_ex_set_header(dialog, "Restart device?", 64, 10, AlignCenter, AlignTop);
 
     } else {
         furi_crash("Invalid reboot type");

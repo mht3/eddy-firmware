@@ -80,8 +80,8 @@ static void submenu_process_down(Submenu* submenu);
 static void submenu_process_ok(Submenu* submenu, InputType input_type);
 
 static size_t submenu_items_on_screen(SubmenuModel* model) {
-    size_t res = (model->is_vertical) ? 8 : 4;
-    return (furi_string_empty(model->header)) ? res : res - 1;
+    if(model->is_vertical) return furi_string_empty(model->header) ? 8 : 7;
+    return 3;
 }
 
 static void submenu_view_draw_callback(Canvas* canvas, void* _model) {
@@ -94,7 +94,8 @@ static void submenu_view_draw_callback(Canvas* canvas, void* _model) {
 
     if(!furi_string_empty(model->header)) {
         canvas_set_font(canvas, FontPrimary);
-        canvas_draw_str(canvas, 4, 11, furi_string_get_cstr(model->header));
+        elements_scrollable_text_line(
+            canvas, 4, 11, model->is_vertical ? 58 : 86, model->header, 0, true);
     }
 
     canvas_set_font(canvas, FontSecondary);
@@ -105,7 +106,8 @@ static void submenu_view_draw_callback(Canvas* canvas, void* _model) {
         SubmenuItemArray_next(it)) {
         const size_t item_position = position - model->window_position;
         const size_t items_on_screen = submenu_items_on_screen(model);
-        uint8_t y_offset = furi_string_empty(model->header) ? 0 : item_height;
+        uint8_t y_offset = (model->is_vertical && furi_string_empty(model->header)) ? 0 :
+                                                                                      item_height;
         bool is_locked = SubmenuItemArray_cref(it)->locked;
 
         if(item_position < items_on_screen) {
@@ -145,7 +147,16 @@ static void submenu_view_draw_callback(Canvas* canvas, void* _model) {
         position++;
     }
 
-    elements_scrollbar(canvas, model->position, SubmenuItemArray_size(model->items));
+    if(model->is_vertical)
+        elements_scrollbar(canvas, model->position, SubmenuItemArray_size(model->items));
+    else
+        elements_scrollbar_pos(
+            canvas,
+            canvas_width(canvas),
+            16,
+            canvas_height(canvas) - 16,
+            model->position,
+            SubmenuItemArray_size(model->items));
 
     if(model->locked_message_visible) {
         const uint8_t frame_x = 7;

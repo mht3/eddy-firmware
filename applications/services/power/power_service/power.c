@@ -19,17 +19,30 @@
 static void power_draw_battery_callback(Canvas* canvas, void* context) {
     furi_assert(context);
     Power* power = context;
-    char text[8] = "--";
-    if(power->info.gauge_is_ok) {
-        snprintf(text, sizeof(text), "%u%%", (unsigned)power->info.charge);
-    }
+    const uint8_t display = atomic_load(&power->battery_display);
+    const unsigned charge = display & 0x7F;
+    char text[6] = "--";
+    if(charge <= 100) snprintf(text, sizeof(text), "%u%%", charge);
     canvas_set_font(canvas, FontSecondary);
-    canvas_draw_str_aligned(canvas, 24, 7, AlignRight, AlignBottom, text);
+    canvas_draw_str_aligned(canvas, canvas_width(canvas) - 1, 7, AlignRight, AlignBottom, text);
+
+    if(display & 0x80) {
+        canvas_draw_line(canvas, 6, 0, 2, 4);
+        canvas_draw_line(canvas, 2, 4, 6, 4);
+        canvas_draw_line(canvas, 6, 4, 3, 7);
+    } else {
+        canvas_draw_frame(canvas, 0, 1, 9, 6);
+        canvas_draw_box(canvas, 9, 3, 1, 2);
+        if(charge <= 100) {
+            const unsigned fill = (charge * 5 + 50) / 100;
+            if(fill) canvas_draw_box(canvas, 2, 3, fill, 2);
+        }
+    }
 }
 
 static ViewPort* power_battery_view_port_alloc(Power* power) {
     ViewPort* battery_view_port = view_port_alloc();
-    view_port_set_width(battery_view_port, icon_get_width(&I_Battery_25x8));
+    view_port_set_width(battery_view_port, 34);
     view_port_draw_callback_set(battery_view_port, power_draw_battery_callback, power);
     return battery_view_port;
 }
@@ -54,8 +67,9 @@ static bool power_update_info(Power* power) {
         .temperature_gauge = furi_hal_power_get_battery_temperature(FuriHalPowerICFuelGauge),
     };
 
-    const bool need_refresh = (power->info.charge != info.charge) ||
-                              (power->info.gauge_is_ok != info.gauge_is_ok);
+    const bool charging = info.is_charging && !furi_hal_power_is_charging_done();
+    const uint8_t display = (info.gauge_is_ok ? info.charge : 0x7F) | (charging ? 0x80 : 0);
+    const bool need_refresh = atomic_exchange(&power->battery_display, display) != display;
     power->info = info;
     return need_refresh;
 }
@@ -421,6 +435,7 @@ static void power_init_settings(Power* power) {
 
 static Power* power_alloc(void) {
     Power* power = malloc(sizeof(Power));
+    atomic_init(&power->battery_display, 0x7F);
     // Pubsub
     power->event_pubsub = furi_pubsub_alloc();
     // State initialization
@@ -446,7 +461,7 @@ static Power* power_alloc(void) {
     view_holder_attach_to_gui(power->view_holder, gui);
     // Battery view port
     power->battery_view_port = power_battery_view_port_alloc(power);
-    gui_add_view_port(gui, power->battery_view_port, GuiLayerStatusBarRight);
+    gui_add_view_port(gui, power->battery_view_port, GuiLayerBattery);
     // Event loop
     power->event_loop = furi_event_loop_alloc();
     power->message_queue = furi_message_queue_alloc(4, sizeof(PowerMessage));
@@ -477,7 +492,7 @@ int32_t power_srv(void* p) {
     // power service settings initialization
     power_init_settings(power);
 
-    power_update_info(power);
+    if(power_update_info(power)) view_port_update(power->battery_view_port);
 
     furi_record_create(RECORD_POWER, power);
 

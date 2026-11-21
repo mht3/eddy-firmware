@@ -30,3 +30,8 @@ redraws the Eddy firmware sprite with scalable paths for high-density displays.
 Launcher preview
 The grid uses the same launcher icons as the device, from assets/icons in this
 repository. The web preview uses a sample charge and simulated peripherals.
+
+Reader preview
+NFC and RFID use the upstream NFC_manual_60x50 card-placement illustration.
+iButton uses DolphinWait_59x54 from the Momentum icon pack. The preview
+preserves the firmware pixels and renders the ink on the simulated LCD.

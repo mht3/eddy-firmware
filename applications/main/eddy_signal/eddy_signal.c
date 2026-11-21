@@ -15,7 +15,7 @@ static void signal_draw(Canvas* canvas, void* context) {
     canvas_set_font(canvas, FontPrimary);
     canvas_draw_str(canvas, 2, 10, "Signal Meter");
     canvas_set_font(canvas, FontSecondary);
-    canvas_draw_str(canvas, 77, 10, "433.92 MHz");
+    canvas_draw_str(canvas, 72, 62, "433.92 MHz");
     canvas_draw_frame(canvas, 2, 15, 124, 37);
     for(size_t i = 0; i < history->count; i++) {
         size_t idx = (history->next + COUNT_OF(history->samples) - history->count + i) %
@@ -30,7 +30,6 @@ static void signal_draw(Canvas* canvas, void* context) {
         snprintf(value, sizeof(value), "%d dBm", (int)history->samples[latest]);
         canvas_draw_str(canvas, 3, 62, value);
     }
-    canvas_draw_str(canvas, 75, 62, "Receive only");
 }
 
 static void signal_sample(void* context) {
