@@ -230,6 +230,7 @@ class AppManager:
         ext_applist: List[str],
         hw_target: str,
         skip_external: bool = False,
+        explicit_apps_only: bool = False,
     ):
         return AppBuildset(
             self,
@@ -237,6 +238,7 @@ class AppManager:
             appnames=applist,
             extra_ext_appnames=ext_applist,
             skip_external=skip_external,
+            explicit_apps_only=explicit_apps_only,
         )
 
 
@@ -280,6 +282,7 @@ class AppBuildset:
         *,
         extra_ext_appnames: List[str],
         skip_external: bool = False,
+        explicit_apps_only: bool = False,
         message_writer: Callable | None = None,
     ):
         self.appmgr = appmgr
@@ -287,6 +290,7 @@ class AppBuildset:
         self.incompatible_extapps, self.extapps = [], []
         self._extra_ext_appnames = extra_ext_appnames
         self._skip_external = skip_external
+        self._explicit_apps_only = explicit_apps_only
         self._orig_appnames = appnames
         self.hw_target = hw_target
         self._writer = message_writer if message_writer else self.print_writer
@@ -346,6 +350,7 @@ class AppBuildset:
             for app in self.get_apps_of_type(
                 apptype,
                 global_lookup
+                and not self._explicit_apps_only
                 and not (self._skip_external and apptype is FlipperAppType.EXTERNAL),
             )
         ]
@@ -407,6 +412,8 @@ class AppBuildset:
     def _group_plugins(self):
         known_extensions = self.get_apps_of_type(FlipperAppType.PLUGIN, all_known=True)
         for extension_app in known_extensions:
+            if self._explicit_apps_only and extension_app not in self.extapps:
+                continue
             keep_app = False
             for parent_app_id in extension_app.requires:
                 try:

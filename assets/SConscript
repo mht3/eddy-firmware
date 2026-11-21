@@ -91,7 +91,7 @@ if assetsenv["IS_BASE_FIRMWARE"]:
     # External dolphin animations
     dolphin_external = assetsenv.DolphinExtBuilder(
         dolphin_external_out_dir,
-        assetsenv["ASSETS_SRC_DIR"].Dir("dolphin"),
+        assetsenv["ASSETS_SRC_DIR"].Dir("eddy"),
         DOLPHIN_RES_TYPE="external",
     )
     if assetsenv["FORCE"]:

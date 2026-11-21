@@ -28,7 +28,9 @@ class GitVersion:
                 dirty = True
 
         try:
-            tag = self._exec_git("describe --tags --abbrev=0 --exact-match")
+            tag = self._exec_git(
+                "describe --tags --match eddy-* --abbrev=0 --exact-match"
+            )
         except subprocess.CalledProcessError:
             tag = ""
 
@@ -37,11 +39,11 @@ class GitVersion:
         branch = (
             os.environ.get("WORKFLOW_BRANCH_OR_TAG", None)
             or tag
-            or self._exec_git("rev-parse --abbrev-ref HEAD").removeprefix("mntm-")
+            or self._exec_git("rev-parse --abbrev-ref HEAD").removeprefix("eddy-")
             or "unknown"
         )
 
-        version = tag or "mntm-dev"
+        version = tag or "eddy-dev"
 
         if "SOURCE_DATE_EPOCH" in os.environ:
             commit_date = datetime.utcfromtimestamp(
@@ -84,13 +86,13 @@ class GitVersion:
         if len(origins) == 1:
             return origins
         else:
-            return set(["https://github.com/Next-Flip/Momentum-Firmware"])
+            return set(["https://github.com/mht3/eddy-firmware"])
 
     def _exec_git(self, args):
         cmd = ["git"]
         cmd.extend(args.split(" "))
         return (
-            subprocess.check_output(cmd, cwd=self.source_dir, stderr=subprocess.STDOUT)
+            subprocess.check_output(cmd, cwd=self.source_dir, stderr=subprocess.PIPE)
             .strip()
             .decode()
         )
@@ -177,6 +179,8 @@ class Main(App):
         version_json = {
             "firmware_build_date": current_info["BUILD_DATE"],
             "firmware_commit": current_info["GIT_COMMIT"],
+            "firmware_dirty": bool(current_info["BUILD_DIRTY"]),
+            "firmware_origin": current_info["FIRMWARE_ORIGIN"],
             "firmware_branch": current_info["GIT_BRANCH"],
             "firmware_target": current_info["TARGET"],
             "firmware_version": current_info["VERSION"],

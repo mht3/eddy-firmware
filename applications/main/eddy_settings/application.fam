@@ -1,0 +1,12 @@
+App(
+    # Keep the installed FAP path compatible with existing shortcuts.
+    appid="momentum_app",
+    name="Eddy Settings",
+    apptype=FlipperAppType.MENUEXTERNAL,
+    entry_point="eddy_settings_app",
+    stack_size=2 * 1024,
+    flags=["InsomniaSafe"],
+    icon="A_Momentum_14",
+    order=90,
+    fap_category="assets",
+)

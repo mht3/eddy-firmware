@@ -139,7 +139,7 @@ void cli_command_src(PipeSide* pipe, FuriString* args, void* context) {
     UNUSED(args);
     UNUSED(context);
 
-    printf("https://github.com/Next-Flip/Momentum-Firmware");
+    printf("https://github.com/mht3/eddy-firmware");
 }
 
 #define CLI_COMMAND_LOG_RING_SIZE   2048

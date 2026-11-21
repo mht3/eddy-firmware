@@ -1,0 +1,10 @@
+App(
+    appid="eddy_signal",
+    name="Signal Meter",
+    apptype=FlipperAppType.MENUEXTERNAL,
+    entry_point="eddy_signal_app",
+    icon="A_Sub1ghz_14",
+    order=10,
+    stack_size=2 * 1024,
+    fap_category="assets",
+)

@@ -1,1 +1,3 @@
-# ANY AND ALL USE OF AI, EVEN SLIGHTLY SUSPECTED, EVEN IF JUST TO ASK QUESTIONS AND GET CONFIRMATION HERE, WILL GET YOU BANNED, YOUR MESSAGES DELETED, AND YOUR ISSUES / PULL REQUESTS CLOSED. YOU ARE A HUMAN, ACT LIKE IT
+# Contributing to Eddy
+
+Report bugs against the Eddy fork with the firmware version, device details and steps to reproduce. Keep upstream attribution and third-party license notices with any contributions. Describe how you verified firmware or website changes in your pull request.

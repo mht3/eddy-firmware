@@ -131,7 +131,7 @@ def __invoke_git(args, source_dir):
     cmd = ["git"]
     cmd.extend(args)
     return (
-        subprocess.check_output(cmd, cwd=source_dir, stderr=subprocess.STDOUT)
+        subprocess.check_output(cmd, cwd=source_dir, stderr=subprocess.PIPE)
         .strip()
         .decode()
     )

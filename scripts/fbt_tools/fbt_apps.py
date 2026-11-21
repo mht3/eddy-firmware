@@ -142,6 +142,7 @@ def PrepareApplicationsBuild(env):
             ext_applist=env["EXTRA_EXT_APPS"],
             hw_target=env.subst("f${TARGET_HW}"),
             skip_external=env.get("SKIP_EXTERNAL"),
+            explicit_apps_only=env.subst("$FIRMWARE_APP_SET") == "eddy",
         )
     except Exception as e:
         raise StopError(e)

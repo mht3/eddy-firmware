@@ -23,4 +23,6 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: "Check formatting"
-        run: ./fbt lint_all
+        run: |
+          git submodule update --init --jobs 8 -- assets/protobuf lib
+          FBT_NO_SYNC=1 ./fbt lint_all

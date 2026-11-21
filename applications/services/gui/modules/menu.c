@@ -49,8 +49,8 @@ static void menu_process_ok(Menu* menu);
 static void menu_get_name(MenuItem* item, FuriString* name, bool shorter) {
     furi_string_set(name, item->label);
     if(shorter) {
-        if(!furi_string_cmp(name, "Momentum")) {
-            furi_string_set(name, "MNTM");
+        if(!furi_string_cmp(name, "Eddy Settings")) {
+            furi_string_set(name, "Eddy");
             return;
         } else if(!furi_string_cmp(name, "125 kHz RFID")) {
             furi_string_set(name, "RFID");
@@ -388,7 +388,7 @@ static void menu_draw_callback(Canvas* canvas, void* _model) {
         }
         case MenuStyleMNTM: {
             canvas_set_font(canvas, FontPrimary);
-            canvas_draw_icon(canvas, 62, 4, &I_Release_arrow_18x15);
+            canvas_draw_icon(canvas, 62, 4, &I_CC_Momentum_16x16);
             canvas_draw_line(canvas, 5, 15, 59, 15);
             canvas_draw_line(canvas, 7, 17, 61, 17);
             canvas_draw_line(canvas, 10, 19, 63, 19);

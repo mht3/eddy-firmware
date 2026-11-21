@@ -1,3 +1,12 @@
+# Eddy Firmware
+
+## Unreleased
+
+- Added the Eddy desktop, welcome and update artwork, interface settings, and receive-only Signal Meter.
+- Added the main firmware build, the website and a single-package installer.
+
+## Inherited Momentum changes at the fork point
+
 ### Added:
 - Apps:
   - Games: Checkers (by @H4W9)

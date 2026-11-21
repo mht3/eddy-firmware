@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="theme-color" content="#101c1a">
+    <meta name="description" content="Meet Eddy Firmware, an open-source Momentum fork for Flipper Zero. Explore the interface and install the main build.">
+    <title>
+      Eddy Firmware for Flipper Zero
+    </title>
+    <link rel="icon" href="eddy.svg">
+    <link rel="stylesheet" href="style.css">
+    <script type="module" src="app.js">
+    </script>
+    <script type="module" src="device.js">
+    </script>
+  </head>
+  <body>
+    <a class="skip" href="#main">
+      Skip to content
+    </a>
+    <header>
+      <div class="bar">
+        <a class="brand" href="./">
+          <img src="eddy.svg" alt="">
+          Eddy
+          <span>
+            Firmware
+          </span>
+        </a>
+        <nav aria-label="Main">
+          <a href="wiki/">
+            Wiki
+          </a>
+          <a href="https://github.com/mht3/eddy-firmware/issues/new?template=01_bug_report.yml">
+            Report a bug
+          </a>
+          <a class="small-cta" href="#install">
+            Install
+          </a>
+        </nav>
+      </div>
+    </header>
+    <main id="main">
+      <div class="showcase">
+        <div class="stage" aria-hidden="true">
+          <canvas class="field">
+          </canvas>
+          <eddy-device phase="0">
+          </eddy-device>
+          <div class="caption">
+            <span>
+              FLIPPER ZERO
+            </span>
+            <span id="scene-label">
+              DEVICE PREVIEW
+            </span>
+          </div>
+        </div>
+        <div class="chapters">
+          <section class="hero" data-phase="0">
+            <div class="eyebrow">
+              <i>
+              </i>
+              CUSTOM FIRMWARE FOR FLIPPER ZERO
+            </div>
+            <h1>
+              Eddy
+              <br>
+              <em>
+                Firmware
+              </em>
+            </h1>
+            <p>
+              Meet Eddy, the dolphin who swims the currents on your Flipper Zero. An open-source Momentum fork with a live signal meter and a customizable desktop.
+            </p>
+            <a class="cta" href="#install">
+              Install Eddy Firmware
+            </a>
+            <a class="tour" href="#connect">
+              Explore the interface
+              <span aria-hidden="true">
+                ↓
+              </span>
+            </a>
+          </section>
+          <section id="connect" data-phase="1">
+            <div class="eyebrow">
+              <i>
+              </i>
+              USB CONNECTION
+            </div>
+            <h2>
+              Plug in.
+            </h2>
+            <p>
+              Insert your microSD card and connect your Flipper Zero with a USB data cable. Close qFlipper so the web installer can use the port.
+            </p>
+          </section>
+          <section data-phase="2">
+            <div class="eyebrow">
+              <i>
+              </i>
+              FIRMWARE UPDATE
+            </div>
+            <h2>
+              Load Eddy.
+            </h2>
+            <p>
+              The web installer opens Flipper Lab with the Eddy main build selected. Connect your device, confirm the update and leave it plugged in through the restart.
+            </p>
+          </section>
+          <section data-phase="3">
+            <div class="eyebrow">
+              <i>
+              </i>
+              ON THE DEVICE
+            </div>
+            <h2>
+              Explore the
+              <br>
+              <em>
+                interface.
+              </em>
+            </h2>
+            <p>
+              Browse files on your microSD card, tune the main menu and watch the receive-only Signal Meter sample the 433.92 MHz band.
+            </p>
+          </section>
+        </div>
+      </div>
+      <section id="install">
+        <div class="install-wrap">
+          <div>
+            <div class="eyebrow">
+              <i>
+              </i>
+              MAIN BUILD
+            </div>
+            <h2>
+              Install Eddy.
+            </h2>
+            <p>
+              For Flipper Zero with a microSD card and USB data cable. Use desktop Chrome or Edge for the web installer.
+            </p>
+          </div>
+          <div class="release">
+            <h3>
+              Flipper Zero
+              <span>
+                F7
+              </span>
+            </h3>
+            <p id="build-status" role="status">
+              Checking for an Eddy build…
+            </p>
+            <a id="install-link" class="cta" hidden>
+              Open web installer
+            </a>
+            <a id="download" hidden>
+              Download for qFlipper
+            </a>
+            <a id="source" hidden>
+              Source for this build
+            </a>
+            <noscript>
+              Enable JavaScript to check for a release.
+            </noscript>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer>
+      <a class="brand" href="./">
+        <img src="eddy.svg" alt="">
+        Eddy
+        <span>
+          Firmware
+        </span>
+      </a>
+      <div>
+        <a href="wiki/">
+          Wiki
+        </a>
+        <a href="https://github.com/mht3/eddy-firmware/issues/new?template=01_bug_report.yml">
+          Report a bug
+        </a>
+      </div>
+    </footer>
+  </body>
+</html>

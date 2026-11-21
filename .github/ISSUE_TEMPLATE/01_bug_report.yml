@@ -1,11 +1,11 @@
 name: Bug report
-description: File a bug reports regarding the firmware.
+description: Report a bug in Eddy Firmware or its website.
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thank you for taking the time to fill out an issue, this template is meant for any issues related to the Flipper Zero unleashed firmware.
+        Include the Eddy version or website URL, what you expected, and what happened.
   - type: textarea
     id: description
     attributes:
@@ -21,8 +21,7 @@ body:
       placeholder: |
         1. Switch on...
         2. Press button '....'
-        3. Wait for the moon phase
-        4. It burns
+        3. Describe the result.
     validations:
       required: true
   - type: input

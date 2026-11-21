@@ -4,7 +4,7 @@ import os
 
 # For more details on these options, run 'fbt -h'
 
-FIRMWARE_ORIGIN = "Momentum"
+FIRMWARE_ORIGIN = "Eddy"
 
 # Default hardware target
 TARGET_HW = 7
@@ -19,7 +19,7 @@ DEBUG = 0
 # If OS environment has DIST_SUFFIX set, it will be used instead
 
 if not os.environ.get("DIST_SUFFIX"):
-    # Check scripts/get_env.py to mirror CI naming
+    # Distribution filenames identify the fork and revision.
     def git(*args):
         import subprocess
 
@@ -30,16 +30,18 @@ if not os.environ.get("DIST_SUFFIX"):
         )
 
     try:
-        # For tags, dist name is just the tag name: mntm-(ver)
-        DIST_SUFFIX = git("describe", "--tags", "--abbrev=0", "--exact-match")
+        # For tags, dist name is just the tag name: eddy-(ver)
+        DIST_SUFFIX = git(
+            "describe", "--tags", "--match", "eddy-*", "--abbrev=0", "--exact-match"
+        )
     except Exception:
-        # If not a tag, dist name is: mntm-(branch)-(commmit)
-        branch_name = git("rev-parse", "--abbrev-ref", "HEAD").removeprefix("mntm-")
+        # If not a tag, dist name is: eddy-(branch)-(commmit)
+        branch_name = git("rev-parse", "--abbrev-ref", "HEAD").removeprefix("eddy-")
         commit_sha = git("rev-parse", "HEAD")[:8]
-        DIST_SUFFIX = f"mntm-{branch_name}-{commit_sha}"
+        DIST_SUFFIX = f"eddy-{branch_name}-{commit_sha}"
     # Dist name is only for naming of output files
     DIST_SUFFIX = DIST_SUFFIX.replace("/", "-")
-    # Instead, FW version uses tag name (mntm-xxx), or "mntm-dev" if not a tag (see scripts/version.py)
+    # Instead, FW version uses tag name (eddy-xxx), or "eddy-dev" if not a tag (see scripts/version.py)
     # You can get commit and branch info in firmware with appropriate version_get_*() calls
 
 # Skip external apps by default
@@ -91,6 +93,15 @@ BLACKMAGIC = "auto"
 LOADER_AUTOSTART = ""
 
 FIRMWARE_APPS = {
+    "eddy": [
+        "basic_services",
+        "archive",
+        "updater_app",
+        "settings_apps",
+        "momentum_app",
+        "eddy_signal",
+        "cli_src",
+    ],
     "default": [
         # Svc
         "basic_services",
@@ -122,7 +133,7 @@ FIRMWARE_APPS = {
     ],
 }
 
-FIRMWARE_APP_SET = "default"
+FIRMWARE_APP_SET = "eddy"
 
 custom_options_fn = "fbt_options_local.py"
 

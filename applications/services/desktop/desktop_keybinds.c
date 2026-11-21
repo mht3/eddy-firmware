@@ -45,7 +45,7 @@ void desktop_keybinds_migrate(Desktop* desktop) {
                     } else if(furi_string_equal(keybind, "SubGHz")) {
                         furi_string_set(keybind, "Sub-GHz");
                     } else if(furi_string_equal(keybind, "Xtreme")) {
-                        furi_string_set(keybind, "Momentum");
+                        furi_string_set(keybind, "Eddy Settings");
                     }
                     new[type][key] = keybind;
                 }
@@ -104,6 +104,9 @@ static FuriString*
     if(!success) {
         FURI_LOG_W(TAG, "Failed to load file, using defaults");
         furi_string_set(keybind, desktop_keybinds_defaults[type][key]);
+    }
+    if(furi_string_equal(keybind, "Momentum")) {
+        furi_string_set(keybind, "Eddy Settings");
     }
     return keybind;
 }

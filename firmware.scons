@@ -148,6 +148,15 @@ for app_dir, _ in fwenv["APPDIRS"]:
             fwenv.LoadAppManifest(entry)
 
 fwenv.PrepareApplicationsBuild()
+if env["IS_BASE_FIRMWARE"] and fwenv.subst("$FIRMWARE_APP_SET") == "eddy":
+    # Keep the SDK header available to existing apps when the driver is unbundled.
+    fwenv.AppendUnique(
+        SDK_HEADERS=[
+            fwenv.File(
+                "#/applications/drivers/subghz/cc1101_ext/cc1101_ext_interconnect.h"
+            )
+        ]
+    )
 
 
 # Build external apps + configure SDK
@@ -163,10 +172,13 @@ if env["IS_BASE_FIRMWARE"]:
     fw_artifacts.append(fw_extapps.sdk_tree)
 
     # Resources & manifest for SD card
+    resource_dirs = [fwenv["DOLPHIN_EXTERNAL_OUT_DIR"]]
+    if fwenv.subst("$FIRMWARE_APP_SET") != "eddy":
+        resource_dirs.append(fwenv["ASSET_PACKS_OUT_DIR"])
     manifest = fwenv.ManifestBuilder(
         "${RESOURCES_ROOT}/Manifest",
         GIT_UNIX_TIMESTAMP=get_git_commit_unix_timestamp(),
-        _EXTRA_DIST=[fwenv["DOLPHIN_EXTERNAL_OUT_DIR"], fwenv["ASSET_PACKS_OUT_DIR"]],
+        _EXTRA_DIST=resource_dirs,
     )
     fwenv.Replace(FW_RESOURCES_MANIFEST=manifest)
     fwenv.Alias("resources", manifest)
