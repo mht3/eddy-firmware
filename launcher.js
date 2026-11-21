@@ -7,7 +7,7 @@ export const sections = [
 export const apps = [
   ['Sub-GHz','signal'], ['RFID','rfid'], ['NFC','nfc'], ['Infrared','infrared'],
   ['GPIO','gpio'], ['iButton','ibutton'], ['Pomodoro Timer','pomodoro'], ['Metronome','metronome'],
-  ['Remote Builder','builder'], ['Bluetooth Remote','btRemote'],
+  ['Remote Builder','builder'], ['Bluetooth Remote','btRemote'], ['Spotify','music'],
 ];
 
 export function drawLauncher(ctx, page, selected, gridItems = apps) {
@@ -49,7 +49,7 @@ export function drawLauncher(ctx, page, selected, gridItems = apps) {
       }
       ctx.stroke();
     } else if (launcherArt.naturalWidth) {
-      const index = grid ? i + sections.length : i;
+      const index = grid ? (items[i][1]==='music' ? 7 : i) + sections.length : i;
       ctx.drawImage(launcherArt,index*18,0,18,18,x-9,y-9,18,18);
     }
     ctx.restore();
