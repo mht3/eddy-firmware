@@ -19,11 +19,12 @@
     </div></header>
     <main class="music">
       <h1>Spotify library.</h1>
-      <p class="intro">Try Liked Songs, playlists and albums in the sample library. To use your own music, sign in with an invited account or <a href="#developer-setup">set up your own development app</a>.</p>
+      <p class="intro">Try the sample library in your browser. To browse your own music on a Flipper, sign in with an invited account or <a href="#developer-setup">set up your own development app</a>.</p>
       <section>
-        <h2>Explore the library</h2>
-        <img class="library-device" src="liked-songs.webp" width="1080" height="540" alt="Flipper Zero showing a sample Liked Songs library with Dolphin Days selected.">
-        <p>Pick a collection with <strong>OK</strong>. Use <strong>Up / Down</strong> to move through its items and <strong>Left / Right</strong> to turn the page. Press <strong>OK</strong> to play your selection.</p>
+        <h2>Try the Spotify preview</h2>
+        <img class="library-device" src="preview-playlists.webp" width="1080" height="540" alt="The Flipper preview shows three playlists. Morning Swim is selected and Dolphin Days is playing in the strip below.">
+        <p>Search for <em>Dolphin Days</em>, read its sample lyrics, or add a song to the queue. Each playlist has its own icon. The Now Playing strip keeps the current song in view while you browse.</p>
+        <p>The preview uses original lyrics written for its sample songs. For lyrics to a song in your own library, open the track in Spotify on your phone.</p>
         <a class="small-cta" href="../?demo=spotify#home-screen">Try the sample library</a>
       </section>
       <section id="personal-library">
@@ -36,6 +37,9 @@
             <li>Scan the Flipper’s QR code with an Android phone using Chrome, or choose <strong>Link Spotify</strong> here. Spotify asks for permission in your browser. After approval, choose your Flipper in the Bluetooth prompt and keep this tab open.</li>
             <li>Start Spotify on the device you want to hear. If you use a computer for the Bluetooth connection, you can still play the music on your iPhone.</li>
           </ol>
+          <img class="library-device" loading="lazy" src="liked-songs.webp" width="1080" height="540" alt="The handheld Liked Songs screen with Dolphin Days selected.">
+          <p>On your Flipper, open <strong>Search</strong> to find a song or artist, or browse Liked Songs, playlists and albums. Use <strong>Up / Down</strong> to highlight an item and <strong>Left / Right</strong> to turn the page.</p>
+          <p>Press <strong>OK</strong> on a track to open its options. Choose <strong>Play now</strong> to hear it, <strong>Add to queue</strong> to play it later, or <strong>Add to playlist</strong> to save it to a playlist you own. Open <strong>Queue</strong> to see what’s coming up or <strong>Now playing</strong> to check the current song and playback status.</p>
           <details><summary>Reconnecting after a restart</summary>
             <p>Keep this tab open and reopen Spotify on your Flipper. The tab will try to reconnect using your existing sign-in. If your Flipper is connected to a different phone or computer, disconnect it there first. Use <strong>Reconnect Flipper</strong> to try again.</p>
           </details>
@@ -49,27 +53,37 @@
           <ul id="library-links" hidden aria-label="Open displayed items in Spotify"></ul>
           <details id="privacy">
             <summary>Privacy and account access</summary>
-            <p>Eddy uses Spotify sign-in to read your saved music and playlists and start playback when you press OK. This tab sends library labels to your paired Flipper. It keeps the sign-in tokens in browser session storage and sends requests directly to Spotify.</p>
+            <p>Eddy asks to read your saved music, private and collaborative playlists, current playback and queue. You can search Spotify for songs and artists. When you choose a track action, Eddy can start playback, add the song to your queue or save it to a public or private playlist you own.</p>
+            <p>This tab sends your searches and commands directly to Spotify and displays the results on your paired Flipper. It keeps the sign-in tokens in browser session storage. If you linked an earlier version of Eddy, choose <strong>Link Spotify</strong> again and approve the updated permissions.</p>
             <p>Choose <strong>Unlink Spotify</strong> to remove the sign-in from this tab. You can also remove Eddy from <a href="https://www.spotify.com/account/apps/">your Spotify account’s apps</a> to revoke access.</p>
           </details>
         </div>
       </section>
       <section id="developer-setup">
-        <h2>Run your own development app</h2>
-        <p>With a Spotify Premium account and your own GitHub fork, you can develop a personal library companion. GitHub builds your firmware and the matching website. Your Flipper gets a QR code for your Spotify app, with nothing to type during installation.</p>
+        <h2>Set up Spotify before flashing</h2>
+        <p>For a personal development build, you’ll need Spotify Premium and a free GitHub account. Set this up once. GitHub builds your firmware and companion website together, so the QR on your Flipper opens sign-in for your own app.</p>
         <ol>
-          <li><strong>Set up your fork.</strong> <a href="https://github.com/mht3/eddy-firmware/fork">Fork Eddy on GitHub</a>. In your fork’s <strong>Actions</strong> tab, enable workflows. Under <strong>Settings → Pages → Source</strong>, select <strong>GitHub Actions</strong>.</li>
-          <li><strong>Register your app.</strong> In the <a href="https://developer.spotify.com/dashboard">Spotify Developer Dashboard</a>, sign in with your Premium account and choose <strong>Create app</strong>. Replace <code>YOUR-NAME</code> and <code>YOUR-REPO</code> below with your GitHub username and your fork’s name.
+          <li><strong>Sign in to Spotify for Developers.</strong> Visit <a href="https://developer.spotify.com/">Spotify for Developers</a> and log in with the Spotify account you use for music. If you’re new to Spotify, create an account and activate Premium before using a development app.</li>
+          <li><strong>Set up your fork.</strong> <a href="https://github.com/mht3/eddy-firmware/fork">Fork Eddy on GitHub</a>. In your fork’s <strong>Actions</strong> tab, enable workflows. Under <strong>Settings → Pages → Source</strong>, select <strong>GitHub Actions</strong>.
+            <div id="fork-helper" class="fork-helper" hidden>
+              <label for="setup-fork">Your GitHub fork</label>
+              <input id="setup-fork" type="text" spellcheck="false" autocapitalize="none" autocomplete="off" placeholder="github.com/your-name/eddy-firmware" aria-describedby="fork-note">
+              <small id="fork-note" aria-live="polite">Enter its address to fill in your website and redirect URI below.</small>
+            </div>
+          </li>
+          <li><strong>Register your app.</strong> In the <a href="https://developer.spotify.com/dashboard">Spotify Developer Dashboard</a>, sign in with your Premium account and choose <strong>Create app</strong>. Use your own app name and GitHub Pages addresses. This example uses Eddy.
+            <figure class="setup-shot"><img src="create-app.webp" width="358" height="477" loading="lazy" alt="Spotify’s Create app form with Eddy entered as the app name."><figcaption>Eddy is the example app. Use your own website address below.</figcaption></figure>
             <dl class="registration">
-              <dt>App name</dt><dd>My Flipper Library</dd>
+              <dt>App name</dt><dd>Eddy</dd>
               <dt>App description</dt><dd>Browse my saved music and control playback from my Flipper Zero.</dd>
-              <dt>Website</dt><dd><code>https://YOUR-NAME.github.io/YOUR-REPO/</code></dd>
-              <dt>Redirect URI</dt><dd><code>https://YOUR-NAME.github.io/YOUR-REPO/spotify/</code> · choose <strong>Add</strong>. Include the trailing slash.</dd>
+              <dt>Website</dt><dd><code id="setup-site">https://YOUR-NAME.github.io/YOUR-REPO/</code></dd>
+              <dt>Redirect URI</dt><dd><code id="setup-callback">https://YOUR-NAME.github.io/YOUR-REPO/spotify/</code> · choose <strong>Add</strong>. Include the trailing slash.</dd>
               <dt>APIs / SDKs</dt><dd>Web API</dd>
             </dl>
-            Review Spotify’s terms and save your app. In its <strong>Settings</strong>, copy the <strong>Client ID</strong>. Keep the client secret private.
+            Review Spotify’s terms and save your app. In its <strong>Settings</strong>, copy the <strong>Client ID</strong>. Eddy uses this public identifier for sign-in. Keep the Client Secret private.
+            <figure class="setup-shot"><img src="client-id.webp" width="276" height="112" loading="lazy" alt="Spotify app settings showing the Client ID field and its copy button."><figcaption>Use the copy button beside Client ID in your own dashboard.</figcaption></figure>
           </li>
-          <li><strong>Connect your fork to your app.</strong> In your GitHub fork, open <strong>Settings → Secrets and variables → Actions → Variables → New repository variable</strong>. Name it <code>EDDY_SPOTIFY_CLIENT_ID</code>, paste your Client ID as the value and save.</li>
+          <li><strong>Connect your fork to your app.</strong> In your GitHub fork, open <strong>Settings → Secrets and variables → Actions → Variables → New repository variable</strong>. Name it <code>EDDY_SPOTIFY_CLIENT_ID</code>, paste your Client ID as the value and save. <a id="setup-variables" hidden>Open my fork’s variables</a></li>
           <li><strong>Build and install.</strong> Open <strong>Actions → Build Eddy → Run workflow</strong>. Select <strong>dev</strong> and run it. When the publish job has a green check, open your fork’s Pages site and choose <strong>Install</strong>. Leave Spotify selected and install this build on your Flipper.</li>
           <li><strong>Scan and connect.</strong> Open <strong>Apps → Spotify</strong>. Scan the Flipper’s QR code with Chrome on Android. Spotify shows your app’s name and asks for permission. Approve it, choose your Flipper in the Bluetooth prompt, and keep the tab open. For iPhone playback, open your companion’s <code>/spotify/</code> page in Chrome on a Mac or PC, choose <strong>Link Spotify</strong>, and start a song on your iPhone.</li>
         </ol>

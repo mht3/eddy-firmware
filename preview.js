@@ -1,5 +1,5 @@
 import {getAppOrder, getSelectedApps, restoreAppOrder, launcherColumns, launcherPageSize} from './app-catalog.js';
-import {openSpotifyDemo, drawSpotify, spotifyStatus, spotifyKey} from './spotify-preview.js';
+import {openSpotifyDemo, drawSpotify, spotifyStatus, spotifyKey, spotifyHit, searchSpotifyDemo} from './spotify-preview.js';
 import {openMusicDemo, drawMusic, musicStatus, musicKey} from './music-preview.js';
 import {presetButtons, tvPresetRows, tvPadStatus, tvPadKey, drawTvPad, tvPadHit, tvNavigationHit} from './tv-presets.js';
 import {openBuilder, builderKey, builderStatus, drawBuilder} from './builder-preview.js';
@@ -18,6 +18,8 @@ const panel = document.querySelector('#playable');
 const display = panel.querySelector('canvas');
 const ctx = display.getContext('2d');
 const status = document.querySelector('#preview-state');
+const previewIntro = document.querySelector('#preview-intro');
+const homeIntro = previewIntro.textContent;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const ink = '#432a14';
 const titles = {
@@ -89,6 +91,11 @@ function refreshRemotes() {
 }
 refreshRemotes();
 let history = [{page:'home',row:0}];
+let spotifySession;
+function enterSpotify() {
+  spotifySession=openSpotifyDemo(spotifySession);
+  history.push(spotifySession);
+}
 let timer;
 let inView = false;
 const current = () => history[history.length-1];
@@ -214,7 +221,7 @@ function draw() {
   }
   ctx.setTransform(width/128,0,0,height/64,0,0);
   const {page,row} = current();
-  display.classList.toggle('selectable',['menu','apps','quick','tvPad','pomodoro'].includes(page));
+  display.classList.toggle('selectable',['menu','apps','quick','tvPad','pomodoro','spotify'].includes(page));
   const tick = reducedMotion.matches ? 4 : Math.floor(performance.now()/167);
   ctx.clearRect(0,0,128,64);
   ctx.fillStyle = ctx.strokeStyle = ink;
@@ -237,7 +244,7 @@ function draw() {
   } else if (page === 'gpio') {
     drawGpio(ctx,current());
   } else if (page === 'spotify') {
-    if(drawSpotify(ctx,current())) timer=setTimeout(draw,200);
+    if(drawSpotify(ctx,current())) timer=setTimeout(draw,500);
   } else if (page === 'music') {
     if(drawMusic(ctx,current())) timer=setTimeout(draw,500);
   } else if (page === 'metronome') {
@@ -277,6 +284,9 @@ function draw() {
 
 function announce() {
   const {page,row} = current();
+  if(!pickerPreview) previewIntro.textContent=page==='spotify'
+    ? 'Tap a row to explore. Back returns to your library, and the track at the bottom opens playback.'
+    : homeIntro;
   let text = titles[page];
   if (readers[page]) {
     text += current().detected ? '. Type detected. '+readerTypes[page]+'. OK to name and save, or Left to scan again.' :
@@ -298,7 +308,7 @@ function announce() {
   if (page!=='off') text += '. Sample battery '+sampleCharge+'%, not charging.';
   if (page==='home') text += ' Press OK for the launcher or Up for quick settings.';
   if (page==='signal') text+='. Sample signal at '+meterLabel(current().frequency ?? 433920)+'. Left to tune, OK to save this reading, Right for saved readings.';
-  if (page==='spotify') text += '. '+spotifyStatus(current());
+  if (page==='spotify') text += ' '+spotifyStatus(current());
   if (page==='music') text += '. '+musicStatus(current());
   if (page==='metronome') text += '. '+metronomeStatus(current());
   if (page==='pomodoro') text += '. '+Math.ceil(remaining()/1000)+' seconds. '+(focus.deadline?'Running. OK to pause.':'Paused. Left or Right for minutes, Up cycles seconds in five-second steps, OK to start.')+' Down toggles sound. '+(focus.muted?'Muted.':'Sound on.');
@@ -308,7 +318,7 @@ function announce() {
 function press(key) {
   const state=current(), page=state.page, rows=lists[page];
   if(page==='gpio' && gpioKey(state,key)) { draw(); announce(); return; }
-  if(page==='spotify' && spotifyKey(state,key)) { draw(); announce(); return; }
+  if(page==='spotify' && spotifyKey(state,key,openSpotifySearch)) { draw(); announce(); return; }
   if(page==='tvPad' && state.navigation && key==='back') {
     tvPadKey(state,key); draw(); announce(); return;
   }
@@ -401,7 +411,7 @@ function press(key) {
         if(page==='apps' && next==='remote' && (requestedApps ?? getSelectedApps()).has('builder')) history.push(openBuilder(name,'remote'));
         else if(next==='layout' || next==='builder') history.push(openBuilder(next==='layout'?name:undefined));
         else if(next==='music') history.push(openMusicDemo());
-        else if(next==='spotify') history.push(openSpotifyDemo());
+        else if(next==='spotify') enterSpotify();
         else if(next==='tvPad') {
           const saved=layoutDemo.addPreset(name,presetButtons(state.row));
           history.push({page:next,profile:state.row,row:2});
@@ -426,14 +436,15 @@ function showAppPreview(id, standaloneSample = false) {
   if(index>=0 || standaloneSample) {
     if(id==='builder') history.push(openBuilder());
     else if(id==='music') history.push(openMusicDemo());
-    else if(id==='spotify') history.push(openSpotifyDemo());
+    else if(id==='spotify') enterSpotify();
     else history.push({page:id,row:0});
   }
   draw(); announce();
 }
 
-document.querySelector('#try-music').addEventListener('click', () => {
-  showAppPreview('music', true);
+document.querySelector('#try-spotify').addEventListener('click', () => {
+  showAppPreview('spotify', true);
+  press('ok');
   panel.querySelector('[data-key=ok]').focus({preventScroll:true});
 });
 if(pickerPreview) {
@@ -443,7 +454,7 @@ if(pickerPreview) {
   const title=(guideApp ? apps : lists.apps).find(([,page])=>page===id)?.[0] ?? 'Your Apps menu';
   document.querySelector('#home-screen h2').textContent=title;
   const guideIntro = {
-    spotify:'Browse sample Liked Songs, Playlists, and Albums. Use Up or Down to choose a category and OK to open it.',
+    spotify:'Pick a playlist, find a song, or build a queue. Use the Flipper buttons or tap a row. Tap the track at the bottom for playback.',
     music:'Try a sample track. Press OK to pause or play, Right to skip, and Up or Down for volume.',
   };
   document.querySelector('#preview-intro').textContent=guideIntro[guideApp] ??
@@ -467,6 +478,21 @@ window.addEventListener('eddy-apps-changed', () => {
       !lists.apps.some(([,id])=>id===open.page)) history.length=appView+1;
   draw(); announce();
 });
+
+const searchDialog=document.getElementById('spotify-search');
+const searchInput=document.getElementById('spotify-query');
+function openSpotifySearch(query) {
+  searchInput.value=query;
+  searchDialog.showModal();
+  searchInput.select();
+}
+searchDialog.querySelector('button[type=button]').onclick=()=>searchDialog.close();
+searchDialog.querySelector('form').onsubmit=event=>{
+  event.preventDefault();
+  if(!searchInput.value.trim()) return;
+  searchSpotifyDemo(current(),searchInput.value);
+  searchDialog.close(); draw(); announce();
+};
 
 const nameDialog=document.getElementById('remote-name-dialog');
 const nameInput=document.getElementById('remote-name');
@@ -517,6 +543,10 @@ display.addEventListener('click', event=>{
   const box=display.getBoundingClientRect();
   const x=(event.clientX-box.left)*128/box.width;
   const y=(event.clientY-box.top)*64/box.height;
+  if(state.page==='spotify') {
+    if(spotifyHit(state,x,y,openSpotifySearch)) { draw(); announce(); }
+    return;
+  }
   if(state.page==='tvPad') {
     if(state.navigation) {
       const arrow=tvNavigationHit(x,y);
