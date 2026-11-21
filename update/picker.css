@@ -40,7 +40,7 @@
 }
 .app-icon::after {
   content:''; width:36px; height:36px; background-color:currentColor;
-  mask:url('apps.png') no-repeat calc(-36px * var(--icon-shift)) 0 / 396px 36px;
+  mask:url('apps.png') no-repeat calc(-36px * var(--icon-shift)) 0 / 432px 36px;
   image-rendering:pixelated;
 }
 .included .app-icon {
@@ -54,7 +54,7 @@
 [data-id=gpio]      {--highlight:#c4d8aa; --shade:#88b19a; --glyph:#284a38; --icon-shift:4}
 [data-id=ibutton]   {--highlight:#bbd0f7; --shade:#8fa5cf; --glyph:#2d3b64; --icon-shift:5}
 [data-id=pomodoro]  {--highlight:#f6bab2; --shade:#ce8790; --glyph:#5d2b37; --icon-shift:6}
-[data-id=metronome] {--highlight:#dfc0ff; --shade:#ad91d9; --glyph:#493166; --icon-shift:7}
+[data-id=metronome] {--highlight:#dfc0ff; --shade:#ad91d9; --glyph:#493166; --icon-shift:11}
 [data-id=builder]   {--highlight:#fad4ac; --shade:#c8a07f; --glyph:#553e2d; --icon-shift:8}
 [data-id=btRemote]  {--highlight:#a8c8f8; --shade:#699ce0; --glyph:#143760; --icon-shift:9}
 [data-id=music]     {--highlight:#ffb9c8; --shade:#d57b9a; --glyph:#55273e; --icon-shift:7}

@@ -97,7 +97,7 @@ async function connect(device, onCommand, onDrop) {
   }
 }
 
-export async function startBridge(id) {
+export async function startBridge(id, scanned = false) {
   let session, lastDevice, pending = false, cooldown = 0;
   let attempt = 0;
   const droppedMessage = 'Bluetooth disconnected. Open Apps → Spotify on your Flipper, then select Reconnect Flipper here.';
@@ -279,7 +279,19 @@ export async function startBridge(id) {
   get('bridge').hidden = false;
   pending = true;
   render();
-  try { await callback(id); }
+  try {
+    await callback(id);
+    if (scanned) {
+      // Consume the scan before leaving, so Back or a canceled grant never loops.
+      history.replaceState(null, '', location.pathname);
+      if (!linked(id)) {
+        notice('Opening Spotify for permission…');
+        await authorize(id);
+      } else {
+        notice('Spotify is linked. Choose your Flipper to show your library.');
+      }
+    }
+  }
   catch (error) { notice(error.message); }
   pending = false;
   render();

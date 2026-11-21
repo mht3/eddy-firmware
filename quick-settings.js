@@ -43,19 +43,8 @@ export function drawQuick(ctx, row) {
       ctx.stroke();
     }
     if (i<2) {
-      const height=Math.round(23*levels[i]/100);
-      ctx.fillRect(x-5,36-height,11,height);
-      // Amber ink remains visible over the filled part of each meter.
-      ctx.save();
-      ctx.font='bold 10px sans-serif';
-      const symbol=i===0?'☼':'♪';
-      ctx.fillText(symbol,x,17);
-      ctx.beginPath();
-      ctx.rect(x-5,36-height,11,height);
-      ctx.clip();
-      ctx.globalCompositeOperation='destination-out';
-      ctx.fillText(symbol,x,17);
-      ctx.restore();
+      const height=Math.round(19*levels[i]/100);
+      ctx.fillRect(x-4,35-height,9,height);
     } else {
       ctx.font='18px sans-serif';
       ctx.fillText('⚙',x,14);
