@@ -6,7 +6,7 @@ export const sections = [
 ];
 export const apps = [
   ['Sub-GHz','signal'], ['RFID','rfid'], ['NFC','nfc'], ['Infrared','infrared'],
-  ['GPIO','gpio'], ['iButton','ibutton'], ['Pomodoro Timer','pomodoro'],
+  ['GPIO','gpio'], ['iButton','ibutton'], ['Pomodoro Timer','pomodoro'], ['Metronome','metronome'],
 ];
 
 export function drawLauncher(ctx, page, selected, gridItems = apps) {

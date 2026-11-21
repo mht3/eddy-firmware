@@ -1,3 +1,4 @@
+import {drawMetronome, metronomeInput, metronomeStatus} from './metronome.js';
 import {drawLauncher, sections, apps, launcherArt} from './launcher.js';
 import {settingsRows, settingsSamples, drawQuick, quickStatus, adjustQuick} from './quick-settings.js';
 import {listNotes, nameNote} from './observation-preview.js';
@@ -15,7 +16,7 @@ const titles = {
   noteList:'Saved observations', noteDetail:'Saved observation',
   home:'Home screen', menu:'Launcher', apps:'Apps', settings:'Settings', power:'Power',
   signal:'Sub-GHz', rfid:'RFID', nfc:'NFC', infrared:'Infrared', gpio:'GPIO', ibutton:'iButton',
-  pomodoro:'Pomodoro Timer', battery:'Battery info', restart:'Restart?', shutdown:'Power off?',
+  metronome:'Metronome', pomodoro:'Pomodoro Timer', battery:'Battery info', restart:'Restart?', shutdown:'Power off?',
   off:'Powered off', about:'About', clock:'Clock & Alarm', passport:'Passport', remotes:'My remotes',
   savedRemote:'Remote saved', pinsFull:'Apps shortcuts full', deleteRemote:'Delete this remote?', tester:'Button tester', detected:'Signal detected', quick:'Quick settings', remote:'Remote', editRemote:'Edit remote', learn:'Learn a demo remote', pins:'GPIO pins', uart:'USB to UART',
 };
@@ -229,6 +230,9 @@ function draw() {
     drawLauncher(ctx,page,row,lists.apps);
   } else if (page === 'quick') {
     drawQuick(ctx,row);
+  } else if (page === 'metronome') {
+    const delay=drawMetronome(ctx,current(),performance.now());
+    if (delay) timer=setTimeout(draw,delay);
   } else if (page === 'pomodoro') {
     drawPomodoro();
   } else {
@@ -280,6 +284,7 @@ function announce() {
   if (page!=='off') text += '. Sample battery '+sampleCharge+'%, not charging.';
   if (page==='home') text += ' Press OK for the launcher or Up for quick settings.';
   if (page==='signal') text+='. Sample signal at 433.92 MHz. OK to save this reading, Right for saved readings.';
+  if (page==='metronome') text += '. '+metronomeStatus(current());
   if (page==='pomodoro') text += '. '+Math.ceil(remaining()/1000)+' seconds. '+(focus.deadline?'Running. OK to pause.':'Paused. Left or Right to set minutes, OK to start.');
   status.textContent=text;
 }
@@ -338,6 +343,8 @@ function press(key) {
       while(history.length>1 && !['remotes','apps','infrared'].includes(current().page)) history.pop();
       refreshHistory();
     }
+  } else if(page==='metronome') {
+    metronomeInput(state,key,performance.now());
   } else if(page==='pomodoro') {
     const left=remaining();
     if(key==='ok') {
