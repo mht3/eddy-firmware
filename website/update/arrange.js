@@ -1,4 +1,4 @@
-import {catalog, defaultAppOrder, getAppOrder, getSelectedApps, setAppOrder} from '../app-catalog.js';
+import {catalog, launcherColumns, launcherPageSize, defaultAppOrder, getAppOrder, getSelectedApps, setAppOrder} from '../app-catalog.js';
 
 export function appArranger(onMove) {
   const grid = document.querySelector('.arrange-pages');
@@ -39,7 +39,7 @@ export function appArranger(onMove) {
     const visible = getAppOrder().filter(id => selected.has(id));
     const focused = document.activeElement;
     pages.forEach((page,i) => {
-      const group = visible.slice(i*8,i*8+8);
+      const group = visible.slice(i*launcherPageSize,(i+1)*launcherPageSize);
       page.parentElement.hidden = !group.length;
       page.replaceChildren(...group.map(id => tiles.get(id)));
     });
@@ -59,8 +59,8 @@ export function appArranger(onMove) {
     setAppOrder(order);
     const positions = [...grid.querySelectorAll('.app-slot')];
     const index = positions.indexOf(source);
-    status.textContent = source.textContent + ' moved to page ' + (Math.floor(index/8)+1) +
-      ', position ' + (index%8+1) + '.';
+    status.textContent = source.textContent + ' moved to page ' + (Math.floor(index/launcherPageSize)+1) +
+      ', position ' + (index%launcherPageSize+1) + '.';
   }
 
   // A captured pointer keeps the drag alive between tiles, including across pages on touch.
@@ -132,7 +132,7 @@ export function appArranger(onMove) {
   }
   window.addEventListener('keydown',event => { if (event.key === 'Escape') finishDrag(); });
   grid.addEventListener('keydown',event => {
-    const offset = {ArrowLeft:-1,ArrowRight:1,ArrowUp:-4,ArrowDown:4}[event.key];
+    const offset = {ArrowLeft:-1,ArrowRight:1,ArrowUp:-launcherColumns,ArrowDown:launcherColumns}[event.key];
     if (!offset || !event.target.matches('.app-slot')) return;
     event.preventDefault();
     const positions = [...grid.querySelectorAll('.app-slot')];

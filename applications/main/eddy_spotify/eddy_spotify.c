@@ -4,6 +4,7 @@
 #include <furi_hal_random.h>
 #include <gui/view_dispatcher.h>
 #include <profiles/serial_profile.h>
+#include <storage/storage.h>
 
 typedef struct {
     SpotifyScreen screen;
@@ -22,9 +23,9 @@ typedef struct {
 } SpotifyApp;
 
 static void reset_link(SpotifyModel* model, uint16_t handle) {
-    bool manual = model->screen.manual_qr;
-    *model = (SpotifyModel){.connection = handle};
-    model->screen.manual_qr = manual;
+    *model = (SpotifyModel){
+        .connection = handle,
+        .screen = {.manual_qr = model->screen.manual_qr, .setup_qr = model->screen.setup_qr}};
 }
 
 static void spotify_event(BleMediaEvent event, const void* data, size_t size, void* context) {
@@ -186,6 +187,23 @@ static uint32_t spotify_exit(void* context) {
     return VIEW_NONE;
 }
 
+static uint8_t* load_setup_qr(void) {
+    Storage* storage = furi_record_open(RECORD_STORAGE);
+    File* file = storage_file_alloc(storage);
+    uint8_t* bitmap = NULL;
+    if(storage_file_open(file, APP_DATA_PATH("setup.qr"), FSAM_READ, FSOM_OPEN_EXISTING) &&
+       storage_file_size(file) == SpotifyQrBytes) {
+        bitmap = malloc(SpotifyQrBytes);
+        if(bitmap && storage_file_read(file, bitmap, SpotifyQrBytes) != SpotifyQrBytes) {
+            free(bitmap);
+            bitmap = NULL;
+        }
+    }
+    storage_file_free(file);
+    furi_record_close(RECORD_STORAGE);
+    return bitmap;
+}
+
 int32_t eddy_spotify_app(void* argument) {
     UNUSED(argument);
     SpotifyApp app = {
@@ -195,7 +213,15 @@ int32_t eddy_spotify_app(void* argument) {
     Gui* gui = furi_record_open(RECORD_GUI);
     ViewDispatcher* dispatcher = view_dispatcher_alloc();
     view_allocate_model(app.view, ViewModelTypeLocking, sizeof(SpotifyModel));
-    with_view_model(app.view, SpotifyModel * model, { reset_link(model, UINT16_MAX); }, false);
+    uint8_t* setup_qr = load_setup_qr();
+    with_view_model(
+        app.view,
+        SpotifyModel * model,
+        {
+            *model = (SpotifyModel){.connection = UINT16_MAX};
+            model->screen.setup_qr = setup_qr;
+        },
+        false);
     view_set_context(app.view, &app);
     view_set_draw_callback(app.view, spotify_screen_draw);
     view_set_input_callback(app.view, spotify_input);
@@ -216,6 +242,7 @@ int32_t eddy_spotify_app(void* argument) {
     view_dispatcher_remove_view(dispatcher, 0);
     view_dispatcher_free(dispatcher);
     view_free(app.view);
+    free(setup_qr);
     furi_record_close(RECORD_GUI);
     furi_record_close(RECORD_BT);
     return 0;

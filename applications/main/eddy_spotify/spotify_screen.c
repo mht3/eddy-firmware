@@ -2,6 +2,8 @@
 #include "setup_qr.h"
 #include <stdio.h>
 
+_Static_assert(sizeof(spotify_setup_qr) == SpotifyQrBytes, "Invalid built-in QR bitmap");
+
 bool spotify_screen_shows_qr(const SpotifyScreen* screen) {
     return screen->manual_qr || (!screen->bridge && !screen->dismissed_qr);
 }
@@ -21,7 +23,13 @@ void spotify_screen_draw(Canvas* canvas, void* context) {
     const SpotifyLibrary* lib = &screen->library;
     canvas_set_font(canvas, FontSecondary);
     if(spotify_screen_shows_qr(screen)) {
-        canvas_draw_xbm(canvas, 0, 0, 64, 64, spotify_setup_qr);
+        canvas_draw_xbm(
+            canvas,
+            0,
+            0,
+            SpotifyQrSize,
+            SpotifyQrSize,
+            screen->setup_qr ? screen->setup_qr : spotify_setup_qr);
         canvas_set_font(canvas, FontPrimary);
         canvas_draw_str(canvas, 66, 20, "Spotify");
         canvas_set_font(canvas, FontSecondary);

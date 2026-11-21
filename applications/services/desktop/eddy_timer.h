@@ -7,7 +7,7 @@ extern "C" {
 #endif
 
 #define RECORD_EDDY_TIMER      "eddy_timer"
-#define EDDY_TIMER_MAX_SECONDS (99U * 60U)
+#define EDDY_TIMER_MAX_SECONDS (99U * 60U + 59U)
 #define EDDY_TIMER_STEP        5U
 
 typedef struct EddyTimer EddyTimer;
@@ -20,6 +20,7 @@ typedef enum {
     EddyTimerLonger,
     EddyTimerMinuteShorter,
     EddyTimerMinuteLonger,
+    EddyTimerCycleSeconds,
 } EddyTimerAction;
 
 typedef struct {

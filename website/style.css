@@ -313,9 +313,7 @@ footer {
     width:100%;
     height:var(--tour-height);
     min-height:0;
-    background:var(--ink);
-    mask-image:linear-gradient(to bottom,#000 87%,transparent);
-
+    background:linear-gradient(to bottom,var(--ink) 87%,transparent);
   }
   .chapters {
     display:contents;
@@ -430,6 +428,15 @@ footer {
 #playable [data-key=left] {left:64.4%;top:44.45%}
 #playable [data-key=right] {left:83.85%;top:44.45%}
 #playable [data-key=back] {left:93.55%;top:64.7%}
+@media (pointer:coarse) {
+  #playable button {min-width:44px;min-height:44px}
+  /* Extend finger targets away from OK while keeping the printed arrows inside. */
+  #playable [data-key=up] {top:min(24.7%,calc(44.45% - 42px))}
+  #playable [data-key=down] {top:max(64.1%,calc(44.45% + 42px))}
+  #playable [data-key=left] {left:min(64.4%,calc(74.1% - 42px))}
+  #playable [data-key=right] {left:max(83.85%,calc(74.1% + 42px))}
+  #playable [data-key=back] {left:min(93.55%,calc(100% - 22px));top:max(64.7%,calc(44.45% + 42px))}
+}
 .sr-only {
   position:absolute;width:1px;height:1px;padding:0;
   overflow:hidden;clip-path:inset(50%);white-space:nowrap;

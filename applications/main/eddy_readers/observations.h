@@ -36,7 +36,6 @@ typedef struct EddyNotes {
     View* detail;
     Submenu* list;
     FuriString* names[NotesPerPage];
-    size_t offset;
     size_t count;
     Storage* storage;
     DialogsApp* dialogs;
@@ -125,7 +124,26 @@ static void select_note(void* context, uint32_t event) {
     view_dispatcher_send_custom_event(notes->dispatcher, event);
 }
 
-static void browse_notes(EddyNotes* notes) {
+// A FAT directory has no guaranteed ordering. Retain just one sorted page in memory.
+static bool consider_note(EddyNotes* notes, const char* name, bool reverse) {
+    size_t i = notes->count;
+    while(i) {
+        int order = strcasecmp(furi_string_get_cstr(notes->names[i - 1]), name);
+        if(reverse ? order >= 0 : order <= 0) break;
+        --i;
+    }
+    bool full = notes->count == NotesPerPage;
+    if(i == NotesPerPage) return true;
+    if(!full) ++notes->count;
+    FuriString* slot = notes->names[notes->count - 1];
+    for(size_t j = notes->count - 1; j > i; --j)
+        notes->names[j] = notes->names[j - 1];
+    notes->names[i] = slot;
+    furi_string_set_str(slot, name);
+    return full;
+}
+
+static void browse_notes(EddyNotes* notes, uint32_t action) {
     if(!ensure_folder(notes)) {
         notes->count = 0;
         view_dispatcher_switch_to_view(notes->dispatcher, ReaderScan);
@@ -133,39 +151,67 @@ static void browse_notes(EddyNotes* notes) {
     }
     File* dir = storage_file_alloc(notes->storage);
     bool ok = storage_dir_open(dir, furi_string_get_cstr(notes->folder));
+    const bool reverse = action == NotesPrevious;
+    FuriString* boundary = NULL;
+    if(action != BrowseNotes && notes->count)
+        boundary = furi_string_alloc_set(notes->names[reverse ? 0 : notes->count - 1]);
     notes->count = 0;
-    bool more = false;
+    bool previous = false;
+    bool next = false;
     if(ok) {
         FileInfo info;
         char entry[256];
-        size_t skipped = 0;
         while(storage_dir_read(dir, &info, entry, sizeof(entry))) {
             size_t len = strlen(entry);
             if(file_info_is_dir(&info) || entry[0] == '.' || len <= sizeof(NOTE_EXT) - 1 ||
                strcmp(entry + len - (sizeof(NOTE_EXT) - 1), NOTE_EXT) != 0)
                 continue;
-            if(skipped++ < notes->offset) continue;
-            if(notes->count == NotesPerPage) {
-                more = true;
-                break;
-            }
             entry[len - (sizeof(NOTE_EXT) - 1)] = 0;
-            furi_string_set_str(notes->names[notes->count++], entry);
+            if(boundary) {
+                int order = strcasecmp(entry, furi_string_get_cstr(boundary));
+                if(reverse && order >= 0) {
+                    next = true;
+                    continue;
+                }
+                if(!reverse && order <= 0) {
+                    previous = true;
+                    continue;
+                }
+            }
+            if(consider_note(notes, entry, reverse)) {
+                if(reverse)
+                    previous = true;
+                else
+                    next = true;
+            }
         }
         FS_Error error = storage_file_get_error(dir);
         ok = error == FSE_OK || error == FSE_NOT_EXIST;
     }
     storage_file_free(dir);
+    if(boundary) furi_string_free(boundary);
     if(!ok) {
         notes->count = 0;
         dialog_message_show_storage_error(notes->dialogs, "Cannot read\nsaved readings.");
         view_dispatcher_switch_to_view(notes->dispatcher, ReaderScan);
         return;
     }
+    if(!notes->count && action != BrowseNotes) {
+        // The card may have changed while this page was on screen.
+        browse_notes(notes, BrowseNotes);
+        return;
+    }
+    if(reverse) {
+        for(size_t i = 0; i < notes->count / 2; ++i) {
+            size_t other = notes->count - i - 1;
+            FuriString* tmp = notes->names[i];
+            notes->names[i] = notes->names[other];
+            notes->names[other] = tmp;
+        }
+    }
     submenu_reset(notes->list);
     submenu_set_header(notes->list, notes->count ? "Saved readings" : "No readings yet");
-    if(notes->offset)
-        submenu_add_item(notes->list, "Previous page", NotesPrevious, select_note, notes);
+    if(previous) submenu_add_item(notes->list, "Previous page", NotesPrevious, select_note, notes);
     for(size_t i = 0; i < notes->count; ++i)
         submenu_add_item(
             notes->list,
@@ -173,7 +219,7 @@ static void browse_notes(EddyNotes* notes) {
             NotesSelect + i,
             select_note,
             notes);
-    if(more) submenu_add_item(notes->list, "Next page", NotesNext, select_note, notes);
+    if(next) submenu_add_item(notes->list, "Next page", NotesNext, select_note, notes);
     if(!notes->count) submenu_add_item(notes->list, "Back to scan", NotesScan, select_note, notes);
     view_dispatcher_switch_to_view(notes->dispatcher, ReaderSaved);
 }
@@ -220,13 +266,7 @@ static void name_submitted(void* context);
 
 static bool eddy_notes_event(EddyNotes* notes, uint32_t event) {
     if(event == BrowseNotes || event == NotesPrevious || event == NotesNext) {
-        if(event == BrowseNotes)
-            notes->offset = 0;
-        else if(event == NotesNext)
-            notes->offset += NotesPerPage;
-        else if(notes->offset >= NotesPerPage)
-            notes->offset -= NotesPerPage;
-        browse_notes(notes);
+        browse_notes(notes, event);
     } else if(event >= NotesSelect && event - NotesSelect < notes->count) {
         open_note(notes, event - NotesSelect);
     } else if(event == NotesScan) {

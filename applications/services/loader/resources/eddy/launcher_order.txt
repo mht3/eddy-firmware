@@ -1,12 +1,12 @@
 signal
 rfid
 infrared
-pomodoro
-music
+spotify
 builder
 btRemote
-metronome
+music
 gpio
 ibutton
 nfc
-spotify
+pomodoro
+metronome

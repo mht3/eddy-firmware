@@ -128,7 +128,7 @@
 }
 .arrange-apps #arrange-help {font-size:.95rem; margin:.75rem 0 1rem; color:#cadbea}
 .arrange-pages h3 {font-size:.85rem; color:#b6cddd; margin:.9rem 0 .4rem}
-.slot-grid {display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.35rem}
+.slot-grid {display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.35rem}
 .updater .app-slot {
   display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:.35rem;
   min-width:0; padding:.55rem .2rem; border-radius:.5rem; background:#1b3348;

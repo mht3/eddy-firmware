@@ -122,19 +122,19 @@ static const struct {
     {"signal", "Sub-GHz"},
     {"rfid", "RFID"},
     {"infrared", "Infrared"},
-    {"pomodoro", "Pomodoro Timer"},
-    {"music", "Music"},
+    {"spotify", "Spotify"},
     {"builder", "Remotes"},
     {"btRemote", "Bluetooth Remote"},
-    {"metronome", "Metronome"},
+    {"music", "Music"},
     {"gpio", "GPIO"},
     {"ibutton", "iButton"},
     {"nfc", "NFC"},
-    {"spotify", "Spotify"},
+    {"pomodoro", "Pomodoro Timer"},
+    {"metronome", "Metronome"},
 };
 enum {
-    LauncherPageSize = 8,
-    LauncherColumns = 4
+    LauncherColumns = 3,
+    LauncherPageSize = LauncherColumns * 2
 };
 
 typedef struct {
@@ -252,7 +252,7 @@ static void launcher_draw(Canvas* canvas, void* context) {
     }
     for(size_t i = 0; i < count; ++i) {
         if(i / LauncherPageSize != page_number) continue;
-        int x = grid ? 16 + 32 * (i % LauncherColumns) : 21 + 42 * i;
+        int x = 21 + 42 * (i % LauncherColumns);
         int y = grid ? 18 + 20 * ((i % LauncherPageSize) / LauncherColumns) : 26;
         if(i == selected) {
             canvas_draw_rbox(canvas, x - 12, y - (grid ? 9 : 10), 25, grid ? 19 : 21, 4);

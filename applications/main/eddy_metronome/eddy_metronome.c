@@ -10,8 +10,34 @@
 #define MIN_BPM    40U
 #define MAX_BPM    220U
 
+typedef enum {
+    OutputBoth,
+    OutputSound,
+    OutputVibration,
+    OutputSilent,
+    OutputCount
+} BeatOutput;
+
+static const char* const output_labels[] = {"Sound + buzz", "Sound", "Vibration", "Silent"};
+
+static const NotificationSequence sound_beat =
+    {&message_note_c6, &message_delay_50, &message_sound_off, NULL};
+static const NotificationSequence combined_beat = {
+    &message_vibro_on,
+    &message_note_c6,
+    &message_delay_50,
+    &message_sound_off,
+    &message_vibro_off,
+    NULL};
+
 typedef struct {
     uint8_t bpm;
+    uint8_t output;
+} TempoPreferences;
+
+typedef struct {
+    uint8_t bpm;
+    BeatOutput output;
     uint8_t beat;
     bool playing;
     bool awaiting_tap;
@@ -46,13 +72,16 @@ static void metronome_draw(Canvas* canvas, void* context) {
     for(unsigned i = 0; i < 4; ++i) {
         int x = 30 + 18 * i;
         if(model->playing && model->beat == i)
-            canvas_draw_rbox(canvas, x, 39, 14, 7, 2);
+            canvas_draw_rbox(canvas, x, 34, 14, 6, 2);
         else
-            canvas_draw_rframe(canvas, x, 39, 14, 7, 2);
+            canvas_draw_rframe(canvas, x, 34, 14, 6, 2);
     }
-    canvas_draw_str(canvas, 3, 60, model->awaiting_tap ? "Tap Up again" : "Up: tap tempo");
+    char mode[24];
+    snprintf(mode, sizeof(mode), "Down: %s", output_labels[model->output]);
+    canvas_draw_str_aligned(canvas, 64, 50, AlignCenter, AlignBottom, mode);
+    canvas_draw_str(canvas, 3, 62, model->awaiting_tap ? "Tap Up again" : "Up: tap tempo");
     canvas_draw_str_aligned(
-        canvas, 125, 60, AlignRight, AlignBottom, model->playing ? "OK: stop" : "OK: start");
+        canvas, 125, 62, AlignRight, AlignBottom, model->playing ? "OK: stop" : "OK: start");
 }
 
 // Average up to four intervals. Unsigned subtraction also covers a tick-counter rollover.
@@ -73,20 +102,34 @@ static void tap_tempo(Metronome* app, uint32_t now, uint32_t frequency, uint8_t*
     *bpm = CLAMP(estimate, MAX_BPM, MIN_BPM);
 }
 
+static void play_beat(Metronome* app, BeatOutput output) {
+    static const NotificationSequence* const sequences[] = {
+        &combined_beat, &sound_beat, &sequence_single_vibro, NULL};
+    if(sequences[output]) notification_message(app->notifications, sequences[output]);
+}
+
 static void metronome_beat(void* context) {
     Metronome* app = context;
+    BeatOutput output;
     with_view_model(
-        app->view, MetronomeModel * model, { model->beat = (model->beat + 1) % 4; }, true);
-    notification_message(app->notifications, &sequence_single_vibro);
+        app->view,
+        MetronomeModel * model,
+        {
+            model->beat = (model->beat + 1) % 4;
+            output = model->output;
+        },
+        true);
+    play_beat(app, output);
 }
 
 static bool metronome_input(InputEvent* event, void* context) {
     Metronome* app = context;
     bool tap = event->key == InputKeyUp && event->type == InputTypePress;
     bool toggle = event->key == InputKeyOk && event->type == InputTypeShort;
+    bool change_output = event->key == InputKeyDown && event->type == InputTypeShort;
     bool adjust = (event->key == InputKeyLeft || event->key == InputKeyRight) &&
                   (event->type == InputTypeShort || event->type == InputTypeRepeat);
-    if(!tap && !toggle && !adjust) return false;
+    if(!tap && !toggle && !adjust && !change_output) return false;
 
     uint32_t frequency = furi_kernel_get_tick_frequency();
     MetronomeModel* model = view_get_model(app->view);
@@ -95,6 +138,8 @@ static bool metronome_input(InputEvent* event, void* context) {
     if(tap) {
         tap_tempo(app, furi_get_tick(), frequency, &model->bpm);
         model->awaiting_tap = app->tap_count == 1;
+    } else if(change_output) {
+        model->output = (model->output + 1) % OutputCount;
     } else if(toggle) {
         app->tap_count = 0;
         model->awaiting_tap = false;
@@ -108,11 +153,13 @@ static bool metronome_input(InputEvent* event, void* context) {
     }
     bool playing = model->playing;
     uint8_t bpm = model->bpm;
-    bool redraw = toggle || bpm != previous || model->awaiting_tap != was_awaiting_tap;
+    BeatOutput output = model->output;
+    bool redraw = change_output || toggle || bpm != previous ||
+                  model->awaiting_tap != was_awaiting_tap;
     view_commit_model(app->view, redraw);
     if(playing && (toggle || bpm != previous)) {
         furi_event_loop_timer_start(app->timer, (60U * frequency + bpm / 2) / bpm);
-        if(toggle) notification_message(app->notifications, &sequence_single_vibro);
+        if(toggle) play_beat(app, output);
     } else if(toggle) {
         furi_event_loop_timer_stop(app->timer);
     }
@@ -126,10 +173,14 @@ static uint32_t metronome_back(void* context) {
 
 int32_t eddy_metronome_app(void* argument) {
     UNUSED(argument);
-    uint8_t initial_bpm;
-    if(!saved_struct_load(TEMPO_PATH, &initial_bpm, sizeof(initial_bpm), 0xEC, 1) ||
-       initial_bpm < MIN_BPM || initial_bpm > MAX_BPM)
-        initial_bpm = 96;
+    TempoPreferences preferences = {.bpm = 96, .output = OutputBoth};
+    if(!saved_struct_load(TEMPO_PATH, &preferences, sizeof(preferences), 0xEC, 2)) {
+        preferences.output = OutputBoth;
+        if(!saved_struct_load(TEMPO_PATH, &preferences.bpm, sizeof(preferences.bpm), 0xEC, 1))
+            preferences.bpm = 96;
+    }
+    if(preferences.bpm < MIN_BPM || preferences.bpm > MAX_BPM) preferences.bpm = 96;
+    if(preferences.output >= OutputCount) preferences.output = OutputBoth;
     Gui* gui = furi_record_open(RECORD_GUI);
     ViewDispatcher* dispatcher = view_dispatcher_alloc();
     Metronome app = {.view = view_alloc(), .notifications = furi_record_open(RECORD_NOTIFICATION)};
@@ -142,7 +193,11 @@ int32_t eddy_metronome_app(void* argument) {
     with_view_model(
         app.view,
         MetronomeModel * model,
-        { *model = (MetronomeModel){.bpm = initial_bpm}; },
+        {
+            *model = (MetronomeModel){0};
+            model->bpm = preferences.bpm;
+            model->output = preferences.output;
+        },
         false);
     view_set_context(app.view, &app);
     view_set_draw_callback(app.view, metronome_draw);
@@ -154,10 +209,10 @@ int32_t eddy_metronome_app(void* argument) {
     view_dispatcher_run(dispatcher);
     furi_event_loop_timer_free(app.timer);
     MetronomeModel* model = view_get_model(app.view);
-    uint8_t last_bpm = model->bpm;
+    TempoPreferences last = {.bpm = model->bpm, .output = model->output};
     view_commit_model(app.view, false);
-    if(last_bpm != initial_bpm)
-        saved_struct_save(TEMPO_PATH, &last_bpm, sizeof(last_bpm), 0xEC, 1);
+    if(last.bpm != preferences.bpm || last.output != preferences.output)
+        saved_struct_save(TEMPO_PATH, &last, sizeof(last), 0xEC, 2);
     view_dispatcher_remove_view(dispatcher, 0);
     view_free(app.view);
     view_dispatcher_free(dispatcher);

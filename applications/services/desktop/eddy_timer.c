@@ -46,9 +46,8 @@ static const NotificationSequence chime = {
 };
 
 static bool valid_state(const EddyTimerState* state) {
-    return state->on_break <= 1 && state->muted <= 1 && state->focus_seconds >= EDDY_TIMER_STEP &&
-           state->focus_seconds <= EDDY_TIMER_MAX_SECONDS &&
-           state->break_seconds >= EDDY_TIMER_STEP &&
+    return state->on_break <= 1 && state->muted <= 1 && state->focus_seconds > 0 &&
+           state->focus_seconds <= EDDY_TIMER_MAX_SECONDS && state->break_seconds > 0 &&
            state->break_seconds <= EDDY_TIMER_MAX_SECONDS && state->remaining &&
            state->remaining <= (state->on_break ? state->break_seconds : state->focus_seconds);
 }
@@ -90,6 +89,31 @@ static void timer_advance(EddyTimerState* state, uint32_t now) {
     }
 }
 
+static uint16_t timer_adjust(uint16_t current, EddyTimerAction action) {
+    uint16_t minutes = current / 60;
+    uint16_t seconds = current % 60;
+    switch(action) {
+    case EddyTimerMinuteShorter:
+        if(minutes) minutes--;
+        break;
+    case EddyTimerMinuteLonger:
+        if(minutes < EDDY_TIMER_MAX_SECONDS / 60) minutes++;
+        break;
+    case EddyTimerCycleSeconds:
+        seconds = ((seconds / EDDY_TIMER_STEP + 1) * EDDY_TIMER_STEP) % 60;
+        break;
+    // Preserve the five-second actions used by earlier app binaries.
+    case EddyTimerShorter:
+        return current <= EDDY_TIMER_STEP ? current :
+                                            MAX(current - EDDY_TIMER_STEP, EDDY_TIMER_STEP);
+    case EddyTimerLonger:
+        return MIN(current + EDDY_TIMER_STEP, EDDY_TIMER_MAX_SECONDS);
+    default:
+        return current;
+    }
+    return minutes || seconds ? minutes * 60U + seconds : EDDY_TIMER_STEP;
+}
+
 void eddy_timer_update(EddyTimer* timer, EddyTimerAction action, EddyTimerState* snapshot) {
     furi_check(furi_mutex_acquire(timer->mutex, FuriWaitForever) == FuriStatusOk);
     EddyTimerState* state = &timer->state;
@@ -115,15 +139,8 @@ void eddy_timer_update(EddyTimer* timer, EddyTimerAction action, EddyTimerState*
         state->muted = !state->muted;
         changed = true;
     } else if(!state->deadline && action != EddyTimerRead) {
-        bool increase = action == EddyTimerLonger || action == EddyTimerMinuteLonger;
-        int delta = (action == EddyTimerMinuteShorter || action == EddyTimerMinuteLonger) ?
-                        60 :
-                        EDDY_TIMER_STEP;
-        uint16_t seconds = CLAMP(
-            (int)state->remaining + (increase ? delta : -delta),
-            (int)EDDY_TIMER_MAX_SECONDS,
-            (int)EDDY_TIMER_STEP);
-        if(seconds != state->remaining && (increase || state->remaining > EDDY_TIMER_STEP)) {
+        uint16_t seconds = timer_adjust(state->remaining, action);
+        if(seconds != state->remaining) {
             state->remaining = seconds;
             if(state->on_break)
                 state->break_seconds = seconds;

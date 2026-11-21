@@ -179,13 +179,24 @@ test('signed-in Flipper browses real response rows and plays only the displayed 
   assert.equal(auth.linked(id), true);
   assert.equal(list.hidden, true);
   assert.equal(dom.pair.textContent, 'Reconnect Flipper');
-  await dom.pair.onclick();
+  // Allow the first background attempt to reconnect using the already-granted device.
+  const beforeReconnect = device.frames.length;
+  for (let i = 0; i < 30 && device.frames.length === beforeReconnect; i++) {
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  assert.equal(device.frames.length, beforeReconnect + 1);
   assert.equal(device.choices, 1);
   assert.deepEqual(device.frames.at(-1), [0x15]);
   device.send(0x20, 43, 0, 42, 0); // Drops invalidate the old page's row tokens.
   await drain();
   assert.deepEqual(device.frames.at(-1), [0x13,43,0,3]);
+  device.drop();
+  await drain();
+  assert.equal(dom.disconnect.textContent, 'Stop reconnecting');
   await dom.disconnect.onclick();
+  const framesWhenStopped = device.frames.length;
+  await new Promise(resolve => setTimeout(resolve, 1100));
+  assert.equal(device.frames.length, framesWhenStopped);
   assert.equal(dom.pair.textContent, 'Choose Flipper');
   await dom.pair.onclick();
   assert.equal(device.choices, 2);

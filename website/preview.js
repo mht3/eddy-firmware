@@ -1,4 +1,4 @@
-import {getAppOrder, getSelectedApps, restoreAppOrder} from './app-catalog.js';
+import {getAppOrder, getSelectedApps, restoreAppOrder, launcherColumns, launcherPageSize} from './app-catalog.js';
 import {openSpotifyDemo, drawSpotify, spotifyStatus, spotifyKey} from './spotify-preview.js';
 import {openMusicDemo, drawMusic, musicStatus, musicKey} from './music-preview.js';
 import {presetButtons, tvPresetRows, tvPadStatus, tvPadKey, drawTvPad, tvPadHit, tvNavigationHit} from './tv-presets.js';
@@ -9,6 +9,7 @@ import {drawMetronome, metronomeInput, metronomeStatus} from './metronome.js';
 import {drawLauncher, layoutApps, verticalApp, sections, apps, launcherArt} from './launcher.js';
 import {settingsRows, settingsSamples, drawQuick, quickStatus, adjustQuick} from './quick-settings.js';
 import {listNotes, nameNote} from './observation-preview.js';
+import {drawGpio, gpioKey, gpioStatus} from './gpio-preview.js';
 import {layoutDemo, remoteDemo} from './remote-preview.js';
 import {powerLists, powerSamples, powerTitles, powerAction} from './power-preview.js';
 import {drawCloseUpHome, drawBattery, sampleCharge} from './home-screen.js';
@@ -44,21 +45,22 @@ const meterPresets = [310000,315000,390000,433920,868350,915000];
 const meterBands = [[300000,348000],[387000,464000],[779000,928000]];
 const meterLabel = khz => (khz/1000).toFixed(3)+' MHz';
 const samples = {
+  remoteStorage:['Check browser storage.','Back to return.'],
   pinStorage:['Check browser storage.','Back to return'], pinsFull:['Unpin another remote.','Back to return'], deleteRemote:['Left: Cancel','Right: Delete'],
   tester:['Try a demo IR button','OK for a sample signal'], detected:['Sample IR detected','OK to test another'],
   remotes:['No remotes yet'],
-  learn:['Point your remote','at the Flipper'], pins:['No module attached'], uart:['Connect via USB'],
+  learn:['Point your remote','at the Flipper'],
   battery:[sampleCharge+'% charged','On battery power'], about:['Eddy Firmware','Flipper Zero'],
   passport:['Eddy the dolphin','Level 1'], restart:['OK to restart preview'], shutdown:['OK to power off preview'],
   off:['OK to wake preview'],
 };
 Object.assign(titles,Object.fromEntries(settingsRows.map(([name,page])=>[page,name])),powerTitles);
+titles.remoteStorage='Remote change not saved';
 Object.assign(samples,settingsSamples,powerSamples);
 const lists = {
   tuning:[...meterPresets.map(khz=>[meterLabel(khz)]),...meterBands.map(([lo,hi])=>[`Other: ${lo/1000}–${hi/1000} MHz`])],
   menu:sections.map(([name,page])=>[name,page==='settings'?'quick':page]), apps, settings:settingsRows,
   infrared:[['My remotes','remotes'],['Learn a remote','learn'],['TV presets','tvPresets'],['Button tester','tester']], tvPresets:tvPresetRows,
-  gpio:[['GPIO pins','pins'],['USB to UART','uart']],
   editRemote:[['Rename remote','rename'],['Delete remote','deleteRemote']],
   ...powerLists,
 };
@@ -232,6 +234,8 @@ function draw() {
     drawBuilder(ctx,current());
   } else if (page === 'btRemote') {
     drawBluetooth(ctx,current());
+  } else if (page === 'gpio') {
+    drawGpio(ctx,current());
   } else if (page === 'spotify') {
     if(drawSpotify(ctx,current())) timer=setTimeout(draw,200);
   } else if (page === 'music') {
@@ -290,18 +294,20 @@ function announce() {
   if (page==='tvPad') text+='. '+tvPadStatus(current());
   if (page==='builder') text+='. '+(current().name || '')+' '+builderStatus(current());
   if (page==='btRemote') text+='. '+bluetoothStatus(current());
+  if (page==='gpio') text=gpioStatus(current());
   if (page!=='off') text += '. Sample battery '+sampleCharge+'%, not charging.';
   if (page==='home') text += ' Press OK for the launcher or Up for quick settings.';
   if (page==='signal') text+='. Sample signal at '+meterLabel(current().frequency ?? 433920)+'. Left to tune, OK to save this reading, Right for saved readings.';
   if (page==='spotify') text += '. '+spotifyStatus(current());
   if (page==='music') text += '. '+musicStatus(current());
   if (page==='metronome') text += '. '+metronomeStatus(current());
-  if (page==='pomodoro') text += '. '+Math.ceil(remaining()/1000)+' seconds. '+(focus.deadline?'Running. OK to pause.':'Paused. Left or Right to adjust by five seconds, OK to start.')+' Up toggles sound. '+(focus.muted?'Muted.':'Sound on.');
+  if (page==='pomodoro') text += '. '+Math.ceil(remaining()/1000)+' seconds. '+(focus.deadline?'Running. OK to pause.':'Paused. Left or Right for minutes, Up cycles seconds in five-second steps, OK to start.')+' Down toggles sound. '+(focus.muted?'Muted.':'Sound on.');
   status.textContent=text;
 }
 
 function press(key) {
   const state=current(), page=state.page, rows=lists[page];
+  if(page==='gpio' && gpioKey(state,key)) { draw(); announce(); return; }
   if(page==='spotify' && spotifyKey(state,key)) { draw(); announce(); return; }
   if(page==='tvPad' && state.navigation && key==='back') {
     tvPadKey(state,key); draw(); announce(); return;
@@ -368,8 +374,9 @@ function press(key) {
   } else if(page==='deleteRemote') {
     if(key==='left') history.pop();
     if(key==='right') {
-      remoteDemo.remove();
-      while(history.length>1 && !['remotes','apps','infrared'].includes(current().page)) history.pop();
+      if(remoteDemo.remove()) {
+        while(history.length>1 && !['remotes','apps','infrared'].includes(current().page)) history.pop();
+      } else history.push({page:'remoteStorage',row:0});
       refreshHistory();
     }
   } else if(page==='music') {
@@ -396,8 +403,9 @@ function press(key) {
         else if(next==='music') history.push(openMusicDemo());
         else if(next==='spotify') history.push(openSpotifyDemo());
         else if(next==='tvPad') {
-          layoutDemo.addPreset(name,presetButtons(state.row));
+          const saved=layoutDemo.addPreset(name,presetButtons(state.row));
           history.push({page:next,profile:state.row,row:2});
+          if(!saved) history.push({page:'remoteStorage',row:0});
         }
         else history.push({page:next,row:0});
       }
@@ -488,7 +496,7 @@ nameDialog.querySelector('form').addEventListener('submit',event=>{
   event.preventDefault();
   const error=remoteDemo.edit(formAction,nameInput.value,buttonInput.value);
   if(error) {
-    const field=error.includes('button')?buttonInput:nameInput;
+    const field=formAction==='add' || error.includes('button')?buttonInput:nameInput;
     field.setCustomValidity(error);
     field.reportValidity();
     return;
@@ -520,9 +528,10 @@ display.addEventListener('click', event=>{
     return;
   }
   if (state.page==='pomodoro' && y>=52) {
-    press(x<64?'up':'ok');
+    press(x<64?'down':'ok');
     return;
   }
+  if (state.page==='pomodoro' && !focus.deadline && y>=44 && y<52) { press('up'); return; }
   if (state.page==='pomodoro' && !focus.deadline && y>=20 && y<=44) {
     if (x<=26) press('left');
     if (x>=102) press('right');
@@ -534,8 +543,8 @@ display.addEventListener('click', event=>{
   let index;
   if(grid) {
     if(!lists.apps.length) return;
-    const page=Math.floor(lists.apps[state.row][2]/8);
-    const cell=page*8+Math.floor((y-8)/20)*4+Math.floor(x/32);
+    const page=Math.floor(lists.apps[state.row][2]/launcherPageSize);
+    const cell=page*launcherPageSize+Math.floor((y-8)/20)*launcherColumns+Math.min(launcherColumns-1,Math.floor(x/42));
     index=lists.apps.findIndex(([, ,slot])=>slot===cell);
     if(index<0) return;
   } else index=Math.min(2,Math.floor(x/42));
@@ -551,7 +560,7 @@ for (const key of ['left','right']) {
   function step() {
     if (current().page!=='pomodoro' || focus.deadline) return;
     repeated=true;
-    pomodoroKey(key,true);
+    pomodoroKey(key);
     draw(); announce();
     repeat=setTimeout(step,200);
   }

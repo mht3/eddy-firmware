@@ -327,7 +327,7 @@ export class DeviceRenderer {
     const gl = this.gl, loc = this.locations, c = gl.canvas;
     const view = cameraFor(phase,still);
     const zoom = closeUp(phase);
-    const pixelScale = blend(Math.min(c.width/141,c.height/70), Math.min(c.width/72,c.height/36), zoom);
+    const pixelScale = blend(Math.min(c.width/153,c.height/76.5), Math.min(c.width/72,c.height/36), zoom);
     gl.viewport(0,0,c.width,c.height);
     gl.clearColor(0,0,0,0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -335,7 +335,7 @@ export class DeviceRenderer {
     gl.uniformMatrix3fv(loc.camera,false,view);
     gl.uniform3fv(loc.eyeDirection,[view[2],view[5],view[8]]);
     gl.uniform2f(loc.scale,2*pixelScale/c.width,2*pixelScale/c.height);
-    gl.uniform2f(loc.center,blend(-0.12,-16*pixelScale/c.width,zoom),blend(0.04,-3.9*pixelScale/c.height,zoom));
+    gl.uniform2f(loc.center,blend(-0.20,-16*pixelScale/c.width,zoom),blend(0.04,-3.9*pixelScale/c.height,zoom));
     gl.uniform1i(loc.lcd,0);
     gl.uniform1i(loc.labels,1);
     gl.bindTexture(gl.TEXTURE_2D,this.texture);

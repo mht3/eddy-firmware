@@ -34,15 +34,18 @@ export function builderStatus(s) {
   const button=layoutDemo.get(s.name,s.kind)?.cells[s.slot];
   if(s.step==='learn') return 'Point remote at Flipper. OK for a sample IR signal.';
   if(s.step==='delete') return 'Delete '+s.name+' ('+layoutDemo.source(s.name,s.kind)+')? OK deletes. Left cancels.';
-  if(s.step==='remove') return 'Remove button? OK removes. Back cancels.';
+  if(s.step==='remove') return 'Remove button? OK removes. Left cancels.';
   if(s.step==='move') return 'Choose a position, then press OK.';
   return (button?.name || 'Add button')+'. '+(button?'OK sends.':'OK adds a button.')+' Hold OK for options.';
 }
 export function drawBuilder(ctx,s) {
+  const grid=['move','grid'].includes(s.step);
+  const layout=grid?layoutDemo.get(s.name,s.kind):null;
+  const total=grid?cellCount(s,layout):0;
   const header={library:'Remotes',presets:'Add TV preset',delete:'Delete remote?',stock:'Choose a button',options:'Options',learn:'Learn button',
     move:'Move button',remove:'Remove button?'};
   ctx.font='bold 9px sans-serif';
-  ctx.fillText(header[s.step] || s.name,2,1,88);
+  ctx.fillText(header[s.step] || s.name,2,1,total>6?64:88);
   ctx.fillRect(1,11,126,1);
   const rows=choices(s);
   if(rows.length) {
@@ -55,8 +58,7 @@ export function drawBuilder(ctx,s) {
     });
     return;
   }
-  if(['move','grid'].includes(s.step)) {
-    const layout=layoutDemo.get(s.name,s.kind), total=cellCount(s,layout);
+  if(grid) {
     const first=Math.floor(s.slot/6)*6;
     if(total>6) {
       ctx.textAlign='right'; ctx.font='8px sans-serif';
@@ -84,8 +86,8 @@ export function drawBuilder(ctx,s) {
   }
   ctx.font='8px sans-serif';
   const copy=s.step==='learn'?['Point original remote','OK for demo signal']:
-    s.step==='remove'?['OK to remove','Back to cancel']:s.step==='delete'?[s.name+' ('+layoutDemo.source(s.name,s.kind)+')','Left cancel · OK delete']:[];
-  copy.forEach((line,i)=>ctx.fillText(line,4,21+i*15));
+    s.step==='remove'?['OK to remove','Left to cancel']:s.step==='delete'?[s.name+' ('+layoutDemo.source(s.name,s.kind)+')','Left cancel · OK delete']:[];
+  copy.forEach((line,i)=>ctx.fillText(line,4,21+i*15,120));
   if(!copy.length) {
     const cell=layoutDemo.get(s.name,s.kind).cells[s.slot];
     ctx.textAlign='center';

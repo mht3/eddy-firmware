@@ -18,23 +18,24 @@ static void timer_draw(Canvas* canvas, void* context) {
     canvas_set_font(canvas, FontBigNumbers);
     canvas_draw_str_aligned(canvas, 64, 41, AlignCenter, AlignBottom, time);
     if(!timer->deadline) {
-        if(seconds > EDDY_TIMER_STEP) {
+        if(seconds >= 60) {
             canvas_draw_line(canvas, 12, 32, 18, 26);
             canvas_draw_line(canvas, 12, 32, 18, 38);
         }
-        if(seconds < EDDY_TIMER_MAX_SECONDS) {
+        if(seconds / 60 < EDDY_TIMER_MAX_SECONDS / 60) {
             canvas_draw_line(canvas, 115, 32, 109, 26);
             canvas_draw_line(canvas, 115, 32, 109, 38);
         }
     }
     canvas_set_font(canvas, FontSecondary);
     if(!timer->deadline)
-        canvas_draw_str_aligned(canvas, 64, 51, AlignCenter, AlignBottom, "Tap 5s / Hold 1m");
+        canvas_draw_str_aligned(
+            canvas, 64, 51, AlignCenter, AlignBottom, "L/R: minutes   Up: +5s");
     const char* control = timer->deadline ? "OK pause" : "OK start";
     if(!timer->deadline &&
        seconds < (timer->on_break ? timer->break_seconds : timer->focus_seconds))
         control = "OK resume";
-    canvas_draw_str(canvas, 2, 61, timer->muted ? "Up: muted" : "Up: sound on");
+    canvas_draw_str(canvas, 2, 61, timer->muted ? "Down: muted" : "Down: sound on");
     canvas_draw_str_aligned(canvas, 126, 61, AlignRight, AlignBottom, control);
 }
 
@@ -49,12 +50,14 @@ static bool timer_input(InputEvent* event, void* context) {
     if(!held && event->type != InputTypeShort) return false;
     EddyTimerAction action;
     if(event->key == InputKeyLeft) {
-        action = held ? EddyTimerMinuteShorter : EddyTimerShorter;
+        action = EddyTimerMinuteShorter;
     } else if(event->key == InputKeyRight) {
-        action = held ? EddyTimerMinuteLonger : EddyTimerLonger;
+        action = EddyTimerMinuteLonger;
     } else if(!held && event->key == InputKeyOk) {
         action = EddyTimerToggleRunning;
     } else if(!held && event->key == InputKeyUp) {
+        action = EddyTimerCycleSeconds;
+    } else if(!held && event->key == InputKeyDown) {
         action = EddyTimerToggleSound;
     } else {
         return false;

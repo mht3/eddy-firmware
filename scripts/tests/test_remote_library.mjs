@@ -55,3 +55,28 @@ test('a ten-button TV preset opens a second page and can be deleted or kept', ()
   assert.equal(remote.step,'library');
   assert.equal(layoutDemo.get(name,'remote'),undefined);
 });
+
+test('failed Infrared preview writes preserve the remote, its buttons and its shortcut', () => {
+  assert.equal(remoteDemo.edit('create','Desk lamp','Power'),'');
+  assert.ok(remoteDemo.setPinned(true));
+  const before=stored.get('eddy-preview-remotes');
+  const previous=localStorage.setItem;
+  localStorage.setItem=()=>{ throw new Error('Storage full'); };
+  try {
+    assert.match(remoteDemo.edit('add','','Dim'),/Could not save/);
+    assert.match(remoteDemo.edit('rename','Reading lamp',''),/Could not save/);
+    assert.match(remoteDemo.edit('create','New lamp','Power'),/Could not save/);
+    assert.equal(remoteDemo.remove(),false);
+    assert.equal(remoteDemo.active,'Desk lamp');
+    assert.deepEqual(remoteDemo.buttons,['Power']);
+    assert.ok(remoteDemo.pins.includes('Desk lamp'));
+    assert.equal(layoutDemo.get('Reading lamp','remote'),undefined);
+    assert.equal(layoutDemo.get('New lamp','remote'),undefined);
+    assert.equal(stored.get('eddy-preview-remotes'),before);
+  } finally {
+    localStorage.setItem=previous;
+  }
+  assert.ok(remoteDemo.remove());
+  assert.equal(layoutDemo.get('Desk lamp','remote'),undefined);
+  assert.ok(!remoteDemo.pins.includes('Desk lamp'));
+});
