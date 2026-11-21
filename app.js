@@ -6,6 +6,8 @@ const label = document.querySelector('#scene-label');
 const labels = ['DEVICE PREVIEW', 'USB CONNECTION', 'FIRMWARE UPDATE', 'HOME SCREEN'];
 const milestones = [0, 0.63, 1.48, 3];
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+// Decode the face while the tour is visible, ahead of the first button press.
+document.querySelector('#playable img').decode().catch(() => {});
 let queued = false;
 function syncScene() {
   queued = false;
@@ -15,16 +17,22 @@ function syncScene() {
     label.textContent='APP PREVIEW';
     return;
   }
-  const focus = innerHeight * (matchMedia('(max-width: 760px)').matches ? 0.72 : 0.5);
-  const centers = chapters.map(section => {
+  const portraitTour = matchMedia('(max-width:760px)').matches &&
+    !matchMedia('(orientation:landscape) and (max-height:500px)').matches;
+  const focus = innerHeight * (portraitTour ? 0.72 : 0.5);
+  // Align the first and last poses with their navigation targets, even when
+  // the final section is taller than a landscape phone's viewport.
+  const stops = chapters.map((section,i) => {
+    if (i === 0) return -scrollY;
     const box = section.getBoundingClientRect();
-    return box.top + box.height / 2;
+    if (i === chapters.length-1) return box.top - parseFloat(getComputedStyle(section).scrollMarginTop || 0);
+    return box.top + Math.min(box.height/2,innerHeight*0.32) - focus;
   });
   let chapter = 0;
-  while (chapter < centers.length - 1 && centers[chapter + 1] < focus) chapter++;
-  const next = Math.min(chapter + 1, centers.length - 1);
-  const t = next === chapter ? 0 : Math.max(0, Math.min(1, (focus - centers[chapter]) / (centers[next] - centers[chapter])));
-  const phase = milestones[chapter] + t * (milestones[next] - milestones[chapter]);
+  while (chapter < stops.length-1 && stops[chapter+1] <= 1) chapter++;
+  const next = Math.min(chapter+1,stops.length-1);
+  const t = next===chapter ? 0 : Math.max(0,Math.min(1,-stops[chapter]/(stops[next]-stops[chapter])));
+  const phase = milestones[chapter] + t*(milestones[next]-milestones[chapter]);
   const pose = reducedMotion.matches ? milestones[t > 0.5 ? next : chapter] : phase;
   device.setAttribute('phase', pose.toFixed(3));
   const playable = phase >= 2.72;

@@ -22,7 +22,7 @@ export class FlipperUpdater {
     await this.until(prompt);
     const info = await this.command('device_info');
     if (!/^hardware_target\s*:\s*7\s*$/m.test(info) || !/^hardware_model\s*:/m.test(info)) {
-      throw Error('This device did not identify itself as a Flipper Zero F7.');
+      throw Error('This device did not identify itself as a supported Flipper Zero.');
     }
     const sd = await this.command('storage stat "/ext"');
     if (!/KiB free/i.test(sd)) throw Error('Insert a working microSD card and reconnect.');

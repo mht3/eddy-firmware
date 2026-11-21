@@ -45,7 +45,7 @@ async function loadBuild() {
       return;
     }
     if (!/^eddy-[\w.-]+$/.test(data.version) || data.target !== 'f7' ||
-        data.file !== 'flipper-z-f7-update-'+data.version+'.tgz') throw Error('Invalid F7 release.');
+        data.file !== 'flipper-z-f7-update-'+data.version+'.tgz') throw Error('This package is not a valid Flipper Zero update.');
     const archive = new URL(data.file,root);
     await checkedFetch(archive,{method:'HEAD'});
     status.textContent = data.version;
@@ -119,7 +119,7 @@ action.addEventListener('click',async () => {
       flipper = new FlipperUpdater(port);
       connection.textContent = 'Checking the device and microSD card…';
       await flipper.open();
-      connection.textContent = 'Flipper Zero F7 connected. Return to its home screen before installing.';
+      connection.textContent = 'Flipper Zero connected. Return to its home screen before installing.';
       action.textContent = 'Install '+build.version;
     }
   } catch (error) {
@@ -146,7 +146,7 @@ download.addEventListener('click', async () => {
     const digest=files.find(({part})=>part.name==='resources.tar.gz').part.sha256;
     const anchor=document.createElement('a');
     anchor.href=url;
-    anchor.download='flipper-z-f7-update-'+build.version+'-'+digest.slice(0,12)+'.tgz';
+    anchor.download=build.version+'-'+digest.slice(0,12)+'.tgz';
     document.body.append(anchor);
     anchor.click();
     anchor.remove();

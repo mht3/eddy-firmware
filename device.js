@@ -2,8 +2,7 @@ import {drawHome, drawCloseUpHome, drawBattery, ocean} from './home-screen.js';
 import {DeviceRenderer, loadGeometry} from './models/renderer.js';
 
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
-
-
+const compact = matchMedia('(max-width:760px), (max-width:960px) and (max-height:500px)');
 
 function screen(ctx, phase, frame) {
   ctx.setTransform(ctx.canvas.width/128,0,0,ctx.canvas.height/64,0,0);
@@ -38,10 +37,15 @@ class EddyDevice extends HTMLElement {
       :host {display:block;width:100%;aspect-ratio:749/404}
       canvas,img {position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:contain}
       canvas,img {filter:drop-shadow(0 1.1rem 1rem rgba(0,9,10,.44))}
+      .film {position:absolute;top:50%;left:50%;width:100%;width:min(100cqw,200cqh);aspect-ratio:2;
+        transform:translate(-50%,-50%);background-size:400% 400%;background-repeat:no-repeat;pointer-events:none}
       [hidden] {display:none}
-    </style><img alt="" hidden><canvas aria-hidden="true"></canvas>`;
+    </style><img alt="" hidden><canvas aria-hidden="true"></canvas><div class="film" hidden></div>`;
     this.canvas = root.querySelector('canvas');
     this.poster = root.querySelector('img');
+    this.film = root.querySelector('.film');
+    this.sheets = new Map();
+    this.changeLayout = this.changeLayout.bind(this);
     this.lcd = document.createElement('canvas');
     this.lcd.width = 128;
     this.lcd.height = 64;
@@ -68,13 +72,29 @@ class EddyDevice extends HTMLElement {
     this.visibility.observe(this);
     ocean.addEventListener('load',this.scheduleDraw);
     this.reducedMotion.addEventListener('change',this.scheduleDraw);
-    this.initialize();
+    compact.addEventListener('change',this.changeLayout);
+    this.changeLayout();
+  }
+
+  changeLayout() {
+    clearTimeout(this.idleTimer);
+    if (compact.matches) {
+      this.renderer?.dispose();
+      this.renderer = null;
+      this.canvas.hidden = true;
+      if (this.film.hidden) this.showPoster();
+      this.scheduleDraw();
+    } else {
+      this.film.hidden = true;
+      this.initialize();
+    }
   }
 
   async initialize() {
+    if (compact.matches) return;
     try {
       const models = await loadGeometry();
-      if (!this.isConnected || this.renderer) return;
+      if (!this.isConnected || this.renderer || compact.matches) return;
       this.renderer = new DeviceRenderer(this.canvas,models);
       this.scheduleDraw();
     } catch {
@@ -91,7 +111,44 @@ class EddyDevice extends HTMLElement {
     this.canvas.hidden = true;
   }
 
+  // Each transparent sheet holds sixteen CAD renders. On a phone, scrolling
+  // changes only the crop of the decoded image, leaving the GPU free for scrolling.
+  sheet(name) {
+    if (!this.sheets.has(name)) {
+      const image = new Image();
+      const sheet = {image, ready:false, failed:false};
+      this.sheets.set(name,sheet);
+      image.src = new URL('models/tour-'+name+'.webp',import.meta.url).href;
+      image.decode().then(() => { sheet.ready=true; }, () => { sheet.failed=true; })
+        .then(this.scheduleDraw);
+    }
+    return this.sheets.get(name);
+  }
+
+  drawFilm(phase,still) {
+    clearTimeout(this.idleTimer);
+    const idle = phase === 0;
+    const index = idle ? (still ? 4 : Math.floor(performance.now()/167)%16) :
+      Math.round(clamp(phase/2.72,0,1)*47);
+    const group = Math.floor(index/16);
+    const sheet = this.sheet(idle ? 'idle' : group);
+    if (sheet.ready) {
+      const frame = index%16;
+      this.film.style.backgroundImage = 'url("'+sheet.image.src+'")';
+      this.film.style.backgroundPosition = (frame%4)*100/3+'% '+Math.floor(frame/4)*100/3+'%';
+      this.film.hidden = false;
+      this.poster.hidden = true;
+      if (idle) this.sheet(0);
+      else if (group<2 && frame>=8) this.sheet(group+1);
+    } else if (sheet.failed) {
+      this.film.hidden = true;
+      this.showPoster();
+    }
+    if (idle && !still && this.visible) this.idleTimer = setTimeout(this.scheduleDraw,167);
+  }
+
   disconnectedCallback() {
+    compact.removeEventListener('change',this.changeLayout);
     this.resize.disconnect();
     this.visibility.disconnect();
     ocean.removeEventListener('load',this.scheduleDraw);
@@ -121,6 +178,10 @@ class EddyDevice extends HTMLElement {
       const state = phase < 0.65 ? 'Eddy the dolphin swimming in an ocean eddy' : phase < 1.55 ?
         'firmware installation preview' : 'Eddy home screen';
       this.setAttribute('aria-label','Flipper Zero with the ' + state);
+      if (compact.matches) {
+        this.drawFilm(phase,still);
+        return;
+      }
       if (!this.renderer) {
         if (!this.poster.hidden) this.showPoster();
         return;

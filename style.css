@@ -163,9 +163,10 @@ eddy-device {
   letter-spacing:.12em;
   color:var(--surf);
 }
-.eyebrow i {
-  width:1.6rem;
-  height:2px;
+.eyebrow::before, .eyebrow::after {
+  content:"";
+  width:1.15rem;
+  height:1px;
   background:currentColor;
 }
 h1,h2,h3,p {
@@ -299,16 +300,18 @@ footer {
   .showcase {
     display:flex;
     flex-direction:column;
+    --tour-height:clamp(10.5rem, 58vw, 34svh);
+    background:var(--ink);
   }
   .stage {
     z-index:1;
     top:0;
     order:1;
     width:100%;
-    height:40svh;
-    min-height:12rem;
-    max-height:25rem;
-    background:radial-gradient(ellipse at center,#13395e,var(--ink) 77%);
+    height:var(--tour-height);
+    min-height:0;
+    background:var(--ink);
+    mask-image:linear-gradient(to bottom,#000 87%,transparent);
 
   }
   .chapters {
@@ -321,9 +324,9 @@ footer {
   }
   .chapters section:not(.hero) {
     order:2;
-    min-height:65svh;
+    min-height:56svh;
     padding:3rem 6vw;
-    scroll-margin-top:40svh;
+    scroll-margin-top:var(--tour-height);
   }
   .hero h1 {
     font-size:clamp(3.6rem,12vw,6rem);
@@ -341,9 +344,8 @@ footer {
   .hero .tour {
     margin-top:.8rem;
   }
-  .caption {
-    bottom:3%;
-  }
+  .stage .caption {display:none}
+  .field {mask-image:radial-gradient(ellipse,black 25%,transparent 72%)}
   .install-wrap {
     flex-direction:column;
     align-items:start;
@@ -373,14 +375,31 @@ footer {
   z-index:1;
   top:50%;
   left:50%;
-  width:min(100%,200cqh);
+  width:min(150cqw,300cqh);
   aspect-ratio:2;
-  transform:translate(-50%,-50%);
-  overflow:hidden;
-  border-radius:clamp(.75rem,2vw,1.8rem);
-  box-shadow:0 1.5rem 4rem #030d1c70;
+  transform:translate(-57.4074%,-46.3889%);
+  pointer-events:none;
 }
 #playable img {display:block;width:100%;height:100%}
+.device-controls {
+  position:absolute;left:24.0741%;top:13.0556%;width:66.6667%;height:66.6667%;
+}
+#preview-lcd, #playable button {pointer-events:auto}
+@media (max-width:760px), (max-width:960px) and (max-height:500px) {
+  #playable {width:min(100cqw,200cqh);transform:translate(-50%,-50%)}
+}
+@media (orientation:landscape) and (max-width:960px) and (max-height:500px) {
+  .showcase {display:grid;grid-template-columns:45% 55%;background:var(--ink)}
+  .stage {grid-area:1/2;min-height:0;height:100svh;mask-image:none}
+  .stage .caption {display:none}
+  .chapters {display:block;grid-area:1/1}
+  .chapters section,.chapters .hero,.chapters section:not(.hero) {
+    min-height:86svh;padding:2rem 1rem 2rem 5vw;scroll-margin-top:0
+  }
+  .chapters h1 {font-size:clamp(2.8rem,6vw,4.2rem)}
+  .chapters h2 {font-size:clamp(2.4rem,5vw,3.5rem)}
+}
+
 #preview-lcd {
   position:absolute;
   left:7.58%;top:22.36%;
@@ -451,4 +470,9 @@ nav [aria-current=page] {color:var(--surf)}
   .picker-preview .stage {height:52vw; margin-top:1rem}
   .picker-preview .caption {display:none}
   .picker-preview .chapters #home-screen {padding:1.5rem 6vw 3rem; height:auto; scroll-margin:65vh}
+}
+
+@media (orientation:landscape) and (max-width:960px) and (max-height:500px) {
+  .picker-preview .stage {height:78svh;margin-top:0}
+  .picker-preview .chapters #home-screen {scroll-margin:0;height:auto}
 }
