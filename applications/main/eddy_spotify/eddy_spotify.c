@@ -14,6 +14,7 @@ typedef struct {
     uint8_t collection_row;
     uint8_t track_row;
     uint32_t status_started;
+    uint32_t status_received;
     uint16_t connection;
     uint8_t peer[GAP_MAC_ADDR_SIZE];
     uint8_t queued;
@@ -50,6 +51,8 @@ static void bridge_reset(SpotifyModel* model, bool connected) {
     model->status = (SpotifyLibrary){0};
     model->query[0] = screen->now_playing[0] = 0;
     screen->play_state = 0;
+    screen->title_bytes = 0;
+    screen->duration_s = screen->elapsed_s = 0;
     screen->bridge = connected;
     model->status_started = furi_get_tick();
     model->queued = connected ? SpotifyNowPlaying : 0;
@@ -80,7 +83,11 @@ static void spotify_event(BleMediaEvent event, const void* data, size_t size, vo
                 SpotifyLibrary* status = &model->status;
                 spotify_library_receive(status, packet, size);
                 if(!status->request) {
+                    model->status_received = furi_get_tick();
                     model->screen.play_state = status->error ? 0 : status->play_state;
+                    model->screen.title_bytes = status->title_bytes;
+                    model->screen.duration_s =
+                        !status->error && status->count ? status->duration_ms / 1000 : 0;
                     strlcpy(
                         model->screen.now_playing,
                         status->error || !status->count ? "" : status->rows[0],
@@ -90,8 +97,11 @@ static void spotify_event(BleMediaEvent event, const void* data, size_t size, vo
                 spotify_library_receive(lib, packet, size);
                 if(!lib->request) {
                     model->scroll_start = furi_get_tick();
-                    if(!lib->error && lib->op >= SpotifyPlayerPrevious &&
-                       lib->op <= SpotifyPlayerNext) {
+                    if(!lib->error && lib->accepted && (lib->op & 0xfc) == SpotifyPlay) {
+                        model->queued = SpotifyNowPlaying;
+                    } else if(
+                        !lib->error && lib->op >= SpotifyPlayerPrevious &&
+                        lib->op <= SpotifyPlayerNext) {
                         lib->accepted = false;
                         model->queued = SpotifyNowPlaying;
                     } else if(!lib->error && lib->op == SpotifyParent) {
@@ -169,6 +179,12 @@ static void spotify_tick(void* context) {
         }
     }
     model->queued = 0;
+    if(model->screen.duration_s) {
+        uint32_t elapsed = model->status.progress_ms / 1000;
+        if(model->screen.play_state == 1)
+            elapsed += (now - model->status_received) / furi_ms_to_ticks(1000);
+        model->screen.elapsed_s = MIN(elapsed, model->screen.duration_s);
+    }
     model->screen.scroll = (now - model->scroll_start) / furi_ms_to_ticks(70);
     view_commit_model(app->view, true);
     if(request) {
@@ -238,10 +254,20 @@ static bool spotify_input(InputEvent* event, void* context) {
         else
             screen->scene = SpotifyResults;
         model->scroll_start = furi_get_tick();
+    } else if(spotify_library_action_unconfirmed(lib) && (key == InputKeyOk || key == InputKeyBack)) {
+        lib->error = SpotifyOk;
+        if(screen->scene == SpotifyDestinations)
+            model->queued = SpotifyParent;
+        else if(screen->scene == SpotifyPlayer)
+            model->queued = SpotifyNowPlaying;
+        else
+            screen->scene = SpotifyResults;
     } else if(key == InputKeyBack) {
-        if(screen->scene == SpotifyHome)
+        if(screen->scene == SpotifyLyricsHelp)
+            screen->scene = SpotifyPlayer;
+        else if(screen->scene == SpotifyHome)
             handled = false;
-        else if(lib->request || model->queued || lib->error)
+        else if(lib->request || (model->queued && model->queued != SpotifyNowPlaying) || lib->error)
             return_home(model);
         else if(screen->scene == SpotifyActions)
             screen->scene = SpotifyResults;
@@ -276,6 +302,11 @@ static bool spotify_input(InputEvent* event, void* context) {
             }
         } else
             handled = false;
+    } else if(screen->scene == SpotifyLyricsHelp) {
+        if(key == InputKeyOk || key == InputKeyUp)
+            screen->scene = SpotifyPlayer;
+        else
+            handled = false;
     } else if(screen->scene == SpotifyPlayer) {
         if(lib->request || (model->queued && model->queued != SpotifyNowPlaying)) {
             // A second tap must not duplicate a playback command.
@@ -287,6 +318,8 @@ static bool spotify_input(InputEvent* event, void* context) {
             model->queued = SpotifyPlayerPrevious;
         else if(key == InputKeyRight)
             model->queued = SpotifyPlayerNext;
+        else if(key == InputKeyDown)
+            screen->scene = SpotifyLyricsHelp;
         else
             handled = false;
     } else if(screen->scene == SpotifyFindKind) {

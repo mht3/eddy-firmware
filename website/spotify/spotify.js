@@ -164,7 +164,9 @@ export async function libraryPage(id, source, offset, signal) {
     const state = await request(id, 'me/player/currently-playing', signal);
     const rows = state?.item?.type === 'track' ? [rowFor(state.item, 'track')] : [];
     return {kind:'track', source, offset:0, rows, hasNext:false, hasPrev:false,
-      playState: rows.length ? (state.is_playing ? 1 : 2) : 0};
+      playState: rows.length ? (state.is_playing ? 1 : 2) : 0,
+      sampledAt: Date.now(), progressMs: rows.length ? state.progress_ms : 0,
+      durationMs: rows.length ? state.item.duration_ms : 0};
   }
   if (kind === 'queue') {
     const queue = source.queue ?? (await request(id, 'me/player/queue', signal))?.queue;

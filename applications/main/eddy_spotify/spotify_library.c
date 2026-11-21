@@ -12,6 +12,14 @@ const uint8_t spotify_category_ops[SpotifyCategories] = {
     SpotifyAlbums,
     SpotifyNowPlaying};
 
+bool spotify_library_action_unconfirmed(const SpotifyLibrary* lib) {
+    // An interrupted response can follow a successful mutation. A fresh request could repeat it.
+    if(lib->error != SpotifyOffline && lib->error != SpotifyInvalid) return false;
+    uint8_t action = lib->op & 0xfc;
+    return action == SpotifyQueue || action == SpotifyAddToPlaylist || action == SpotifyPlay ||
+           (lib->op >= SpotifyPlayerPrevious && lib->op <= SpotifyPlayerNext);
+}
+
 void spotify_library_begin(SpotifyLibrary* lib, uint8_t op, uint16_t request) {
     lib->op = op;
     lib->request = request;
@@ -26,6 +34,11 @@ void spotify_library_fail(SpotifyLibrary* lib, SpotifyError error) {
     lib->error = error;
 }
 
+static uint32_t read_le32(const uint8_t* data) {
+    return data[0] | ((uint32_t)data[1] << 8) | ((uint32_t)data[2] << 16) |
+           ((uint32_t)data[3] << 24);
+}
+
 void spotify_library_receive(SpotifyLibrary* lib, const uint8_t* data, size_t size) {
     if(size < 3 || size > 20 || !lib->request ||
        lib->request != (uint16_t)(data[1] | ((uint16_t)data[2] << 8)))
@@ -38,8 +51,12 @@ void spotify_library_receive(SpotifyLibrary* lib, const uint8_t* data, size_t si
     case 0x10: // Start a fresh transaction; partial pages stay off screen.
         if(acknowledgement) break;
         if(lib->op == SpotifyNowPlaying) {
-            if(size != 4 || data[3] > 2) break;
+            if((size != 4 && size != 12 && size != 13) || data[3] > 2) break;
             lib->play_state = data[3];
+            lib->progress_ms = size >= 12 ? read_le32(data + 4) : 0;
+            lib->duration_ms = size >= 12 ? read_le32(data + 8) : 0;
+            if(lib->progress_ms > lib->duration_ms) lib->progress_ms = lib->duration_ms;
+            lib->title_bytes = size == 13 ? data[12] : 0;
         } else if(size != 3) {
             break;
         }
@@ -70,8 +87,7 @@ void spotify_library_receive(SpotifyLibrary* lib, const uint8_t* data, size_t si
         lib->count = data[3];
         lib->previous = data[4];
         lib->next = data[5];
-        lib->offset = data[6] | ((uint32_t)data[7] << 8) | ((uint32_t)data[8] << 16) |
-                      ((uint32_t)data[9] << 24);
+        lib->offset = read_le32(data + 6);
         lib->selected = 0;
         lib->page = lib->request;
         lib->request = 0;

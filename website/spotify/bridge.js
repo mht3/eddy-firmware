@@ -49,13 +49,29 @@ function packet(op, token, ...data) {
   return Uint8Array.of(op, token & 255, token >>> 8, ...data);
 }
 
+function labelBytes(label) {
+  const bytes = new Uint8Array(80);
+  const {written} = new TextEncoder().encodeInto(label.replace(/[\x00-\x1f\x7f]/g, ' '), bytes);
+  return bytes.subarray(0, written);
+}
+
 function pagePackets(page, token) {
-  const packets = [page.playState === undefined ? packet(0x10, token) : packet(0x10, token, page.playState)];
+  let header = packet(0x10, token);
+  if (page.playState !== undefined) {
+    const timing = new Uint8Array(8);
+    const view = new DataView(timing.buffer);
+    const duration = Number.isSafeInteger(page.durationMs) ? Math.max(0, Math.min(0xffffffff, page.durationMs)) : 0;
+    const elapsed = page.playState === 1 ? Math.max(0, Date.now() - page.sampledAt) : 0;
+    const progress = Number.isSafeInteger(page.progressMs) ? Math.max(0, Math.min(duration, page.progressMs + elapsed)) : 0;
+    view.setUint32(0, progress, true);
+    view.setUint32(4, duration, true);
+    header = packet(0x10, token, page.playState, ...timing, labelBytes(page.rows[0]?.name || '').length);
+  }
+  const packets = [header];
   for (const [row, song] of page.rows.entries()) {
-    const text = new Uint8Array(80);
-    const {written} = new TextEncoder().encodeInto(song.label.replace(/[\x00-\x1f\x7f]/g, ' '), text);
-    for (let i = 0; i < written; i += 16) {
-      packets.push(packet(0x11, token, row, ...text.subarray(i, Math.min(i + 16, written))));
+    const text = labelBytes(song.label);
+    for (let i = 0; i < text.length; i += 16) {
+      packets.push(packet(0x11, token, row, ...text.subarray(i, i + 16)));
     }
   }
   const offset = new Uint8Array(4);

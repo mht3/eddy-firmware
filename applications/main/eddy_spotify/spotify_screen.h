@@ -14,6 +14,7 @@ typedef enum {
     SpotifyResults,
     SpotifyActions,
     SpotifyDestinations,
+    SpotifyLyricsHelp,
 } SpotifyScene;
 
 typedef struct {
@@ -24,6 +25,9 @@ typedef struct {
     SpotifyScene scene;
     char now_playing[SpotifyLabelBytes + 1];
     uint8_t play_state;
+    uint8_t title_bytes;
+    uint32_t duration_s;
+    uint32_t elapsed_s;
     uint8_t action;
     bool child_tracks;
     bool find_artist;

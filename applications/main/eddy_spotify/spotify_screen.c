@@ -1,6 +1,7 @@
 #include "spotify_screen.h"
 #include "setup_qr.h"
 #include <stdio.h>
+#include <string.h>
 
 _Static_assert(sizeof(spotify_setup_qr) == SpotifyQrBytes, "Invalid built-in QR bitmap");
 
@@ -108,6 +109,46 @@ static void now_bar(Canvas* canvas, const SpotifyScreen* screen) {
     canvas_set_color(canvas, ColorBlack);
 }
 
+static void draw_player(Canvas* canvas, const SpotifyScreen* screen) {
+    char title[sizeof(screen->now_playing)];
+    strlcpy(title, screen->now_playing, sizeof(title));
+    const char* artist = NULL;
+    size_t split = screen->title_bytes;
+    if(split > 0 && split + 3 < strlen(title) && !strncmp(title + split, " - ", 3)) {
+        title[split] = 0;
+        artist = screen->now_playing + split + 3;
+    }
+    canvas_set_font(canvas, FontPrimary);
+    draw_label(canvas, title[0] ? title : "Nothing playing", 21, screen->scroll);
+    canvas_set_font(canvas, FontSecondary);
+    if(artist) draw_label(canvas, artist, 31, screen->scroll);
+    if(screen->duration_s) {
+        uint32_t total = screen->duration_s, elapsed = screen->elapsed_s;
+        canvas_draw_frame(canvas, 3, 34, 122, 4);
+        unsigned width = (uint64_t)elapsed * 120 / total;
+        if(width) canvas_draw_box(canvas, 4, 35, width, 2);
+        char t[16];
+        snprintf(
+            t,
+            sizeof(t),
+            "%lu:%02lu",
+            (unsigned long)(elapsed / 60),
+            (unsigned long)(elapsed % 60));
+        canvas_draw_str(canvas, 3, 47, t);
+        snprintf(
+            t, sizeof(t), "%lu:%02lu", (unsigned long)(total / 60), (unsigned long)(total % 60));
+        canvas_draw_str(canvas, 125 - canvas_string_width(canvas, t), 47, t);
+    }
+    canvas_draw_str(canvas, 45, 47, "Down: Lyrics");
+    canvas_draw_box(canvas, 0, 51, 128, 13);
+    canvas_set_color(canvas, ColorWhite);
+    canvas_draw_str(canvas, 3, 61, "< Prev");
+    const char* toggle = screen->play_state == 1 ? "OK: Pause" : "OK: Play";
+    canvas_draw_str(canvas, 64 - canvas_string_width(canvas, toggle) / 2, 61, toggle);
+    canvas_draw_str(canvas, 100, 61, "Next >");
+    canvas_set_color(canvas, ColorBlack);
+}
+
 uint8_t spotify_action_count(const SpotifyScreen* screen) {
     uint8_t op = spotify_category_ops[screen->category];
     if(!screen->child_tracks && (op == SpotifyPlaylists || op == SpotifyAlbums ||
@@ -182,9 +223,15 @@ void spotify_screen_draw(Canvas* canvas, void* context) {
             [SpotifyRateLimited] = "Spotify is busy. Try later.",
             [SpotifyInvalid] = "Could not read this page.",
         };
-        canvas_draw_str(canvas, 2, 24, errors[lib->error]);
-        canvas_draw_str(canvas, 2, 36, "See details in your browser.");
-        canvas_draw_str(canvas, 2, 47, "OK: Retry    Back: Return");
+        if(spotify_library_action_unconfirmed(lib)) {
+            canvas_draw_str(canvas, 2, 24, "Result not confirmed.");
+            canvas_draw_str(canvas, 2, 36, "Check your Spotify app.");
+            canvas_draw_str(canvas, 2, 47, "OK: Return");
+        } else {
+            canvas_draw_str(canvas, 2, 24, errors[lib->error]);
+            canvas_draw_str(canvas, 2, 36, "See details in your browser.");
+            canvas_draw_str(canvas, 2, 47, "OK: Retry    Back: Return");
+        }
     } else if(screen->scene == SpotifyHome) {
         size_t first = screen->category > 2 ? screen->category - 2 : 0;
         for(size_t i = first; i < first + 3; ++i) {
@@ -204,13 +251,13 @@ void spotify_screen_draw(Canvas* canvas, void* context) {
             canvas_draw_str(canvas, 6, y + 11, i ? "Artists" : "Tracks");
             canvas_set_color(canvas, ColorBlack);
         }
+    } else if(screen->scene == SpotifyLyricsHelp) {
+        canvas_draw_str(canvas, 2, 24, "Open Now Playing in Spotify");
+        canvas_draw_str(canvas, 2, 36, "on your phone to view lyrics.");
+        canvas_draw_str(canvas, 2, 47, "OK: Back");
     } else if(screen->scene == SpotifyPlayer) {
-        draw_label(
-            canvas,
-            screen->now_playing[0] ? screen->now_playing : "Nothing playing",
-            27,
-            screen->scroll);
-        canvas_draw_str(canvas, 2, 45, "< Prev   OK: Toggle   Next >");
+        draw_player(canvas, screen);
+        return;
     } else if(lib->request || !lib->page) {
         canvas_draw_str(canvas, 2, 32, "Contacting Spotify...");
     } else if(screen->scene == SpotifyActions) {

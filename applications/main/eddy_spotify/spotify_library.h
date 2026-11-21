@@ -53,6 +53,9 @@ typedef struct {
     uint8_t count;
     uint8_t selected;
     uint8_t play_state;
+    uint8_t title_bytes;
+    uint32_t duration_ms;
+    uint32_t progress_ms;
     bool previous;
     bool next;
     bool collecting;
@@ -63,6 +66,7 @@ typedef struct {
 extern const char* const spotify_category_names[SpotifyCategories];
 extern const uint8_t spotify_category_ops[SpotifyCategories];
 
+bool spotify_library_action_unconfirmed(const SpotifyLibrary* lib);
 void spotify_library_begin(SpotifyLibrary* lib, uint8_t op, uint16_t request);
 void spotify_library_fail(SpotifyLibrary* lib, SpotifyError error);
 void spotify_library_receive(SpotifyLibrary* lib, const uint8_t* data, size_t size);

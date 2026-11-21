@@ -256,7 +256,7 @@ test('search, artist matching, queue, owned playlist choices, Back and Now Playi
   const writes = [], reads = [];
   const uri = (kind, index) => 'spotify:' + kind + ':' + String(index).padStart(22,'0');
   const artist = {name:'Eddy', uri:uri('artist', 5)};
-  const track = {type:'track', name:'Tide', uri:uri('track', 1), artists:[artist]};
+  const track = {type:'track', name:'Tidé - Mix', duration_ms:240000, uri:uri('track', 1), artists:[artist]};
   let playing = true, progress = 8000;
   globalThis.fetch = async (url, options) => {
     const {pathname, searchParams} = new URL(url);
@@ -325,7 +325,12 @@ test('search, artist matching, queue, owned playlist choices, Back and Now Playi
     playing = state;
     const end = await command(0x1c);
     assert.deepEqual(end, [0x12,token,0,count,0,0,0,0,0,0]);
-    assert(begin(token, [flag]));
+    const timing = Buffer.alloc(8);
+    if (count) {
+      timing.writeUInt32LE(8000, 0);
+      timing.writeUInt32LE(240000, 4);
+    }
+    assert(begin(token, [flag, ...timing, count ? Buffer.byteLength(track.name) : 0]));
   }
   assert.deepEqual(await command(0x24, 11), [0x12,15,0,1,0,0,0,0,0,0]); // Polls retained the artist results.
   assert.deepEqual(await command(0x1e), [0x12,16,0,4,0,1,0,0,0,0]);
