@@ -56,7 +56,9 @@ int32_t loader_menu_storage_settings(void* context) {
     if(card == FSE_NOT_READY) {
         storage_notice("No microSD card", "Insert or reinsert a card,\nthen open Storage again.");
     } else if(card == FSE_OK) {
-        storage_notice("Storage unavailable", "Restore Eddy's apps at\neddy-fw.dev/update");
+        storage_notice(
+            "Storage unavailable",
+            "Restore apps at\nmht3.github.io/\neddy-fw/update/");
     } else {
         DialogEx* dialog_ex = dialog_ex_alloc();
         Gui* gui = furi_record_open(RECORD_GUI);

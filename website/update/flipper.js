@@ -10,7 +10,12 @@ export class FlipperUpdater {
   }
 
   async open() {
-    await this.port.open({baudRate:115200,bufferSize:16384});
+    try {
+      await this.port.open({baudRate:115200,bufferSize:16384});
+    } catch (error) {
+      if (error.name !== 'NetworkError' && error.name !== 'InvalidStateError') throw error;
+      throw Error('Could not open the Flipper USB port. Quit qFlipper, close other Flipper tabs, then click Connect Flipper Zero again.');
+    }
     this.reader = this.port.readable.getReader();
     this.writer = this.port.writable.getWriter();
     await this.port.setSignals({dataTerminalReady:true});

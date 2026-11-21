@@ -46,11 +46,10 @@ python3 -m http.server --bind 127.0.0.1 --directory dist/eddy-site 8000
 
 Open `http://127.0.0.1:8000/update/` in desktop Chrome or Edge. The Eddy updater uses Web Serial on localhost or HTTPS. It verifies the downloaded components, copies them to the microSD card, and asks the Flipper to verify the package and restart. The same page offers the full TGZ for qFlipper.
 
-### Publish eddy-fw.dev
+### Publish on GitHub Pages
 
-1. Push this checkout to the Eddy GitHub fork. Enable Issues for the bug-report link and GitHub Actions for builds.
-2. Set **Settings → Pages → Build and deployment → Source** to **GitHub Actions**. Add `eddy-fw.dev` as the custom domain and configure the apex domain with your DNS provider. Enable HTTPS when GitHub issues the certificate. [GitHub custom domain instructions](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site)
-3. Run **Actions → Build Eddy → Run workflow** on the desired mainline revision, or push an Eddy release tag such as `eddy-0.1.0`. The workflow builds one F7 package, stages it with the matching site, and deploys both to Pages. Normal branch builds and pull requests produce downloadable CI artifacts.
-4. Visit `https://eddy-fw.dev/update/` in desktop Chrome or Edge. Choose **Connect Flipper Zero**, select your device, then choose **Install** once the updater identifies the F7 and its microSD card. The page also links to the source revision, qFlipper download and Flipper Lab.
+The [Eddy website](https://mht3.github.io/eddy-fw/) and [USB updater](https://mht3.github.io/eddy-fw/update/) use free GitHub Pages hosting. The website source lives in this firmware repository. Pages serves the generated site from the root of the `main` branch in the separate [website repository](https://github.com/mht3/eddy-fw).
+
+To publish a new release, build the desired firmware commit and stage the matching website using the commands above. Copy the contents of `dist/eddy-site/` into a checkout of `mht3/eddy-fw`, remove any superseded firmware bundles from that checkout, and push the changes to `main`. Keep its `.nojekyll` file. GitHub Actions also provides the full staged site as the `eddy-website` artifact when the firmware build workflow runs.
 
 Building from a public, committed revision keeps the matching source available with each binary. The project's distribution license and source notices are part of the checkout. Bundled third-party components retain their respective terms.

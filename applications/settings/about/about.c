@@ -190,7 +190,7 @@ static DialogMessageButton about_screen_fw_version(DialogsApp* dialogs, DialogMe
             // Not a tag but not dev branch, show custom branch
             furi_string_cat(buffer, version_get_gitbranch(ver));
         } else {
-            furi_string_cat(buffer, "eddy-fw.dev");
+            furi_string_cat(buffer, "mht3.github.io/eddy-fw/");
         }
     }
 
