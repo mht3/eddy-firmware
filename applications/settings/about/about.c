@@ -136,9 +136,8 @@ static DialogMessageButton about_screen_hw_version(DialogsApp* dialogs, DialogMe
 
     furi_string_cat_printf(
         buffer,
-        "%d.F%dB%dC%d %s:%s %s\n",
+        "HW %d B%d C%d %s:%s %s\n",
         furi_hal_version_get_hw_version(),
-        furi_hal_version_get_hw_target(),
         furi_hal_version_get_hw_body(),
         furi_hal_version_get_hw_connect(),
         furi_hal_version_get_hw_region_name(),
@@ -176,15 +175,14 @@ static DialogMessageButton about_screen_fw_version(DialogsApp* dialogs, DialogMe
         furi_hal_info_get_api_version(&api_major, &api_minor);
         furi_string_cat_printf(
             buffer,
-            "%s [%s]\n%s%s [%d.%d] %s\n[%d] ",
+            "%s [%s]\n%s%s [%d.%d] %s\n",
             version_get_version(ver),
             version_get_builddate(ver),
             version_get_dirty_flag(ver) ? "[!] " : "",
             version_get_githash(ver),
             api_major,
             api_minor,
-            c2_ver ? c2_ver->StackTypeString : "<none>",
-            version_get_target(ver));
+            c2_ver ? c2_ver->StackTypeString : "<none>");
         if(!strcmp(version_get_version(ver), "eddy-dev") &&
            strcmp(version_get_gitbranch(ver), "dev")) {
             // Not a tag but not dev branch, show custom branch

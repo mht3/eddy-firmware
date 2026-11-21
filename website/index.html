@@ -47,14 +47,16 @@
           <eddy-device phase="0">
           </eddy-device>
           <div id="playable" hidden role="group" aria-label="Flipper Zero preview controls" aria-describedby="control-help">
-            <img src="models/front.webp" srcset="models/front.webp 1600w, models/front-large.webp 3200w" sizes="(max-width:760px) 100vw, 62vw" width="1600" height="800" alt="">
-            <canvas id="preview-lcd" width="128" height="64" aria-hidden="true"></canvas>
-            <button data-key="ok" aria-label="OK, open selection">OK</button>
-            <button data-key="up" aria-label="Move up">↑</button>
-            <button data-key="down" aria-label="Move down">↓</button>
-            <button data-key="left" aria-label="Move left">←</button>
-            <button data-key="right" aria-label="Move right">→</button>
-            <button data-key="back" aria-label="Go back">↩</button>
+            <img src="models/face.webp" width="1728" height="864" alt="">
+            <div class="device-controls">
+              <canvas id="preview-lcd" width="128" height="64" aria-hidden="true"></canvas>
+              <button data-key="ok" aria-label="OK, open selection">OK</button>
+              <button data-key="up" aria-label="Move up">↑</button>
+              <button data-key="down" aria-label="Move down">↓</button>
+              <button data-key="left" aria-label="Move left">←</button>
+              <button data-key="right" aria-label="Move right">→</button>
+              <button data-key="back" aria-label="Go back">↩</button>
+            </div>
             <span class="sr-only" role="status" id="preview-state"></span>
           </div>
           <div class="caption" aria-hidden="true">
@@ -69,8 +71,6 @@
         <div class="chapters">
           <section class="hero" data-phase="0">
             <div class="eyebrow">
-              <i>
-              </i>
               CUSTOM FIRMWARE FOR FLIPPER ZERO
             </div>
             <h1>
@@ -81,7 +81,7 @@
               </em>
             </h1>
             <p>
-              A new home for your Flipper Zero. Meet Eddy the dolphin and control Spotify from your Flipper’s buttons.
+              A new home for your Flipper Zero.
             </p>
             <a class="cta" href="update/">
               Install Eddy Firmware
@@ -95,8 +95,6 @@
           </section>
           <section id="connect" data-phase="1">
             <div class="eyebrow">
-              <i>
-              </i>
               USB CONNECTION
             </div>
             <h2>
@@ -108,8 +106,6 @@
           </section>
           <section data-phase="2">
             <div class="eyebrow">
-              <i>
-              </i>
               FIRMWARE UPDATE
             </div>
             <h2>
@@ -121,8 +117,6 @@
           </section>
           <section id="home-screen" data-phase="3">
             <div class="eyebrow">
-              <i>
-              </i>
               INTERACTIVE PREVIEW
             </div>
             <h2>
@@ -144,8 +138,6 @@
         <div class="install-wrap">
           <div>
             <div class="eyebrow">
-              <i>
-              </i>
               MAIN BUILD
             </div>
             <h2>

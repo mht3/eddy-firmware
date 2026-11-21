@@ -1,7 +1,7 @@
 Eddy Firmware product preview
 
 Flipper Zero enclosure, controls and socket
-Flipper Devices Inc., production hardware F7B9C6, distributed under GPLv3.
+Flipper Devices Inc., Flipper Zero production enclosure, distributed under GPLv3.
 Eddy Firmware converted the public exterior STEP model to a glTF mesh and
 assigned surface materials for this website. The original geometry is
 available here as models/flipper-zero.stp.gz. Unzip it to edit the STEP file.
@@ -21,7 +21,9 @@ Source: https://gitlab.com/kicad/libraries/kicad-packages3D/-/blob/10.0.7/Connec
 Rendering and source
 Eddy Firmware contributors added the cable jacket, strain relief, surface
 markings, lighting, screen interface and animation. The WebP images are
-renders of the same models, including the interactive face-on view. Rebuild the two meshes from the included
+renders of the same models. The mobile tour samples 48 poses from the desktop animation,
+framed face-on at 108 × 54 mm at the end. The interactive device and README
+images use this same projection. Rebuild the two meshes from the included
 sources using Python 3 and KiCad CLI 10.0.7.
     python3 models/convert.py --kicad-cli /path/to/kicad-cli
 The live renderer is models/renderer.js. The enlarged dolphin in home-screen.js

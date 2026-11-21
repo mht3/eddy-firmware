@@ -43,7 +43,7 @@ const samples = {
   tester:['Try a demo IR button','OK for a sample signal'], detected:['Sample IR detected','OK to test another'],
   remotes:['No remotes yet'],
   learn:['Point your remote','at the Flipper'], pins:['No module attached'], uart:['Connect via USB'],
-  battery:[sampleCharge+'% charged','On battery power'], about:['Eddy Firmware','Flipper Zero F7'],
+  battery:[sampleCharge+'% charged','On battery power'], about:['Eddy Firmware','Flipper Zero'],
   passport:['Eddy the dolphin','Level 1'], restart:['OK to restart preview'], shutdown:['OK to power off preview'],
   off:['OK to wake preview'],
 };
