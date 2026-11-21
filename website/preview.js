@@ -1,5 +1,5 @@
 import {drawLauncher, launcherApps, launcherArt} from './launcher.js';
-import {drawHome, ocean} from './home-screen.js';
+import {drawCloseUpHome} from './home-screen.js';
 
 const panel = document.querySelector('#playable');
 const display = panel.querySelector('canvas');
@@ -55,6 +55,14 @@ function drawMeter(tick) {
 function draw() {
   clearTimeout(timer);
   if (panel.hidden || !inView || document.hidden) return;
+  const bounds = display.getBoundingClientRect();
+  const width = Math.max(1,Math.round(bounds.width * window.devicePixelRatio));
+  const height = Math.max(1,Math.round(bounds.height * window.devicePixelRatio));
+  if (display.width !== width || display.height !== height) {
+    display.width = width;
+    display.height = height;
+  }
+  ctx.setTransform(width/128,0,0,height/64,0,0);
   const {page,row} = current();
   const tick = reducedMotion.matches ? 4 : Math.floor(performance.now()/167);
   ctx.clearRect(0,0,128,64);
@@ -63,7 +71,7 @@ function draw() {
   ctx.font = 'bold 10px monospace';
   ctx.textBaseline = 'top';
   if (page === 'home') {
-    drawHome(ctx, animation ? tick % 16 : 4);
+    drawCloseUpHome(ctx, animation ? tick % 16 : 4);
   } else if (page === 'menu') {
     drawLauncher(ctx, menuSelection, reducedMotion.matches ? 0 : performance.now()-selectedSince);
   } else {
@@ -139,7 +147,8 @@ panel.addEventListener('click', event => {
   if (button) press(button.dataset.key);
 });
 new IntersectionObserver(([entry]) => { inView = entry.isIntersecting; draw(); }).observe(panel);
-ocean.addEventListener('load',draw);
+new ResizeObserver(draw).observe(display);
+window.addEventListener('resize',draw);
 launcherArt.addEventListener('load',draw);
 document.addEventListener('visibilitychange',draw);
 reducedMotion.addEventListener('change',draw);

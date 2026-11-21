@@ -373,7 +373,7 @@ footer {
   position:absolute;
   left:7.58%;top:22.36%;
   width:44.17%;height:44.17%;
-  image-rendering:pixelated;
+  image-rendering:auto;
 }
 #playable button {
   position:absolute;
@@ -412,3 +412,12 @@ footer {
 .resource-list span {grid-column:1;color:var(--muted);font-size:1rem}
 .resource-list a:hover {background:#132a44;text-decoration:none}
 nav [aria-current=page] {color:var(--surf)}
+
+.updater {align-items:flex-start}
+.updater h1 {font-size:clamp(3.3rem,7vw,7rem)}
+.updater .release h2 {font-size:2rem;line-height:1.1;letter-spacing:-.035em;margin:0}
+.updater button {font:inherit;font-weight:650;border:0;cursor:pointer}
+.updater button:disabled {opacity:.55;cursor:default}
+.updater .downloads {display:flex;flex-direction:column;align-items:flex-start;gap:.5rem;font-size:.92rem}
+.updater .downloads a {color:var(--surf);text-decoration:underline;margin:0}
+.updater progress {width:100%;accent-color:var(--surf);margin-bottom:1rem}

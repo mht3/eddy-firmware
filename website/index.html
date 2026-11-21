@@ -33,7 +33,7 @@
             Wiki
           </a>
           <a href="resources/">Resources</a>
-          <a class="small-cta" href="#install">
+          <a class="small-cta" href="update/">
             Install
           </a>
         </nav>
@@ -47,7 +47,7 @@
           <eddy-device phase="0">
           </eddy-device>
           <div id="playable" hidden role="group" aria-label="Flipper Zero preview controls" aria-describedby="control-help">
-            <img src="models/front.webp" width="1600" height="800" alt="">
+            <img src="models/front.webp" srcset="models/front.webp 1600w, models/front-large.webp 3200w" sizes="(max-width:760px) 100vw, 62vw" width="1600" height="800" alt="">
             <canvas id="preview-lcd" width="128" height="64" aria-hidden="true"></canvas>
             <button data-key="ok" aria-label="OK, open selection">OK</button>
             <button data-key="up" aria-label="Move up">↑</button>
@@ -83,7 +83,7 @@
             <p>
               A new home for your Flipper Zero. Meet Eddy the dolphin in this open-source fork of Momentum Firmware.
             </p>
-            <a class="cta" href="#install">
+            <a class="cta" href="update/">
               Install Eddy Firmware
             </a>
             <a class="tour" href="#home-screen">
@@ -116,7 +116,7 @@
               Load Eddy.
             </h2>
             <p>
-              The web installer opens Flipper Lab with the Eddy main build selected. Connect your device, confirm the update and leave it plugged in through the restart.
+              Open the Eddy updater, connect your device, and install the main build. Leave your Flipper plugged in through the restart.
             </p>
           </section>
           <section id="home-screen" data-phase="3">
@@ -148,29 +148,7 @@
               For Flipper Zero with a microSD card and USB data cable. Use desktop Chrome or Edge for the web installer.
             </p>
           </div>
-          <div class="release">
-            <h3>
-              Flipper Zero
-              <span>
-                F7
-              </span>
-            </h3>
-            <p id="build-status" role="status">
-              Checking for an Eddy build…
-            </p>
-            <a id="install-link" class="cta" hidden>
-              Open web installer
-            </a>
-            <a id="download" hidden>
-              Download for qFlipper
-            </a>
-            <a id="source" hidden>
-              Source for this build
-            </a>
-            <noscript>
-              Enable JavaScript to check for a release.
-            </noscript>
-          </div>
+          <a class="cta" href="update/">Open Eddy updater</a>
         </div>
       </section>
     </main>

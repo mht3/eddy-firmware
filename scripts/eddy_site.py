@@ -27,6 +27,7 @@ def stage(package=None):
     version = package.stem.removeprefix("flipper-z-f7-update-")
     if not re.fullmatch(r"eddy-[A-Za-z0-9._-]+", version):
         raise SystemExit("Unsupported package name")
+    components = {}
     with tarfile.open(package, "r:gz") as bundle:
         manifests = [
             m for m in bundle if m.isfile() and Path(m.name).name == "update.fuf"
@@ -41,6 +42,21 @@ def stage(package=None):
             raise SystemExit("Expected a Flipper Zero (F7) update")
         if "Info: " + version not in manifest:
             raise SystemExit("Package version differs from the update manifest")
+
+        # Publish the same flat F7 package members that selfupdate.py sends over USB.
+        folder = Path(manifests[0].name).parent
+        for member in bundle.getmembers():
+            if member.isdir():
+                continue
+            path = Path(member.name)
+            if (
+                not member.isfile()
+                or path.parent != folder
+                or not re.fullmatch(r"[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)+", path.name)
+                or path.name in components
+            ):
+                raise SystemExit(f"Unexpected update component: {member.name}")
+            components[path.name] = bundle.extractfile(member).read()
 
     metadata = json.loads(
         package.with_name(f"flipper-z-f7-full-{version}.json").read_text()
@@ -59,7 +75,21 @@ def stage(package=None):
         shutil.rmtree(site)
     shutil.copytree(ROOT / "website", site)
     shutil.copy2(package, site / "firmware" / package.name)
+    parts_dir = site / "firmware" / version
+    parts_dir.mkdir()
+    parts = []
+    for name, data in components.items():
+        (parts_dir / name).write_bytes(data)
+        parts.append(
+            {
+                "name": name,
+                "size": len(data),
+                "sha256": hashlib.sha256(data).hexdigest(),
+                "md5": hashlib.md5(data, usedforsecurity=False).hexdigest(),
+            }
+        )
     build = dict(
+        parts=parts,
         target="f7",
         version=version,
         file=package.name,

@@ -24,7 +24,8 @@ markings, lighting, screen interface and animation. The WebP images are
 renders of the same models, including the interactive face-on view. Rebuild the two meshes from the included
 sources using Python 3 and KiCad CLI 10.0.7.
     python3 models/convert.py --kicad-cli /path/to/kicad-cli
-The live renderer is models/renderer.js and the LCD uses device.js, home-screen.js and preview.js.
+The live renderer is models/renderer.js. The enlarged dolphin in home-screen.js
+redraws the Eddy firmware sprite with scalable paths for high-density displays.
 
 Launcher preview
 The Wii-style tile layout and icons come from the Momentum-derived firmware
