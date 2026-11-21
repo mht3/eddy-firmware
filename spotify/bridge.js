@@ -52,8 +52,8 @@ function pagePackets(page, token) {
   return packets;
 }
 
-async function connect(onCommand, onDrop) {
-  const device = await navigator.bluetooth.requestDevice({
+async function connect(device, onCommand, onDrop) {
+  device ??= await navigator.bluetooth.requestDevice({
     filters: [0x3080, 0x3081, 0x3082, 0x3083].map(service => ({services: [service]})),
     optionalServices: [uuid(1)],
   });
@@ -78,6 +78,7 @@ async function connect(onCommand, onDrop) {
     device.addEventListener('gattserverdisconnected', dropped);
     let lastWrite = Promise.resolve();
     return {
+      grantedDevice: device,
       name: device.name || 'Flipper',
       write(bytes, stillActive = () => true) {
         // Web Bluetooth permits a single in-flight GATT operation, including hello.
@@ -97,12 +98,15 @@ async function connect(onCommand, onDrop) {
 }
 
 export async function startBridge(id) {
-  let session, pending = false, cooldown = 0;
+  let session, lastDevice, pending = false, cooldown = 0;
+  let attempt = 0;
+  const droppedMessage = 'Bluetooth disconnected. Open Apps → Spotify on your Flipper, then select Reconnect Flipper here.';
   const notice = text => { get('notice').textContent = text; };
   function render() {
     const ready = linked(id);
     get('link').hidden = ready;
     get('pair').hidden = !ready || Boolean(session);
+    get('pair').textContent = lastDevice ? 'Reconnect Flipper' : 'Choose Flipper';
     get('unlink').hidden = !ready;
     get('disconnect').hidden = !session;
     get('pair').disabled = get('link').disabled = get('unlink').disabled = get('disconnect').disabled = pending;
@@ -142,7 +146,7 @@ export async function startBridge(id) {
       const op = Date.now() - current.lastSeen >= 40000 ? 0x15 : 0x17;
       if (op === hello) forgetPage(current);
       try { await current.device.write(Uint8Array.of(op), () => session === current); }
-      catch { if (session === current) disconnect('Bluetooth disconnected. Choose your Flipper again.'); return; }
+      catch { if (session === current) disconnect(droppedMessage); return; }
       if (session === current) {
         current.lastSeen = Date.now();
         heartbeat(current);
@@ -159,7 +163,7 @@ export async function startBridge(id) {
     if (op === hello) {
       forgetPage(current);
       try { await current.device.write(Uint8Array.of(hello), () => session === current); }
-      catch { if (session === current) disconnect('Bluetooth disconnected. Choose your Flipper again.'); }
+      catch { if (session === current) disconnect(droppedMessage); }
       return;
     }
     const first = categories.has(op);
@@ -219,13 +223,13 @@ export async function startBridge(id) {
     } catch (error) {
       if (!active()) return;
       showLibraryLinks();
-      if (writing) { disconnect('Bluetooth disconnected. Choose your Flipper again.'); return; }
+      if (writing) { disconnect(droppedMessage); return; }
       const issue = error instanceof PlaybackError ? error : new PlaybackError(2, 'Connection interrupted. Retry on your Flipper.');
       if (issue.retryMs) cooldown = Date.now() + issue.retryMs;
       notice(issue.message);
       try { await send(packet(0x13, token, issue.code)); }
-      catch { if (active()) disconnect('Bluetooth disconnected. Choose your Flipper again.'); return; }
-      if (active() && issue.code === 1) { unlink(); disconnect(issue.message); }
+      catch { if (active()) disconnect(droppedMessage); return; }
+      if (active() && issue.code === 1) { lastDevice = null; unlink(); disconnect(issue.message); }
     } finally {
       if (active()) {
         current.active = null;
@@ -243,13 +247,16 @@ export async function startBridge(id) {
   get('pair').onclick = async () => {
     pending = true;
     render();
-    notice('Choose your Flipper and leave Apps → Spotify open.');
+    notice(lastDevice ? 'Reconnecting to your Flipper…' : 'Choose your Flipper and leave Apps → Spotify open.');
     const current = {};
+    const sequence = ++attempt;
     try {
-      current.device = await connect(request => respond(current, request), () => {
-        if (session === current) disconnect('Bluetooth disconnected. Choose your Flipper to reconnect.');
+      current.device = await connect(lastDevice, request => respond(current, request), () => {
+        if (session === current) disconnect(droppedMessage);
       });
+      if (sequence !== attempt || !linked(id)) { current.device.close(); return; }
       session = current;
+      lastDevice = current.device.grantedDevice;
       notice('Connected to ' + current.device.name + '. Open Apps → Spotify to browse your library.');
       await current.device.write(Uint8Array.of(0x15));
       if (session === current) {
@@ -257,15 +264,18 @@ export async function startBridge(id) {
         heartbeat(current);
       }
     } catch (error) {
+      if (sequence !== attempt) return;
+      // Allow a fresh chooser after a failed reconnect (for example, a forgotten OS pairing).
+      lastDevice = null;
       const message = error.name === 'NotFoundError' ? 'No Flipper selected. You can choose again.' :
         'Pairing did not finish. Open Apps → Spotify, check Bluetooth and try again.';
       if (session === current) disconnect(message);
       else notice(message);
     } finally { pending = false; render(); }
   };
-  get('disconnect').onclick = () => disconnect('Flipper disconnected.', true);
-  get('unlink').onclick = () => { unlink(); return disconnect('Spotify unlinked from this tab.', true); };
-  window.addEventListener('pagehide', () => disconnect(''));
+  get('disconnect').onclick = () => { lastDevice = null; return disconnect('Flipper disconnected.', true); };
+  get('unlink').onclick = () => { ++attempt; lastDevice = null; unlink(); return disconnect('Spotify unlinked from this tab.', true); };
+  window.addEventListener('pagehide', () => { ++attempt; lastDevice = null; disconnect(''); });
   get('bridge').hidden = false;
   pending = true;
   render();

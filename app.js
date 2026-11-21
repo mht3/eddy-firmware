@@ -8,6 +8,12 @@ const milestones = [0, 0.63, 1.48, 3];
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 // Decode the face while the tour is visible, ahead of the first button press.
 document.querySelector('#playable img').decode().catch(() => {});
+const tourLink = document.querySelector('.tour');
+let enterControls = false;
+tourLink.addEventListener('click', event => {
+  enterControls = event.detail === 0;
+  requestScene();
+});
 let queued = false;
 function syncScene() {
   queued = false;
@@ -37,6 +43,12 @@ function syncScene() {
   device.setAttribute('phase', pose.toFixed(3));
   const playable = phase >= 2.72;
   setPreviewVisible(playable);
+  if (playable && enterControls) {
+    enterControls = false;
+    if (location.hash === '#home-screen' && (document.activeElement === tourLink || document.activeElement === document.body)) {
+      document.querySelector('#playable [data-key=ok]').focus({preventScroll:true});
+    }
+  }
   device.hidden = playable;
   label.textContent = playable ? 'INTERACTIVE HOME SCREEN' : labels[t > 0.5 ? next : chapter];
 }

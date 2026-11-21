@@ -44,7 +44,7 @@ export function appArranger(onMove) {
       page.replaceChildren(...group.map(id => tiles.get(id)));
     });
     if (grid.contains(focused)) focused.focus({preventScroll:true});
-    help.textContent = visible.length > 1 ? 'Drag an app onto another to swap positions.' :
+    help.textContent = visible.length > 1 ? 'Drag an app onto another to swap positions, or use the arrow keys on a focused app.' :
       visible.length ? 'Add another app to rearrange your menu.' : 'Select apps below to arrange your menu.';
     reset.disabled = visible.join() === defaultAppOrder.filter(id => selected.has(id)).join();
     status.textContent = '';

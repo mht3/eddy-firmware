@@ -58,8 +58,8 @@ const lists = {
   ...powerLists,
 };
 const previewParams = new URLSearchParams(location.search);
-const spotifyDemo = previewParams.get('demo')==='spotify';
-export const pickerPreview = spotifyDemo || previewParams.has('apps') || previewParams.has('app');
+const guideApp = ['music','spotify'].find(id=>id===previewParams.get('demo'));
+export const pickerPreview = Boolean(guideApp) || previewParams.has('apps') || previewParams.has('app');
 const requestedApps = previewParams.has('apps') ? new Set(previewParams.get('apps').split(',')) : null;
 const orderParam = previewParams.get('order')?.split(',');
 const requestedOrder = restoreAppOrder(orderParam);
@@ -177,6 +177,7 @@ function drawReader(page) {
     ctx.font='9px sans-serif';
     ctx.fillText(readerTypes[page],3,34);
     ctx.font='8px sans-serif';
+    ctx.fillText('‹ Scan',3,54);
     ctx.fillText('OK Save',48,54);
     ctx.fillText('Saved ›',96,54);
     return;
@@ -295,7 +296,7 @@ function announce() {
   const {page,row} = current();
   let text = titles[page];
   if (readers[page]) {
-    text += current().detected ? '. Type detected. '+readerTypes[page]+'. OK to name and save.' :
+    text += current().detected ? '. Type detected. '+readerTypes[page]+'. OK to name and save, or Left to scan again.' :
       '. Ready to scan. '+readers[page].slice(1).join(' ')+'. OK for a sample.';
     text += ' Right for saved observations.';
   }
@@ -353,6 +354,7 @@ function press(key) {
     if(key==='ok' && Number.isFinite(signalDbm)) beginNote(page,signalDbm+' dBm at 433.92 MHz');
     if(key==='right') browseNotes(page);
   } else if(readers[page]) {
+    if(key==='left') state.detected=false;
     if(key==='right') browseNotes(page);
     if(key==='ok') {
       if(state.detected) beginNote(page,readerTypes[page]);
@@ -443,25 +445,28 @@ document.querySelector('#try-music').addEventListener('click', () => {
 });
 if(pickerPreview) {
   document.documentElement.classList.add('picker-preview');
-  const id=spotifyDemo ? 'spotify' : previewParams.get('app');
-  showAppPreview(id,spotifyDemo);
-  const title=lists.apps.find(([,page])=>page===id)?.[0] ?? 'Your Apps menu';
-  document.querySelector('#home-screen h2').textContent=spotifyDemo ? 'Spotify' : title;
-  document.querySelector('#preview-intro').textContent=spotifyDemo ?
-    'Browse sample Liked Songs, Playlists, and Albums. Use Up or Down to choose a category and OK to open it.' :
+  const id=guideApp ?? previewParams.get('app');
+  showAppPreview(id,Boolean(guideApp));
+  const title=(guideApp ? apps : lists.apps).find(([,page])=>page===id)?.[0] ?? 'Your Apps menu';
+  document.querySelector('#home-screen h2').textContent=title;
+  const guideIntro = {
+    spotify:'Browse sample Liked Songs, Playlists, and Albums. Use Up or Down to choose a category and OK to open it.',
+    music:'Try a sample track. Press OK to pause or play, Right to skip, and Up or Down for volume.',
+  };
+  document.querySelector('#preview-intro').textContent=guideIntro[guideApp] ??
     'Use the buttons on the Flipper to try your selection. This preview uses sample data.';
   const back=document.querySelector('#return-to-picker');
   const selection = lists.apps.filter(([,page])=>apps.some(([,id])=>id===page)).map(([,id])=>id);
   const returnTo = selection.includes(id) ? 'try-'+id : 'try-app-menu';
   back.href='update/?'+new URLSearchParams({apps:selection.join(','),order:(requestedOrder ?? getAppOrder()).join(',')})+'#'+returnTo;
-  if(spotifyDemo) {
-    back.href='spotify/';
-    back.textContent='Back to the Spotify guide';
+  if(guideApp) {
+    back.href=guideApp+'/';
+    back.textContent='Back to the '+title+' guide';
   }
   back.hidden=false;
 }
 window.addEventListener('eddy-apps-changed', () => {
-  if(requestedApps || spotifyDemo) return;
+  if(requestedApps || guideApp) return;
   refreshHistory();
   const appView=history.findIndex(entry=>entry.page==='apps');
   const open=history[appView+1];
@@ -589,16 +594,52 @@ upButton.addEventListener('keyup',event=>{
 const okButton=panel.querySelector('[data-key=ok]');
 let editTimer;
 let heldOk=false;
+let editKey=null;
+let keyHeld=false;
+function hasEditGesture(state) {
+  return (state.page==='builder' && state.step==='grid') ||
+    (state.page==='btRemote' && !state.mode);
+}
+function startEditHold(fromKeyboard=false) {
+  const state=current();
+  clearTimeout(editTimer);
+  heldOk=false;
+  keyHeld=false;
+  editTimer=setTimeout(()=>{
+    if(current()!==state || !hasEditGesture(state)) return;
+    if(fromKeyboard) keyHeld=true;
+    else heldOk=true;
+    press('hold');
+  },600);
+}
 okButton.addEventListener('pointerdown',event=>{
   heldOk=false;
-  if(!(current().page==='builder' && current().step==='grid') &&
-     !(current().page==='btRemote' && !current().mode)) return;
+  if(!hasEditGesture(current()) || event.button!==0) return;
   okButton.setPointerCapture(event.pointerId);
-  editTimer=setTimeout(()=>{ heldOk=true; press('hold'); },600);
+  startEditHold();
 });
 for(const event of ['pointerup','pointercancel','lostpointercapture']) {
   okButton.addEventListener(event,()=>clearTimeout(editTimer));
 }
+okButton.addEventListener('keydown',event=>{
+  if(!['Enter',' '].includes(event.key) || (!editKey && !hasEditGesture(current()))) return;
+  event.preventDefault();
+  if(!event.repeat && !editKey) {
+    editKey=event.key;
+    startEditHold(true);
+  }
+});
+okButton.addEventListener('keyup',event=>{
+  if(event.key!==editKey) return;
+  event.preventDefault();
+  editKey=null;
+  clearTimeout(editTimer);
+  if(!keyHeld) press('ok');
+});
+okButton.addEventListener('blur',()=>{
+  clearTimeout(editTimer);
+  editKey=null;
+});
 const backButton=panel.querySelector('[data-key=back]');
 let hold;
 let heldBack=false;

@@ -8,7 +8,7 @@ function choices(s) {
   if(s.step==='stock') return stock;
   if(s.step==='options') {
     const actions=layoutDemo.get(s.name).cells[s.slot] ? ['Rename button','Learn again','Move button','Remove button'] : [];
-    return [...actions, layoutDemo.pinned(s.name)?'Remove from Apps':'Add to Apps'];
+    return layoutDemo.pinned(s.name) ? [...actions,'Remove from Apps'] : ['Add to Apps',...actions];
   }
   return [];
 }
@@ -75,7 +75,7 @@ export function drawBuilder(ctx,s) {
     const cell=layoutDemo.get(s.name).cells[s.slot];
     ctx.textAlign='center';
     ctx.fillText(s.message || (s.step==='move'?'Choose destination':cell?.name || 'Empty spot'),64,45,122);
-    ctx.fillText(s.step==='move'?'OK place · Back cancel':cell?'OK send · Hold OK edit':'OK add · Hold OK options',64,55,124);
+    ctx.fillText(s.step==='move'?'OK place · Back cancel':cell?'OK send · Hold OK menu':'OK add · Hold OK menu',64,55,124);
     ctx.textAlign='start';
   }
 }

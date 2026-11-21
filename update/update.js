@@ -11,12 +11,12 @@ const download = document.querySelector('#download');
 const lab = document.querySelector('#lab');
 let build;
 let flipper;
-let busy = false;
-let accepted = false;
+let operation = null;
 
 function updateControls() {
+  const busy = Boolean(operation);
   picker.disabled = busy;
-  action.disabled = busy || accepted || !build || !isSecureContext || !navigator.serial;
+  action.disabled = busy || !build || !isSecureContext || !navigator.serial;
   download.disabled = busy || !build;
   const stockLayout = getAppOrder().every((id,i)=>id===defaultAppOrder[i]);
   lab.hidden = busy || !lab.hasAttribute('href') || getSelectedApps().size !== catalog.length || !stockLayout;
@@ -103,15 +103,14 @@ async function releasePort() {
 }
 
 action.addEventListener('click',async () => {
-  if (busy || !build) return;
-  busy = true;
+  if (operation || !build) return;
+  operation = 'usb';
   updateControls();
   try {
     if (flipper) {
       await install();
-      accepted = true;
       connection.textContent = 'Your Flipper accepted the update. Keep it connected and follow the progress on its screen through the restart.';
-      action.textContent = 'Update started';
+      action.textContent = 'Reconnect Flipper Zero';
       await releasePort();
     } else {
       progress.hidden = true;
@@ -128,14 +127,14 @@ action.addEventListener('click',async () => {
     connection.textContent = error.name === 'NotFoundError' ? 'No device selected.' : error.message;
     progress.hidden = true;
   } finally {
-    busy = false;
+    operation = null;
     updateControls();
   }
 });
 
 download.addEventListener('click', async () => {
-  if (busy || !build) return;
-  busy=true;
+  if (operation || !build) return;
+  operation = 'download';
   updateControls();
   try {
     const files=await prepareInstall(build,getSelectedApps(),name=>{
@@ -155,15 +154,16 @@ download.addEventListener('click', async () => {
   } catch(error) {
     connection.textContent=error.message;
   } finally {
-    busy=false;
+    operation = null;
     updateControls();
   }
 });
 
 navigator.serial?.addEventListener('disconnect',async event => {
-  if (busy || event.target !== flipper?.port) return;
+  if (operation === 'usb' || event.target !== flipper?.port) return;
+  // The independent qFlipper download can finish after a USB cable is unplugged.
   await releasePort();
   action.textContent = 'Connect Flipper Zero';
-  connection.textContent = 'Device disconnected.';
+  if (!operation) connection.textContent = 'Device disconnected.';
 });
 loadBuild();
