@@ -1,4 +1,4 @@
-<img src="website/eddy.svg" width="64" height="64" alt="Eddy wave">
+<img src="website/eddy.svg" width="64" height="64" alt="Eddy ocean current">
 
 # Eddy Firmware
 
@@ -6,7 +6,7 @@ Eddy is an independent firmware fork for Flipper Zero. The main build includes a
 
 Eddy started from Next-Flip’s Momentum Firmware at commit `d3f89dfe`. Momentum builds on Flipper Devices’ firmware and work from Unleashed and Xtreme. Thank you to those maintainers, artists, and contributors. The repository retains their history, copyright notices and license files. [Momentum source at the fork point](https://github.com/Next-Flip/Momentum-Firmware/tree/d3f89dfe2ef6b01839201598e9be1590cba80322) · [Firmware license](LICENSE)
 
-The wave is the project logo. The home-screen animation adapts the inherited Flipper dolphin artwork in `assets/icons/Dolphin/DolphinDone_80x58.png`.
+The project logo shows an ocean eddy from above. The home-screen animation adapts the inherited Flipper dolphin artwork in `assets/icons/Dolphin/DolphinDone_80x58.png`.
 
 ![Eddy the dolphin surfacing in an ocean eddy](.github/assets/eddy-ocean.gif)
 

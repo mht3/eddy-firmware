@@ -1,8 +1,11 @@
+import {setPreviewVisible} from './preview.js';
+
 const chapters = [...document.querySelectorAll('[data-phase]')];
 const device = document.querySelector('eddy-device');
 const label = document.querySelector('#scene-label');
-const labels = ['DEVICE PREVIEW', 'USB CONNECTION', 'FIRMWARE UPDATE', 'SIGNAL METER / SETTINGS'];
+const labels = ['DEVICE PREVIEW', 'USB CONNECTION', 'FIRMWARE UPDATE', 'HOME SCREEN'];
 const milestones = [0, 0.63, 1.48, 3];
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 let queued = false;
 function syncScene() {
   queued = false;
@@ -16,8 +19,12 @@ function syncScene() {
   const next = Math.min(chapter + 1, centers.length - 1);
   const t = next === chapter ? 0 : Math.max(0, Math.min(1, (focus - centers[chapter]) / (centers[next] - centers[chapter])));
   const phase = milestones[chapter] + t * (milestones[next] - milestones[chapter]);
-  device.setAttribute('phase', phase.toFixed(3));
-  label.textContent = labels[t > 0.5 ? next : chapter];
+  const pose = reducedMotion.matches ? milestones[t > 0.5 ? next : chapter] : phase;
+  device.setAttribute('phase', pose.toFixed(3));
+  const playable = phase >= 2.72;
+  setPreviewVisible(playable);
+  device.hidden = playable;
+  label.textContent = playable ? 'INTERACTIVE HOME SCREEN' : labels[t > 0.5 ? next : chapter];
 }
 function requestScene() {
   if (!queued) requestAnimationFrame(syncScene);
@@ -25,6 +32,7 @@ function requestScene() {
 }
 window.addEventListener('scroll', requestScene, {passive:true});
 window.addEventListener('resize', requestScene);
+reducedMotion.addEventListener('change', requestScene);
 syncScene();
 
 const field = document.querySelector('.field');
@@ -50,7 +58,7 @@ function drawField() {
       else ctx.lineTo(x,y);
     }
     ctx.closePath();
-    ctx.strokeStyle = 'rgba(132,222,178,' + (0.05 + 0.13 * (1 - n / 31)) + ')';
+    ctx.strokeStyle = 'rgba(115,181,248,' + (0.05 + 0.13 * (1 - n / 31)) + ')';
     ctx.stroke();
   }
 }

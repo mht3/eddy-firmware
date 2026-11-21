@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="theme-color" content="#101c1a">
-    <meta name="description" content="Meet Eddy Firmware, an open-source Momentum fork for Flipper Zero. Explore the interface and install the main build.">
+    <meta name="theme-color" content="#071529">
+    <meta name="description" content="Meet Eddy Firmware, an open-source Momentum fork for Flipper Zero. Try the home screen and install the main build.">
     <title>
       Eddy Firmware for Flipper Zero
     </title>
@@ -32,9 +32,7 @@
           <a href="wiki/">
             Wiki
           </a>
-          <a href="https://github.com/mht3/eddy-firmware/issues/new?template=01_bug_report.yml">
-            Report a bug
-          </a>
+          <a href="resources/">Resources</a>
           <a class="small-cta" href="#install">
             Install
           </a>
@@ -43,12 +41,23 @@
     </header>
     <main id="main">
       <div class="showcase">
-        <div class="stage" aria-hidden="true">
-          <canvas class="field">
+        <div class="stage">
+          <canvas class="field" aria-hidden="true">
           </canvas>
           <eddy-device phase="0">
           </eddy-device>
-          <div class="caption">
+          <div id="playable" hidden role="group" aria-label="Flipper Zero preview controls" aria-describedby="control-help">
+            <img src="models/front.webp" width="1600" height="800" alt="">
+            <canvas id="preview-lcd" width="128" height="64" aria-hidden="true"></canvas>
+            <button data-key="ok" aria-label="OK, open selection">OK</button>
+            <button data-key="up" aria-label="Move up">↑</button>
+            <button data-key="down" aria-label="Move down">↓</button>
+            <button data-key="left" aria-label="Move left">←</button>
+            <button data-key="right" aria-label="Move right">→</button>
+            <button data-key="back" aria-label="Go back">↩</button>
+            <span class="sr-only" role="status" id="preview-state"></span>
+          </div>
+          <div class="caption" aria-hidden="true">
             <span>
               FLIPPER ZERO
             </span>
@@ -72,13 +81,13 @@
               </em>
             </h1>
             <p>
-              Meet Eddy, the dolphin who swims the currents on your Flipper Zero. An open-source Momentum fork with a live signal meter and a customizable desktop.
+              A new home for your Flipper Zero. Meet Eddy the dolphin in this open-source fork of Momentum Firmware.
             </p>
             <a class="cta" href="#install">
               Install Eddy Firmware
             </a>
-            <a class="tour" href="#connect">
-              Explore the interface
+            <a class="tour" href="#home-screen">
+              Try the home screen
               <span aria-hidden="true">
                 ↓
               </span>
@@ -110,22 +119,18 @@
               The web installer opens Flipper Lab with the Eddy main build selected. Connect your device, confirm the update and leave it plugged in through the restart.
             </p>
           </section>
-          <section data-phase="3">
+          <section id="home-screen" data-phase="3">
             <div class="eyebrow">
               <i>
               </i>
-              ON THE DEVICE
+              INTERACTIVE PREVIEW
             </div>
             <h2>
-              Explore the
-              <br>
-              <em>
-                interface.
-              </em>
+              Meet Eddy.
             </h2>
-            <p>
-              Browse files on your microSD card, tune the main menu and watch the receive-only Signal Meter sample the 433.92 MHz band.
-            </p>
+            <p>Press the orange center button to open Eddy’s menu. Try the arrows, then the small back button.</p>
+            <button type="button" id="use-keys" class="keyboard-hint" aria-describedby="control-help">Use keyboard controls</button>
+            <span class="sr-only" id="control-help">Arrow keys move, Enter opens, and Escape goes back. The preview uses sample data.</span>
           </section>
         </div>
       </div>
@@ -179,13 +184,8 @@
         </span>
       </a>
       <div>
-        <a href="donate/">Donate</a>
-        <a href="wiki/">
-          Wiki
-        </a>
-        <a href="https://github.com/mht3/eddy-firmware/issues/new?template=01_bug_report.yml">
-          Report a bug
-        </a>
+        <a href="wiki/">Wiki</a>
+        <a href="resources/">Resources</a>
       </div>
     </footer>
   </body>

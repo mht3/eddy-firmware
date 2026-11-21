@@ -21,7 +21,7 @@ Source: https://gitlab.com/kicad/libraries/kicad-packages3D/-/blob/10.0.7/Connec
 Rendering and source
 Eddy Firmware contributors added the cable jacket, strain relief, surface
 markings, lighting, screen interface and animation. The WebP images are
-fallback renders of the same models. Rebuild the two meshes from the included
+renders of the same models, including the interactive face-on view. Rebuild the two meshes from the included
 sources using Python 3 and KiCad CLI 10.0.7.
     python3 models/convert.py --kicad-cli /path/to/kicad-cli
-The live renderer is models/renderer.js and the LCD is drawn by device.js.
+The live renderer is models/renderer.js and the LCD uses device.js, home-screen.js and preview.js.

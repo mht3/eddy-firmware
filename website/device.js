@@ -1,9 +1,9 @@
+import {drawHome, ocean} from './home-screen.js';
 import {DeviceRenderer, loadGeometry} from './models/renderer.js';
 
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
-const ease = v => v * v * (3 - 2 * v);
-const ocean = new Image();
-ocean.src = new URL('eddy-ocean.png', import.meta.url).href;
+
+
 
 function screen(ctx, phase, frame) {
   ctx.clearRect(0, 0, 128, 64);
@@ -12,13 +12,8 @@ function screen(ctx, phase, frame) {
   ctx.lineWidth = 1.6;
   ctx.textBaseline = 'top';
   ctx.font = 'bold 8px monospace';
-  if (phase < 0.65) {
-    if (ocean.naturalWidth) {
-      ctx.drawImage(ocean, frame * 128, 0, 128, 50, 0, 14, 128, 50);
-    }
-    ctx.font = 'bold 8px monospace';
-    ctx.fillText('EDDY', 6, 2);
-    ctx.fillRect(5, 12, 118, 1);
+  if (phase < 0.65 || phase >= 1.55) {
+    drawHome(ctx, frame);
   } else if (phase < 1.55) {
     const progress = Math.round(clamp((phase - 0.65) / 0.9, 0, 1) * 100);
     ctx.fillText('EDDY UPDATER', 8, 9);
@@ -26,30 +21,6 @@ function screen(ctx, phase, frame) {
     ctx.fillText('Writing ' + progress + '%', 8, 30);
     ctx.strokeRect(8.5, 46.5, 109, 8);
     ctx.fillRect(11, 49, Math.round(progress * 1.04), 3);
-  } else if (phase < 2.55) {
-    ctx.fillText('Signal Meter', 6, 7);
-    ctx.fillRect(6, 19, 116, 1);
-    const sweep = ease(clamp((phase - 1.55), 0, 1));
-    for (let i = 0; i < 29; i++) {
-      const peak = Math.exp(-Math.pow((i - 5 - sweep * 18) / 2.2, 2));
-      const height = Math.round(3 + peak * 24 + 4 * Math.abs(Math.sin(i * 1.82)));
-      ctx.fillRect(7 + i * 4, 53 - height, 2, height);
-    }
-    ctx.fillRect(6, 55, 116, 1);
-  } else {
-    ctx.fillText('Eddy Settings', 7, 6);
-    ctx.fillRect(7, 18, 113, 1);
-    const rows = ['Interface', 'Menu style', 'Backlight'];
-    const chosen = Math.min(2, Math.floor((phase - 2.55) * 6));
-    rows.forEach((row, i) => {
-      const top = 23 + i * 12;
-      ctx.fillStyle = '#432a14';
-      if (chosen === i) {
-        ctx.fillRect(6, top - 1, 116, 11);
-        ctx.fillStyle = '#e4ac64';
-      }
-      ctx.fillText(row, 11, top);
-    });
   }
 }
 
@@ -110,7 +81,7 @@ class EddyDevice extends HTMLElement {
 
   showPoster() {
     const phase = this.progress();
-    const pose = phase < 0.65 ? 'desktop' : phase < 1.55 ? 'update' : phase < 2.55 ? 'meter' : 'settings';
+    const pose = phase < 0.65 ? 'desktop' : phase < 1.55 ? 'update' : 'desktop';
     const src = new URL('models/' + pose + '.webp',import.meta.url).href;
     if (this.poster.src !== src) this.poster.src = src;
     this.poster.hidden = false;
@@ -145,7 +116,7 @@ class EddyDevice extends HTMLElement {
       const still = this.reducedMotion.matches;
       const phase = this.progress();
       const state = phase < 0.65 ? 'Eddy the dolphin swimming in an ocean eddy' : phase < 1.55 ?
-        'firmware installation preview' : phase < 2.55 ? 'Signal Meter preview' : 'Eddy Settings preview';
+        'firmware installation preview' : 'Eddy home screen';
       this.setAttribute('aria-label','Flipper Zero with the ' + state);
       if (!this.renderer) {
         if (!this.poster.hidden) this.showPoster();
@@ -158,7 +129,7 @@ class EddyDevice extends HTMLElement {
       this.canvas.hidden = false;
       const frame = still ? 4 : Math.floor(performance.now()*0.006)%16;
       screen(this.lcd.getContext('2d'),phase,frame);
-      this.renderer.draw(this.lcd,still ? Math.round(phase) : phase,still);
+      this.renderer.draw(this.lcd,phase,still);
       this.poster.hidden = true;
       clearTimeout(this.idleTimer);
       if (!still && this.visible && phase < 0.65) this.idleTimer = setTimeout(this.scheduleDraw,167);

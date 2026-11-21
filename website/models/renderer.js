@@ -130,9 +130,16 @@ const cross = (a, b) => [a[1]*b[2] - a[2]*b[1], a[2]*b[0] - a[0]*b[2], a[0]*b[1]
 const blend = (a, b, u) => a * (1-u) + b * u;
 const clamp01 = v => Math.min(1,Math.max(0,v));
 
+// End face-on, framing 72 × 36 mm of the production housing around the LCD and keys.
+function closeUp(phase) {
+  const t = clamp01((phase - 1.48) / 1.24);
+  return t*t*(3 - 2*t);
+}
+
 export function cameraFor(phase, still) {
   const t = still ? 0 : Math.sin(phase * Math.PI / 3);
-  const yaw = 0.39 + 0.21*t, pitch = 0.31 + 0.06*t, roll = 0.27 - 0.08*t;
+  const tilt = 1 - closeUp(phase);
+  const yaw = (0.39 + 0.21*t)*tilt, pitch = (0.31 + 0.06*t)*tilt, roll = (0.27 - 0.08*t)*tilt;
   const eye = [Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),Math.cos(yaw)*Math.cos(pitch)];
   const right = normalize(cross([0,1,0],eye)), up = cross(eye,right);
   const a = Math.cos(roll), b = Math.sin(roll);
@@ -319,7 +326,8 @@ export class DeviceRenderer {
   draw(lcd, phase, still) {
     const gl = this.gl, loc = this.locations, c = gl.canvas;
     const view = cameraFor(phase,still);
-    const pixelScale = Math.min(c.width/141,c.height/70);
+    const zoom = closeUp(phase);
+    const pixelScale = blend(Math.min(c.width/141,c.height/70), Math.min(c.width/72,c.height/36), zoom);
     gl.viewport(0,0,c.width,c.height);
     gl.clearColor(0,0,0,0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -327,7 +335,7 @@ export class DeviceRenderer {
     gl.uniformMatrix3fv(loc.camera,false,view);
     gl.uniform3fv(loc.eyeDirection,[view[2],view[5],view[8]]);
     gl.uniform2f(loc.scale,2*pixelScale/c.width,2*pixelScale/c.height);
-    gl.uniform2f(loc.center,-0.12,0.04);
+    gl.uniform2f(loc.center,blend(-0.12,-16*pixelScale/c.width,zoom),blend(0.04,-3.9*pixelScale/c.height,zoom));
     gl.uniform1i(loc.lcd,0);
     gl.uniform1i(loc.labels,1);
     gl.bindTexture(gl.TEXTURE_2D,this.texture);

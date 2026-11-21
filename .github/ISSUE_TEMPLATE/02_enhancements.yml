@@ -1,20 +1,10 @@
-name: Enhancements
-description: Suggest improvements for any existing functionality within the firmware.
+name: Suggestion or feedback
+description: Share an idea or a comment about Eddy Firmware or its website.
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Thank you for taking the time to fill out an issue. This template is meant for feature requests and improvements to already existing functionality.
   - type: textarea
     id: proposal
     attributes:
-      label: "Describe the enhancement you're suggesting."
-      description: |
-        Feel free to describe in as much detail as you wish.
+      label: What’s on your mind?
+      description: I’d love to hear what you enjoyed, what felt awkward, or what you’d like to see next.
     validations:
       required: true
-  - type: textarea
-    id: anything-else
-    attributes:
-      label: Anything else?
-      description: Let us know if you have anything else to share.
