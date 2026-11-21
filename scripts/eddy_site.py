@@ -11,6 +11,9 @@ import subprocess
 import tarfile
 from pathlib import Path
 
+from flipper.assets.coprobin import CoproBinary, get_stack_type
+from flipper.assets.obdata import OptionBytesData
+
 ROOT = Path(__file__).resolve().parents[1]
 
 # These settings are opened from the system menu independently of the app picker.
@@ -74,6 +77,51 @@ def resource_index(data, profile):
     return {"manifest": manifest.offset, "launcherOrder": layout.offset, "apps": apps}
 
 
+def validate_radio_layout(components, manifest, options):
+    fields = dict(line.split(": ", 1) for line in manifest if ": " in line)
+    radio_path = ROOT / options["COPRO_STACK_BIN_DIR"] / options["COPRO_STACK_BIN"]
+    if components.get(fields.get("Radio")) != radio_path.read_bytes():
+        raise ValueError("Update must include the configured ST Bluetooth stack")
+
+    radio = CoproBinary(radio_path)
+    address = radio.get_flash_load_addr()
+    offset = address - 0x08000000
+    footer = radio.img_sig
+    # The WB55 stores the flash boundary in pages and the CPU2 boot vector in words.
+    boundaries = {
+        "SFSA": offset // footer.FLASH_PAGE_SIZE,
+        "SBRV": offset // 4,
+        "SBRSA": footer.sram2a_1ks,
+        "SNBRSA": footer.sram2b_1ks,
+    }
+    baseline = OptionBytesData(ROOT / "scripts/ob.data")
+    for option in baseline.obs:
+        if option.name in boundaries:
+            option.value = boundaries[option.name]
+    expected = baseline.gen_values().export()
+    version = bytes(
+        (
+            footer.version_major,
+            footer.version_minor,
+            footer.version_sub,
+            footer.version_branch,
+            footer.version_build,
+            get_stack_type(options["COPRO_STACK_TYPE"]),
+        )
+    )
+    for key, value in {
+        "Radio address": address.to_bytes(4, "little"),
+        "Radio version": version,
+        "OB reference": expected.reference,
+        "OB mask": expected.compare_mask,
+        "OB write mask": expected.write_mask,
+    }.items():
+        if bytes.fromhex(fields.get(key, "")) != value:
+            raise ValueError(
+                f"{key} does not match the bundled ST Bluetooth stack and device profile"
+            )
+
+
 def stage(package=None):
     options = runpy.run_path(str(ROOT / "fbt_options.py"))
     if package is None:
@@ -117,6 +165,7 @@ def stage(package=None):
                 raise SystemExit(f"Unexpected update component: {member.name}")
             components[path.name] = bundle.extractfile(member).read()
 
+    validate_radio_layout(components, manifest, options)
     metadata = json.loads(
         package.with_name(f"flipper-z-f7-full-{version}.json").read_text()
     )

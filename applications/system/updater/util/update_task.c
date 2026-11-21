@@ -158,7 +158,7 @@ static const struct {
         .stage = UpdateTaskStageOBValidation,
         .percent_min = 0,
         .percent_max = 100,
-        .descr = "Uncorr. value mismatch",
+        .descr = "Device config mismatch",
     },
     {
         .stage = UpdateTaskStageValidateDFUImage,

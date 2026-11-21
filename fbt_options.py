@@ -51,7 +51,7 @@ SKIP_EXTERNAL = False
 EXTRA_EXT_APPS = []
 
 # Coprocessor firmware
-COPRO_OB_DATA = "scripts/ob.data"
+COPRO_OB_DATA = "scripts/ob_ble_full.data"
 
 # Must match lib/stm32wb_copro version
 COPRO_CUBE_VERSION = "1.20.0"
