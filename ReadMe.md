@@ -48,8 +48,8 @@ Open `http://127.0.0.1:8000/update/` in desktop Chrome or Edge. The Eddy updater
 
 ### Publish on GitHub Pages
 
-The [Eddy website](https://mht3.github.io/eddy-fw/) and [USB updater](https://mht3.github.io/eddy-fw/update/) use free GitHub Pages hosting. The website source lives in this firmware repository. Pages serves the generated site from the root of the `main` branch in the separate [website repository](https://github.com/mht3/eddy-fw).
+The [Eddy website](https://mht3.github.io/eddy-firmware/) and [USB updater](https://mht3.github.io/eddy-firmware/update/) are hosted for free by GitHub Pages from this repository. Website source is in `website/`.
 
-To publish a new release, build the desired firmware commit and stage the matching website using the commands above. Copy the contents of `dist/eddy-site/` into a checkout of `mht3/eddy-fw`, remove any superseded firmware bundles from that checkout, and push the changes to `main`. Keep its `.nojekyll` file. GitHub Actions also provides the full staged site as the `eddy-website` artifact when the firmware build workflow runs.
+In the repository’s Settings → Pages, select **GitHub Actions** as the source. Push a change to `dev` to build the firmware and publish it together with the site. To republish manually, open **Actions → Build Eddy → Run workflow** and choose `dev`. A pull request builds and checks the package without publishing.
 
 Building from a public, committed revision keeps the matching source available with each binary. The project's distribution license and source notices are part of the checkout. Bundled third-party components retain their respective terms.
