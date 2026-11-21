@@ -2,14 +2,15 @@
 #include <string.h>
 #include <toolbox/eddy_media_label.h>
 
-const char* const spotify_category_names[SpotifyCategories] = {
-    "Liked Songs",
-    "Playlists",
-    "Albums"};
+const char* const spotify_category_names[SpotifyCategories] =
+    {"Playlists", "Search", "Queue", "Liked Songs", "Albums", "Now playing"};
 const uint8_t spotify_category_ops[SpotifyCategories] = {
-    SpotifyLiked,
     SpotifyPlaylists,
-    SpotifyAlbums};
+    SpotifySearchTracks,
+    SpotifyViewQueue,
+    SpotifyLiked,
+    SpotifyAlbums,
+    SpotifyNowPlaying};
 
 void spotify_library_begin(SpotifyLibrary* lib, uint8_t op, uint16_t request) {
     lib->op = op;
@@ -29,10 +30,19 @@ void spotify_library_receive(SpotifyLibrary* lib, const uint8_t* data, size_t si
     if(size < 3 || size > 20 || !lib->request ||
        lib->request != (uint16_t)(data[1] | ((uint16_t)data[2] << 8)))
         return;
-    bool playing = lib->op >= SpotifyPlay;
+    uint8_t action = lib->op & 0xfc;
+    bool transport = lib->op >= SpotifyPlayerPrevious && lib->op <= SpotifyPlayerNext;
+    bool acknowledgement = transport || action == SpotifyPlay || action == SpotifyQueue ||
+                           action == SpotifyAddToPlaylist;
     switch(data[0]) {
     case 0x10: // Start a fresh transaction; partial pages stay off screen.
-        if(size != 3 || playing) break;
+        if(acknowledgement) break;
+        if(lib->op == SpotifyNowPlaying) {
+            if(size != 4 || data[3] > 2) break;
+            lib->play_state = data[3];
+        } else if(size != 3) {
+            break;
+        }
         memset(lib->lengths, 0, sizeof(lib->lengths));
         lib->collecting = true;
         return;
@@ -73,7 +83,8 @@ void spotify_library_receive(SpotifyLibrary* lib, const uint8_t* data, size_t si
         spotify_library_fail(lib, (SpotifyError)(SpotifyNoPlayer + data[3]));
         return;
     case 0x14:
-        if(!playing || size != 4 || data[3] != lib->op - SpotifyPlay || data[3] >= lib->count)
+        if(!acknowledgement || size != 4 ||
+           (transport ? data[3] != 0 : (data[3] != (lib->op & 3) || data[3] >= lib->count)))
             break;
         lib->accepted = true;
         lib->request = 0;

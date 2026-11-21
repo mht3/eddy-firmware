@@ -10,10 +10,24 @@ enum {
     SpotifyLiked = 0x10,
     SpotifyPlaylists = 0x18,
     SpotifyAlbums = 0x19,
-    SpotifyCategories = 3,
+    SpotifySearchTracks = 0x1a,
+    SpotifySearchArtists = 0x1b,
+    SpotifyNowPlaying = 0x1c,
+    SpotifyParent = 0x1d,
+    SpotifyViewQueue = 0x1e,
+    SpotifyCategories = 6,
+    SpotifyQueryBytes = 15,
     SpotifyNext = 0x11,
     SpotifyPrevious = 0x12,
     SpotifyPlay = 0x20,
+    SpotifyArtistTracks = 0x24,
+    SpotifyQueue = 0x28,
+    SpotifyChoosePlaylist = 0x30,
+    SpotifyAddToPlaylist = 0x34,
+    SpotifyCollectionTracks = 0x38,
+    SpotifyPlayerPrevious = 0x40,
+    SpotifyPlayerToggle = 0x41,
+    SpotifyPlayerNext = 0x42,
     SpotifyHello = 0x15,
     SpotifyClear = 0x16,
 };
@@ -38,6 +52,7 @@ typedef struct {
     uint8_t op;
     uint8_t count;
     uint8_t selected;
+    uint8_t play_state;
     bool previous;
     bool next;
     bool collecting;

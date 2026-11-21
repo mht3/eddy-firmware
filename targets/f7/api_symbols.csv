@@ -1,5 +1,5 @@
 entry,status,name,type,params
-Version,+,88.2,,
+Version,+,88.3,,
 Header,+,applications/drivers/subghz/cc1101_ext/cc1101_ext_interconnect.h,,
 Header,+,applications/main/archive/helpers/archive_helpers_ext.h,,
 Header,+,applications/services/applications.h,,
@@ -810,6 +810,7 @@ Function,-,ble_svc_hid_update_info,_Bool,"BleServiceHid*, uint8_t*"
 Function,-,ble_svc_hid_update_input_report,_Bool,"BleServiceHid*, uint8_t, uint8_t*, uint16_t"
 Function,-,ble_svc_hid_update_report_map,_Bool,"BleServiceHid*, const uint8_t*, uint16_t"
 Function,+,ble_svc_media_library_request,_Bool,"void*, uint16_t, uint8_t, uint16_t, uint16_t"
+Function,+,ble_svc_media_library_search,_Bool,"void*, uint16_t, uint8_t, uint16_t, const char*"
 Function,+,ble_svc_media_listen,_Bool,"BleMediaEventCallback, void*"
 Function,+,ble_svc_media_send,_Bool,"void*, uint8_t, _Bool"
 Function,+,ble_svc_media_unlisten,void,void*

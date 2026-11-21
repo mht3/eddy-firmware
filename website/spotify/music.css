@@ -27,3 +27,10 @@
 .music .registration dd {margin:0}
 .music #developer-setup code {overflow-wrap:anywhere}
 .music #developer-setup pre {white-space:pre-wrap; margin:.7rem 0; padding:.75rem; border:1px solid var(--line); border-radius:.4rem}
+#developer-setup {scroll-margin-top:6rem}
+.music .setup-shot {margin:.9rem 0}
+.music .setup-shot img {width:auto;max-width:100%;height:auto;border-radius:.5rem;image-rendering:auto}
+.music .setup-shot figcaption,.fork-helper small {display:block;margin-top:.4rem;font-size:.88rem;color:var(--muted)}
+.fork-helper {margin:.8rem 0}
+.fork-helper label {display:block;margin-bottom:.35rem;font-weight:600}
+.fork-helper input {width:min(100%,29rem);box-sizing:border-box;font:inherit;padding:.55rem .7rem;border-radius:.45rem;border:1px solid var(--line);color:var(--light);background:#0b192b}

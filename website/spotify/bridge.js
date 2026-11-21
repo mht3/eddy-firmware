@@ -1,17 +1,29 @@
-import {authorize, callback, libraryPage, linked, pageSize, PlaybackError, playLibraryItem, unlink} from './spotify.js';
+import {addTrack, authorize, callback, controlPlayer, libraryPage, linked, pageSize, PlaybackError, playLibraryItem, queueTrack, selectedRow, unlink} from './spotify.js';
 
 const uuid = n => 'efdd000' + n + '-5a34-4a32-9fab-1f72e60d00ed';
 const get = id => document.getElementById(id);
-const categories = new Map([[0x10, 'track'], [0x18, 'playlist'], [0x19, 'album']]);
-const next = 0x11, previous = 0x12, hello = 0x15, dismiss = 0x16, playRow = 0x20;
+const categories = new Map([[0x10, 'track'], [0x18, 'playlist'], [0x19, 'album'], [0x1a, 'track'], [0x1b, 'artist'], [0x1c, 'now'], [0x1e, 'queue']]);
+const next = 0x11, previous = 0x12, hello = 0x15, dismiss = 0x16, parent = 0x1d;
+const playRow = 0x20, artistRow = 0x24, queueRow = 0x28, chooseRow = 0x30, addRow = 0x34, collectionRow = 0x38;
+const rowOperations = [playRow, artistRow, queueRow, chooseRow, addRow, collectionRow];
 
 function decodeCommand(value) {
-  if (value?.byteLength !== 5) return;
+  if (!value || value.byteLength < 5 || value.byteLength > 20) return;
   const op = value.getUint8(0), token = value.getUint16(1, true), base = value.getUint16(3, true);
-  const standalone = categories.has(op) || op === hello || op === dismiss;
+  const control = op >= 0x40 && op <= 0x42;
+  const standalone = control || categories.has(op) || op === hello || op === dismiss;
+  let query;
+  if (op === 0x1a || op === 0x1b) {
+    try {
+      const bytes = new Uint8Array(value.buffer, value.byteOffset + 5, value.byteLength - 5);
+      query = new TextDecoder('utf-8', {fatal:true}).decode(bytes).trim();
+    } catch { return; }
+    if (!query || /[\x00-\x1f\x7f]/.test(query)) return;
+  } else if (value.byteLength !== 5) return;
   if (!token || (standalone ? base !== 0 : !base)) return;
-  if (standalone || op === next || op === previous || (op >= playRow && op < playRow + pageSize)) {
-    return {op, token, base};
+  const action = rowOperations.find(start => op >= start && op < start + pageSize);
+  if (standalone || op === next || op === previous || op === parent || action !== undefined) {
+    return {op, token, base, query, control, action, row:op - action};
   }
 }
 
@@ -38,7 +50,7 @@ function packet(op, token, ...data) {
 }
 
 function pagePackets(page, token) {
-  const packets = [packet(0x10, token)];
+  const packets = [page.playState === undefined ? packet(0x10, token) : packet(0x10, token, page.playState)];
   for (const [row, song] of page.rows.entries()) {
     const text = new Uint8Array(80);
     const {written} = new TextEncoder().encodeInto(song.label.replace(/[\x00-\x1f\x7f]/g, ' '), text);
@@ -160,7 +172,7 @@ export async function startBridge(id, scanned = false) {
   }
   function forgetPage(current) {
     current.controller?.abort();
-    current.active = current.waiting = current.page = null;
+    current.active = current.waiting = current.page = current.now = null;
     showLibraryLinks();
   }
   function heartbeat(current) {
@@ -185,15 +197,23 @@ export async function startBridge(id, scanned = false) {
     const {op, token, base} = request;
     if (op === dismiss) { forgetPage(current); return; }
     if (op === hello) {
+      current.controls = null;
       forgetPage(current);
       try { await current.device.write(Uint8Array.of(hello), () => session === current); }
       catch { if (session === current) lostConnection(); }
       return;
     }
+    const status = op === 0x1c;
     const first = categories.has(op);
     if (current.active?.token === token) return;
-    if (first) {
+    if (current.active?.op === 0x1c && !status) {
+      current.controller.abort();
+      current.active = current.waiting = null;
+    }
+    if (first && !status) {
+      const now = current.now;
       forgetPage(current);
+      current.now = now;
     } else if (current.active) {
       // A selection can arrive while the last GATT write response is still in flight.
       current.waiting = request;
@@ -213,40 +233,92 @@ export async function startBridge(id, scanned = false) {
       writing = false;
     }
     try {
-      if (!first && current.page?.token !== base) {
+      if (!first && !request.control && current.page?.token !== base) {
         throw new PlaybackError(3, 'The displayed page changed. Reopen the library section and try again.');
       }
       if (Date.now() < cooldown) throw new PlaybackError(4, 'Spotify is busy. Wait a moment before retrying.');
-      if (op >= playRow) {
-        const row = op - playRow;
-        // A retransmitted acknowledgement must not start the song a second time.
-        if (current.page.lastPlay !== token) {
-          await playLibraryItem(id, current.page, row, signal);
+      const {action, row} = request;
+      if (request.control) {
+        current.controls ??= new Map();
+        if (current.controls.has(token) && current.controls.get(token) !== op)
+          throw new PlaybackError(3, 'Try the player control again.');
+        if (!current.controls.has(token)) {
+          await controlPlayer(id, op, signal);
           if (!active()) return;
-          current.page.lastPlay = token;
+          if (current.controls.size >= 32) current.controls.delete(current.controls.keys().next().value);
+          current.controls.set(token, op);
+          current.now = null;
+        }
+        await send(packet(0x14, token, 0));
+      } else if (action === playRow || action === queueRow || action === addRow) {
+        const page = current.page;
+        if (page.source.destinationFor && action !== addRow)
+          throw new PlaybackError(3, 'Choose a playlist to add the song.');
+        // A delayed or repeated BLE acknowledgement must never enqueue/add the song twice.
+        page.actions ??= new Map();
+        const earlier = page.actions.get(token);
+        if (earlier !== undefined && earlier !== op)
+          throw new PlaybackError(3, 'Reopen the selected song and try again.');
+        if (earlier === undefined) {
+          const execute = action === playRow ? playLibraryItem : action === queueRow ? queueTrack : addTrack;
+          await execute(id, page, row, signal);
+          if (!active()) return;
+          page.actions.set(token, op);
+          if (action === playRow) current.now = null;
         }
         await send(packet(0x14, token, row));
-        if (active()) notice('Playback requested on your active Spotify device.');
+        if (active()) notice(action === queueRow ? 'Added to your Spotify queue.' :
+          action === addRow ? 'Song added to your playlist.' : 'Playback requested on your active Spotify device.');
       } else {
-        showLibraryLinks();
-        if ((op === next && !current.page.hasNext) || (op === previous && !current.page.hasPrev)) {
-          throw new PlaybackError(3, 'The library has no page in that direction.');
+        if (!status) showLibraryLinks();
+        if ((op === next && !current.page.hasNext) || (op === previous && !current.page.hasPrev))
+          throw new PlaybackError(3, 'There are no more items in that direction.');
+        const displayed = current.page;
+        if (op === parent && !displayed?.parent)
+          throw new PlaybackError(3, 'Open your library to choose another item.');
+        let source = displayed?.source;
+        let offset = 0;
+        if (first) source = {kind:categories.get(op), query:request.query};
+        else if (action === artistRow) {
+          const artist = selectedRow(current.page, row, 'artist');
+          source = {kind:'track', artist:artist.uri, query:'artist:"' + artist.name.replace(/"/g, ' ') + '"'};
+        } else if (action === collectionRow) {
+          if (displayed.source.destinationFor || !['album', 'playlist'].includes(displayed.kind))
+            throw new PlaybackError(3, 'Choose an album or playlist to see its songs.');
+          source = {kind:'track', collection:selectedRow(displayed, row).uri};
+        } else if (action === chooseRow) {
+          source = {kind:'playlist', destinationFor:selectedRow(current.page, row, 'track').uri};
+        } else if (op !== parent) {
+          offset = current.page.offset + (op === next ? pageSize : -pageSize);
         }
-        const offset = first ? 0 : current.page.offset + (op === next ? pageSize : -pageSize);
-        const kind = first ? categories.get(op) : current.page.kind;
-        const page = await libraryPage(id, kind, offset, signal);
+        let page;
+        if (op === parent) page = displayed.parent;
+        else if (status && current.now && Date.now() - current.now.at < 5000) page = current.now.page;
+        else page = await libraryPage(id, source, offset, signal);
+        if (action === artistRow || action === chooseRow || action === collectionRow) page.parent = displayed;
+        else if (!first && op !== parent) page.parent = displayed.parent;
         for (const bytes of pagePackets(page, token)) {
           if (!active()) return;
           await send(bytes);
         }
         if (!active()) return;
+        if (status) {
+          if (current.now?.page !== page) current.now = {at:Date.now(), page};
+          showLibraryLinks([...(current.page?.rows || []), ...page.rows]);
+          return;
+        }
         current.page = {...page, token};
-        showLibraryLinks(page.rows);
-        notice(page.rows.length ? 'Your library page is ready on the Flipper.' : 'This section of your library is empty.');
+        showLibraryLinks([...page.rows, ...(current.now?.page.rows || [])]);
+        if (!page.rows.length && page.hasNext) notice('Press Right on your Flipper to look for more matches.');
+        else if (source.query && !page.rows.length) notice('No matches. Try another search on your Flipper.');
+        else notice(page.rows.length ? 'Your library page is ready on the Flipper.' : 'This section of your library is empty.');
       }
     } catch (error) {
       if (!active()) return;
-      showLibraryLinks();
+      if (status) {
+        current.now = null;
+        showLibraryLinks(current.page?.rows);
+      } else showLibraryLinks();
       if (writing) { lostConnection(); return; }
       const issue = error instanceof PlaybackError ? error : new PlaybackError(2, 'Connection interrupted. Retry on your Flipper.');
       if (issue.retryMs) cooldown = Date.now() + issue.retryMs;

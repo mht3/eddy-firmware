@@ -55,6 +55,14 @@ bool ble_svc_media_library_request(
     uint16_t request,
     uint16_t page);
 
+/** Search text must fit the default ATT payload (1 to 15 UTF-8 bytes). */
+bool ble_svc_media_library_search(
+    void* context,
+    uint16_t connection,
+    uint8_t op,
+    uint16_t request,
+    const char* query);
+
 /** Serial profile descriptor */
 extern const FuriHalBleProfileTemplate* const ble_profile_serial;
 
