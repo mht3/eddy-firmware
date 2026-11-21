@@ -124,7 +124,7 @@ static const struct {
     {"infrared", "Infrared"},
     {"pomodoro", "Pomodoro Timer"},
     {"music", "Music"},
-    {"builder", "Remote Builder"},
+    {"builder", "Remotes"},
     {"btRemote", "Bluetooth Remote"},
     {"metronome", "Metronome"},
     {"gpio", "GPIO"},
@@ -266,8 +266,10 @@ static void launcher_draw(Canvas* canvas, void* context) {
         } else {
             const Icon* icon = grid ? model->apps[i]->icon : sections[i].icon;
             if(!icon) icon = &A_Plugins_14;
+            canvas_set_bitmap_mode(canvas, true);
             canvas_draw_icon(
                 canvas, x - icon_get_width(icon) / 2, y - icon_get_height(icon) / 2, icon);
+            canvas_set_bitmap_mode(canvas, false);
         }
         canvas_set_color(canvas, ColorBlack);
         if(!grid)
@@ -359,7 +361,8 @@ static bool launcher_input(InputEvent* event, void* context) {
     }
     if(remote_path) {
         if(storage_file_exists(launcher->storage, remote_path)) {
-            const char* app = eddy_layout_path_valid(remote_path) ? "Remote Builder" : "Infrared";
+            const char* app =
+                storage_file_exists(launcher->storage, EDDY_REMOTES_FAP) ? "Remotes" : "Infrared";
             loader_start_detached_with_gui_error(launcher->menu->loader, app, remote_path);
         } else {
             with_view_model(

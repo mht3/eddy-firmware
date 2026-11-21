@@ -25,8 +25,9 @@ void spotify_screen_draw(Canvas* canvas, void* context) {
         canvas_set_font(canvas, FontPrimary);
         canvas_draw_str(canvas, 66, 20, "Spotify");
         canvas_set_font(canvas, FontSecondary);
-        canvas_draw_str(canvas, 66, 33, "Scan for setup");
-        canvas_draw_str(canvas, 66, 57, "OK: Continue");
+        canvas_draw_str(canvas, 66, 33, "Scan to link");
+        canvas_draw_str(canvas, 66, 44, "in browser");
+        canvas_draw_str(canvas, 66, 60, "OK: Continue");
         return;
     }
     canvas_draw_str(

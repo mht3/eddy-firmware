@@ -1,5 +1,5 @@
 entry,status,name,type,params
-Version,+,88.1,,
+Version,+,88.2,,
 Header,+,applications/drivers/subghz/cc1101_ext/cc1101_ext_interconnect.h,,
 Header,+,applications/main/archive/helpers/archive_helpers_ext.h,,
 Header,+,applications/services/applications.h,,
@@ -7,6 +7,7 @@ Header,+,applications/services/bt/bt_service/bt.h,,
 Header,+,applications/services/bt/bt_service/bt_keys_storage.h,,
 Header,+,applications/services/cli/cli.h,,
 Header,+,applications/services/cli/cli_vcp.h,,
+Header,+,applications/services/desktop/eddy_timer.h,,
 Header,+,applications/services/dialogs/dialogs.h,,
 Header,+,applications/services/dolphin/dolphin.h,,
 Header,+,applications/services/expansion/expansion.h,,
@@ -1051,6 +1052,7 @@ Function,-,dprintf,int,"int, const char*, ..."
 Function,-,drand48,double,
 Function,-,drem,double,"double, double"
 Function,-,dremf,float,"float, float"
+Function,+,eddy_timer_update,void,"EddyTimer*, EddyTimerAction, EddyTimerState*"
 Function,+,elements_bold_rounded_frame,void,"Canvas*, int32_t, int32_t, size_t, size_t"
 Function,+,elements_bubble,void,"Canvas*, int32_t, int32_t, size_t, size_t"
 Function,+,elements_bubble_str,void,"Canvas*, int32_t, int32_t, const char*, Align, Align"
@@ -4150,6 +4152,7 @@ Variable,+,I_FaceConfused_29x14,const Icon,
 Variable,+,I_FaceNopower_29x14,const Icon,
 Variable,+,I_FaceNormal_29x14,const Icon,
 Variable,+,I_Fishing_123x52,const Icon,
+Variable,-,I_FocusTimer_14x14,const Icon,
 Variable,+,I_Hashmark_7x7,const Icon,
 Variable,+,I_Health_16x16,const Icon,
 Variable,+,I_Hidden_window_9x8,const Icon,
@@ -4173,6 +4176,7 @@ Variable,+,I_Lock_7x8,const Icon,
 Variable,+,I_Lockscreen,const Icon,
 Variable,-,I_MFKey_qr_25x25,const Icon,
 Variable,+,I_MHz_25x11,const Icon,
+Variable,-,I_Metronome_14x14,const Icon,
 Variable,+,I_Modern_reader_18x34,const Icon,
 Variable,+,I_More_data_placeholder_5x7,const Icon,
 Variable,+,I_Move_flipper_26x39,const Icon,

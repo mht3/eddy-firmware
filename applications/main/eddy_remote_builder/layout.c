@@ -3,8 +3,6 @@
 #define LAYOUT_TYPE    "Eddy IR layout"
 #define LAYOUT_VERSION 1U
 
-static const char* const signal_keys[EDDY_LAYOUT_SLOTS] = {"0", "1", "2", "3", "4", "5"};
-
 bool eddy_layout_label_valid(const char* label) {
     size_t length = label ? strnlen(label, EDDY_LAYOUT_LABEL_MAX + 1) : 0;
     if(!length || length > EDDY_LAYOUT_LABEL_MAX || label[0] == ' ' || label[length - 1] == ' ')
@@ -98,9 +96,10 @@ bool eddy_layout_load(Storage* storage, const char* path, EddyLayout* out) {
 }
 
 static bool read_signal(FlipperFormat* file, size_t slot, InfraredSignal* out) {
+    char key[8];
+    snprintf(key, sizeof(key), "%u", (unsigned)slot);
     return flipper_format_rewind(file) &&
-           infrared_signal_search_by_name_and_read(out, file, signal_keys[slot]) ==
-               InfraredErrorCodeNone &&
+           infrared_signal_search_by_name_and_read(out, file, key) == InfraredErrorCodeNone &&
            infrared_signal_is_valid(out);
 }
 
@@ -128,8 +127,9 @@ static bool write_signals(
             saved = infrared_signal_alloc();
             signal = read_signal(old, sources[i], saved) ? saved : NULL;
         }
-        bool ok = signal &&
-                  infrared_signal_save(signal, dest, signal_keys[i]) == InfraredErrorCodeNone;
+        char key[8];
+        snprintf(key, sizeof(key), "%u", (unsigned)i);
+        bool ok = signal && infrared_signal_save(signal, dest, key) == InfraredErrorCodeNone;
         if(saved) infrared_signal_free(saved);
         if(!ok) return false;
     }

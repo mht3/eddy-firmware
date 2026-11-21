@@ -3,10 +3,11 @@ let saved;
 try { saved = JSON.parse(localStorage.getItem('eddy-preview-remotes')); } catch {}
 const validName = n => typeof n==='string' && n.trim() && n.length<=22;
 let remotes=(Array.isArray(saved?.remotes)?saved.remotes:[])
-  .filter(r=>validName(r?.name) && Array.isArray(r.buttons) && r.buttons.length && r.buttons.every(validName));
+  .filter(r=>validName(r?.name) && Array.isArray(r.buttons) && r.buttons.every(validName));
 let layouts=(Array.isArray(saved?.layouts)?saved.layouts:[])
-  .filter(r=>validName(r?.name) && Array.isArray(r.cells) && r.cells.length===6 &&
+  .filter(r=>validName(r?.name) && Array.isArray(r.cells) && r.cells.length<=24 &&
     r.cells.every(c=>c===null || (validName(c?.name) && Number.isInteger(c.icon))));
+for(const layout of layouts) layout.cells=layout.cells.filter(Boolean);
 const savedPins=Array.isArray(saved?.pins) ? saved.pins : [saved?.pin];
 let pins=savedPins.map(p=>typeof p==='string'?[p,'remote']:p).filter(p=>Array.isArray(p) &&
   (p[1]==='layout'?layouts:p[1]==='remote'?remotes:[]).some(r=>r.name===p[0])).slice(0,16);
@@ -29,24 +30,56 @@ function setPin(name,page,enabled) {
   return 'storage';
 }
 export const layoutDemo = {
-  get names() { return layouts.map(l=>l.name).sort((a,b)=>a.localeCompare(b)); },
-  get(name) { return layouts.find(l=>l.name===name); },
+  get entries() {
+    return [...layouts.map(l=>[l.name,'layout']),...remotes.map(r=>[r.name,'remote'])]
+      .sort(([a],[b])=>a.localeCompare(b));
+  },
+  source(name,kind) { return kind==='layout'?'Custom':remotes.find(r=>r.name===name)?.preset?'TV presets':'Infrared'; },
+  get(name,kind='layout') {
+    if(kind==='layout') return layouts.find(l=>l.name===name);
+    const remote=remotes.find(r=>r.name===name);
+    const labels=['Power','Vol +','Vol -','Mute','Play/Pause','Channel +','Channel -','Input'];
+    return remote && {name,cells:remote.buttons.map(name=>{
+      const index=labels.indexOf(name);
+      return {name,icon:index<0?8:index};
+    })};
+  },
   create(name) {
     if (!validName(name) || /[\\/:*?"<>|]/.test(name) || name.startsWith('.') || name.endsWith('.') ||
         layouts.some(l=>l.name.toLowerCase()===name.toLowerCase())) return 'Choose another remote name.';
-    layouts.push({name,cells:Array(6).fill(null)});
+    layouts.push({name,cells:[]});
     if (!save()) { layouts.pop(); return 'This browser could not save the remote.'; }
     return '';
   },
-  update(name,cells) {
-    const layout=this.get(name), previous=layout.cells;
-    layout.cells=cells;
+  addPreset(name,buttons) {
+    const existing=remotes.find(r=>r.preset===name);
+    if(existing) return existing.name;
+    let title=name;
+    for(let i=2;remotes.some(r=>r.name===title);i++) title=name+' '+i;
+    remotes.push({name:title,buttons:[...buttons],preset:name});
+    if(save()) return title;
+    remotes.pop();
+    return '';
+  },
+  update(name,cells,kind='layout') {
+    const layout=(kind==='layout'?layouts:remotes).find(r=>r.name===name);
+    if(!layout) return false;
+    const key=kind==='layout'?'cells':'buttons', previous=layout[key];
+    layout[key]=kind==='layout'?cells:cells.map(c=>c.name);
     if (save()) return true;
-    layout.cells=previous;
+    layout[key]=previous;
     return false;
   },
-  pinned(name) { return pinIndex(name,'layout')>=0; },
-  setPinned(name,on) { return setPin(name,'layout',on); },
+  remove(name,kind) {
+    const items=kind==='layout'?layouts:remotes, index=items.findIndex(r=>r.name===name);
+    if(index<0) return false;
+    const [remote]=items.splice(index,1), previous=pins;
+    pins=pins.filter(([n,k])=>n!==name || k!==kind);
+    if(save()) { if(active===remote) active=null; return true; }
+    items.splice(index,0,remote); pins=previous; return false;
+  },
+  pinned(name,kind='layout') { return pinIndex(name,kind)>=0; },
+  setPinned(name,on,kind='layout') { return setPin(name,kind,on); },
 };
 export const remoteDemo = {
   get active() { return active?.name; },

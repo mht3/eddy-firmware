@@ -1,5 +1,9 @@
 #include "layout.h"
 #include <assets_icons.h>
+#include <infrared/remote/infrared_remote.h>
+#include <infrared/remote/tv_presets.h>
+#include <toolbox/dir_walk.h>
+#include <toolbox/path.h>
 #include <gui/modules/dialog_ex.h>
 #include <gui/modules/submenu.h>
 #include <gui/modules/text_input.h>
@@ -19,6 +23,8 @@ typedef enum {
     RenameLabel,
     Move,
     ConfirmRemove,
+    ConfirmDelete,
+    Presets,
     Error
 } Screen;
 
@@ -47,24 +53,29 @@ enum {
     PageSize = 8,
     PreviousPage = 20,
     NextPage,
-    Retry
+    Retry,
+    ChoosePreset
 };
 enum {
     RenameButton,
     LearnAgain,
     MoveButton,
     RemoveButton,
-    PinRemote
+    PinRemote,
+    DeleteRemote
 };
 enum {
     EditEvent = 50,
     UseEvent,
     TextEvent,
-    ConfirmEvent
+    ConfirmEvent,
+    CancelEvent
 };
 
 typedef struct {
-    EddyLayout layout;
+    EddyLayoutButton cells[6];
+    size_t count;
+    size_t total;
     char title[EDDY_LAYOUT_NAME_MAX + 1];
     size_t slot;
     bool moving;
@@ -82,6 +93,8 @@ typedef struct {
     InfraredSignal* signal;
     FuriString* path;
     EddyLayout layout;
+    InfraredRemote* ir;
+    bool standard;
     EddyLayoutButton pending;
     Screen screen;
     Screen error_return;
@@ -89,7 +102,7 @@ typedef struct {
     size_t move_from;
     size_t page;
     size_t name_count;
-    char names[PageSize][EDDY_LAYOUT_NAME_MAX + 1];
+    FuriString* paths[PageSize];
     char title[EDDY_LAYOUT_NAME_MAX + 1];
     char entry[EDDY_LAYOUT_NAME_MAX + 1];
     FuriEventFlag* capture_ready;
@@ -152,34 +165,93 @@ static void draw_glyph(Canvas* canvas, int x, int y, uint32_t glyph) {
     }
 }
 
+static size_t button_count(const Builder* app) {
+    if(app->standard) return infrared_remote_get_signal_count(app->ir);
+    size_t count = 0;
+    for(size_t i = 0; i < EDDY_LAYOUT_SLOTS; i++)
+        if(app->layout.buttons[i].label[0]) count++;
+    return count;
+}
+
+// Keep old sparse layout files intact while presenting only their programmed buttons.
+static size_t layout_slot(const Builder* app, size_t index) {
+    size_t empty = EDDY_LAYOUT_SLOTS;
+    for(size_t i = 0; i < EDDY_LAYOUT_SLOTS; i++) {
+        if(app->layout.buttons[i].label[0]) {
+            if(!index) return i;
+            index--;
+        } else if(empty == EDDY_LAYOUT_SLOTS)
+            empty = i;
+    }
+    return empty;
+}
+
+static EddyLayoutButton button_at(const Builder* app, size_t index) {
+    EddyLayoutButton button = {0};
+    if(app->standard) {
+        if(index >= infrared_remote_get_signal_count(app->ir)) return button;
+        const char* name = infrared_remote_get_signal_name(app->ir, index);
+        strlcpy(button.label, name, sizeof(button.label));
+        button.glyph = GlyphCustom;
+        for(size_t i = 0; i < COUNT_OF(stock_labels); i++)
+            if(!strcasecmp(name, stock_labels[i])) button.glyph = i;
+    } else {
+        size_t slot = layout_slot(app, index);
+        if(slot < EDDY_LAYOUT_SLOTS) button = app->layout.buttons[slot];
+    }
+    return button;
+}
+
+static size_t grid_count(const Builder* app, bool moving) {
+    size_t count = button_count(app);
+    return count + (!moving && (app->standard || count < EDDY_LAYOUT_SLOTS));
+}
+
 static void grid_draw(Canvas* canvas, void* context) {
     GridModel* m = context;
     canvas_set_font(canvas, FontPrimary);
-    draw_fit(canvas, 2, 9, 92, m->title);
+    draw_fit(canvas, 2, 9, m->total > 6 ? 64 : 92, m->title);
     canvas_set_font(canvas, FontSecondary);
-    for(size_t i = 0; i < EDDY_LAYOUT_SLOTS; i++) {
-        int x = 2 + 42 * (i % 3), y = 12 + 17 * (i / 3);
-        bool focus = i == m->slot;
+    if(m->total > COUNT_OF(m->cells)) {
+        char page[24];
+        snprintf(
+            page,
+            sizeof(page),
+            "%u/%u",
+            (unsigned)(m->slot / 6 + 1),
+            (unsigned)((m->total + 5) / 6));
+        canvas_draw_str_aligned(canvas, 94, 9, AlignRight, AlignBottom, page);
+    }
+    for(size_t i = 0; i < m->count; i++) {
+        size_t columns = MIN(m->count, (size_t)3);
+        int width = 126 / columns - 2;
+        int x = 2 + (width + 2) * (i % columns), y = 12 + 17 * (i / columns);
+        bool focus = i == m->slot % 6;
         if(focus) {
-            canvas_draw_rbox(canvas, x, y, 40, 16, 3);
+            canvas_draw_rbox(canvas, x, y, width, 16, 3);
             canvas_set_color(canvas, ColorWhite);
         } else {
-            canvas_draw_rframe(canvas, x, y, 40, 16, 3);
+            canvas_draw_rframe(canvas, x, y, width, 16, 3);
         }
-        const EddyLayoutButton* button = &m->layout.buttons[i];
+        const EddyLayoutButton* button = &m->cells[i];
         if(button->label[0]) {
             draw_glyph(canvas, x + 8, y + 8, button->glyph);
-            draw_fit(canvas, x + 15, y + 11, 23, button->label);
+            draw_fit(canvas, x + 15, y + 11, width - 17, button->label);
         } else {
-            canvas_draw_line(canvas, x + 17, y + 8, x + 23, y + 8);
-            canvas_draw_line(canvas, x + 20, y + 5, x + 20, y + 11);
+            canvas_draw_str_aligned(
+                canvas,
+                x + width / 2,
+                y + 11,
+                AlignCenter,
+                AlignBottom,
+                width > 50 ? "+ Add button" : "+");
         }
         canvas_set_color(canvas, ColorBlack);
     }
-    const char* name = m->layout.buttons[m->slot].label;
+    const char* name = m->cells[m->slot % 6].label;
     const char* subtitle =
         m->notice ? m->notice :
-                    (m->moving ? "Choose destination" : (name[0] ? name : "Empty spot"));
+                    (m->moving ? "Choose destination" : (name[0] ? name : "Add button"));
     canvas_draw_str_aligned(canvas, 64, 53, AlignCenter, AlignBottom, subtitle);
     const char* hint = m->moving ?
                            "OK: place    Back: cancel" :
@@ -200,7 +272,10 @@ static void text_entered(void* context) {
 }
 
 static void dialog_chosen(DialogExResult result, void* context) {
-    if(result == DialogExResultCenter) enqueue(context, ConfirmEvent);
+    if(result == DialogExResultCenter)
+        enqueue(context, ConfirmEvent);
+    else if(result == DialogExResultLeft)
+        enqueue(context, CancelEvent);
 }
 
 static void clear_feedback(void* context) {
@@ -211,11 +286,17 @@ static void clear_feedback(void* context) {
 
 static void show_grid(Builder* app, bool moving, const char* notice) {
     app->screen = moving ? Move : Grid;
+    size_t total = grid_count(app, moving);
+    app->slot = MIN(app->slot, total - 1);
+    size_t first = app->slot / 6 * 6;
     with_view_model(
         app->grid,
         GridModel * m,
         {
-            m->layout = app->layout;
+            m->total = total;
+            m->count = MIN((size_t)6, total - first);
+            for(size_t i = 0; i < m->count; i++)
+                m->cells[i] = button_at(app, first + i);
             strlcpy(m->title, app->title, sizeof(m->title));
             m->slot = app->slot;
             m->moving = moving;
@@ -234,30 +315,25 @@ static bool grid_input(InputEvent* event, void* context) {
         return true;
     }
     if(event->type != InputTypeShort && event->type != InputTypeRepeat) return false;
-    size_t row = app->slot / 3, col = app->slot % 3;
+    size_t count = grid_count(app, app->screen == Move);
+    size_t rows = (count + 2) / 3;
+    size_t row = app->slot / 3;
     switch(event->key) {
     case InputKeyLeft:
-        col = (col + 2) % 3;
+        app->slot = (app->slot + count - 1) % count;
         break;
     case InputKeyRight:
-        col = (col + 1) % 3;
+        app->slot = (app->slot + 1) % count;
         break;
     case InputKeyUp:
     case InputKeyDown:
-        row = 1 - row;
+        row = (row + (event->key == InputKeyUp ? rows - 1 : 1)) % rows;
+        app->slot = MIN(count - 1, row * 3 + app->slot % 3);
         break;
     default:
         return false;
     }
-    app->slot = row * 3 + col;
-    with_view_model(
-        app->grid,
-        GridModel * m,
-        {
-            m->slot = app->slot;
-            m->notice = NULL;
-        },
-        true);
+    show_grid(app, app->screen == Move, NULL);
     return true;
 }
 
@@ -271,40 +347,59 @@ static void add_item(Builder* app, const char* label, uint32_t index) {
     submenu_add_item(app->menu, label, index, item_chosen, app);
 }
 
+static void library_label(FuriString* path, FuriString* label, bool multiline) {
+    path_extract_filename(path, label, true);
+    const char* file = furi_string_get_cstr(path);
+    const char* source = "Infrared";
+    FuriString* folder = furi_string_alloc();
+    if(eddy_layout_path_valid(file))
+        source = "Custom";
+    else {
+        path_extract_dirname(file, folder);
+        if(furi_string_size(folder) > strlen(EXT_PATH("infrared"))) {
+            source = furi_string_get_cstr(folder) + strlen(EXT_PATH("infrared/"));
+        }
+    }
+    furi_string_cat_printf(label, multiline ? "\n%s" : " (%s)", source);
+    furi_string_free(folder);
+}
+
 static void show_library(Builder* app) {
-    begin_menu(app, Library, "Remote Builder");
+    begin_menu(app, Library, "Remotes");
     app->name_count = 0;
-    // FAT directory order is stable while paging. Retain only one page in RAM.
-    File* dir = storage_file_alloc(app->storage);
     bool ok = storage_simply_mkdir(app->storage, EXT_PATH("infrared")) &&
               storage_simply_mkdir(app->storage, EDDY_LAYOUT_DIR);
     if(ok) eddy_layout_recover(app->storage);
-    ok = ok && storage_dir_open(dir, EDDY_LAYOUT_DIR);
+    DirWalk* dir = dir_walk_alloc(app->storage);
+    const char* excluded[] = {EXT_PATH("infrared/assets")};
+    dir_walk_set_recurse_filter(dir, excluded, COUNT_OF(excluded));
+    ok = ok && dir_walk_open(dir, EXT_PATH("infrared"));
     if(ok) {
         add_item(app, "New remote", 0);
+        add_item(app, "TV presets", ChoosePreset);
         if(app->page) add_item(app, "Previous page", PreviousPage);
+        FuriString* path = furi_string_alloc();
+        FuriString* label = furi_string_alloc();
         FileInfo info;
-        char filename[256];
-        size_t skipped = 0;
-        while(storage_dir_read(dir, &info, filename, sizeof(filename))) {
-            if(file_info_is_dir(&info)) continue;
-            char* dot = strrchr(filename, '.');
-            if(!dot || strcasecmp(dot, EDDY_LAYOUT_EXT)) continue;
-            *dot = '\0';
-            if(!eddy_layout_name_valid(filename)) continue;
-            if(skipped++ < app->page * PageSize) continue;
+        size_t seen = 0;
+        DirWalkResult result;
+        while((result = dir_walk_read(dir, path, &info)) == DirWalkOK) {
+            const char* file = furi_string_get_cstr(path);
+            if(file_info_is_dir(&info) || !eddy_remote_path_valid(file)) continue;
+            if(seen++ < app->page * PageSize) continue;
             if(app->name_count == PageSize) {
                 add_item(app, "Next page", NextPage);
                 break;
             }
-            strlcpy(app->names[app->name_count], filename, sizeof(app->names[0]));
-            add_item(app, filename, ++app->name_count);
+            furi_string_set(app->paths[app->name_count], path);
+            library_label(path, label, false);
+            add_item(app, furi_string_get_cstr(label), ++app->name_count);
         }
-        // The FAT driver reports end-of-directory as FSE_NOT_EXIST.
-        const FS_Error status = storage_file_get_error(dir);
-        ok = status == FSE_OK || status == FSE_NOT_EXIST;
+        ok = result != DirWalkError;
+        furi_string_free(label);
+        furi_string_free(path);
     }
-    storage_file_free(dir);
+    dir_walk_free(dir);
     if(!ok) {
         begin_menu(app, Library, "Check microSD card");
         add_item(app, "Try again", Retry);
@@ -323,6 +418,8 @@ static void show_dialog(
     dialog_ex_set_header(app->dialog, title, 64, 11, AlignCenter, AlignTop);
     dialog_ex_set_text(app->dialog, body, 64, 32, AlignCenter, AlignCenter);
     dialog_ex_set_center_button_text(app->dialog, accept);
+    if(screen == ConfirmRemove || screen == ConfirmDelete)
+        dialog_ex_set_left_button_text(app->dialog, "Cancel");
     dialog_ex_set_context(app->dialog, app);
     dialog_ex_set_result_callback(app->dialog, dialog_chosen);
     view_dispatcher_switch_to_view(app->dispatcher, DialogView);
@@ -330,7 +427,7 @@ static void show_dialog(
 
 static void show_error(Builder* app, const char* why, Screen back) {
     app->error_return = back;
-    show_dialog(app, Error, "Remote Builder", why, "OK");
+    show_dialog(app, Error, "Remotes", why, "OK");
 }
 
 static bool name_validator(const char* value, FuriString* error, void* context) {
@@ -373,22 +470,28 @@ static void ask_name(Builder* app, Screen screen, const char* title, const char*
 }
 
 static void open_layout(Builder* app) {
-    if(!eddy_layout_load(app->storage, furi_string_get_cstr(app->path), &app->layout)) {
+    const char* path = furi_string_get_cstr(app->path);
+    app->standard = !eddy_layout_path_valid(path);
+    bool ok = eddy_remote_path_valid(path) &&
+              (app->standard ? infrared_remote_load(app->ir, path) == InfraredErrorCodeNone :
+                               eddy_layout_load(app->storage, path, &app->layout));
+    if(!ok) {
         show_error(app, "Could not open remote.\nCheck the microSD card.", Library);
         return;
     }
-    const char* file = strrchr(furi_string_get_cstr(app->path), '/') + 1;
-    size_t n = strlen(file) - strlen(EDDY_LAYOUT_EXT);
-    memcpy(app->title, file, n);
-    app->title[n] = '\0';
+    FuriString* name = furi_string_alloc();
+    path_extract_filename(app->path, name, true);
+    strlcpy(app->title, furi_string_get_cstr(name), sizeof(app->title));
+    furi_string_free(name);
     app->slot = 0;
-    for(size_t i = 0; i < EDDY_LAYOUT_SLOTS; i++) {
-        if(app->layout.buttons[i].label[0]) {
-            app->slot = i;
-            break;
-        }
-    }
     show_grid(app, false, NULL);
+}
+
+static void open_preset(Builder* app, size_t index) {
+    if(infrared_tv_preset_save(app->storage, index, app->path))
+        open_layout(app);
+    else
+        show_error(app, "Could not save preset.\nCheck the microSD card.", Library);
 }
 
 static void show_stock(Builder* app) {
@@ -452,7 +555,8 @@ static bool pin_state(Builder* app, bool* pinned) {
 }
 
 static void show_options(Builder* app) {
-    const char* label = app->layout.buttons[app->slot].label;
+    EddyLayoutButton selected = button_at(app, app->slot);
+    const char* label = selected.label;
     begin_menu(app, Options, label[0] ? label : "Remote options");
     bool pinned;
     if(!pin_state(app, &pinned)) {
@@ -467,6 +571,7 @@ static void show_options(Builder* app) {
         add_item(app, "Remove button", RemoveButton);
     }
     if(pinned) add_item(app, "Remove from Apps", PinRemote);
+    add_item(app, "Delete remote", DeleteRemote);
     view_dispatcher_switch_to_view(app->dispatcher, MenuView);
 }
 
@@ -474,7 +579,9 @@ static void refresh_saved(Builder* app, bool saved, const char* notice) {
     if(!saved) {
         Screen retry = app->screen == SaveLabel || app->screen == RenameLabel ? app->screen : Grid;
         show_error(app, "Could not save changes.\nCheck the microSD card.", retry);
-    } else if(!eddy_layout_load(app->storage, furi_string_get_cstr(app->path), &app->layout)) {
+    } else if(
+        !app->standard &&
+        !eddy_layout_load(app->storage, furi_string_get_cstr(app->path), &app->layout)) {
         show_error(app, "Could not reopen remote.\nCheck the microSD card.", Library);
     } else {
         show_grid(app, false, notice);
@@ -486,11 +593,11 @@ static void select_option(Builder* app, uint32_t event) {
     const char* path = furi_string_get_cstr(app->path);
     switch(event) {
     case RenameButton:
-        app->pending = app->layout.buttons[app->slot];
+        app->pending = button_at(app, app->slot);
         ask_name(app, RenameLabel, "Rename button", app->pending.label);
         break;
     case LearnAgain:
-        app->pending = app->layout.buttons[app->slot];
+        app->pending = button_at(app, app->slot);
         begin_learning(app);
         break;
     case MoveButton:
@@ -498,9 +605,16 @@ static void select_option(Builder* app, uint32_t event) {
         show_grid(app, true, NULL);
         break;
     case RemoveButton:
-        show_dialog(
-            app, ConfirmRemove, "Remove button?", app->layout.buttons[app->slot].label, "Remove");
+        app->pending = button_at(app, app->slot);
+        show_dialog(app, ConfirmRemove, "Remove button?", app->pending.label, "Remove");
         break;
+    case DeleteRemote: {
+        FuriString* label = furi_string_alloc();
+        library_label(app->path, label, true);
+        show_dialog(app, ConfirmDelete, "Delete remote?", furi_string_get_cstr(label), "Delete");
+        furi_string_free(label);
+        break;
+    }
     case PinRemote:
         if(pin_state(app, &pinned)) {
             EddyPinResult result =
@@ -528,6 +642,7 @@ static bool go_back(void* context) {
         if(app->direct) return false;
         show_library(app);
         break;
+    case Presets:
     case NewName:
         show_library(app);
         break;
@@ -549,6 +664,7 @@ static bool go_back(void* context) {
         show_grid(app, false, NULL);
         break;
     case RenameLabel:
+    case ConfirmDelete:
     case ConfirmRemove:
         show_options(app);
         break;
@@ -562,6 +678,10 @@ static bool go_back(void* context) {
 static bool handle_event(void* context, uint32_t event) {
     Builder* app = context;
     const char* path = furi_string_get_cstr(app->path);
+    if(event == CancelEvent && (app->screen == ConfirmRemove || app->screen == ConfirmDelete)) {
+        show_options(app);
+        return true;
+    }
     switch(app->screen) {
     case Library:
         if(event == Retry) {
@@ -573,13 +693,20 @@ static bool handle_event(void* context, uint32_t event) {
         } else if(event == NextPage) {
             ++app->page;
             show_library(app);
+        } else if(event == ChoosePreset) {
+            begin_menu(app, Presets, "Add TV preset");
+            for(size_t i = 0; i < COUNT_OF(presets); i++)
+                add_item(app, presets[i].model, i);
+            view_dispatcher_switch_to_view(app->dispatcher, MenuView);
         } else if(event == 0)
             ask_name(app, NewName, "Name your remote", "");
         else if(event <= app->name_count) {
-            furi_string_printf(
-                app->path, "%s/%s%s", EDDY_LAYOUT_DIR, app->names[event - 1], EDDY_LAYOUT_EXT);
+            furi_string_set(app->path, app->paths[event - 1]);
             open_layout(app);
         }
+        break;
+    case Presets:
+        if(event < COUNT_OF(presets)) open_preset(app, event);
         break;
     case NewName:
         if(event != TextEvent) break;
@@ -591,10 +718,13 @@ static bool handle_event(void* context, uint32_t event) {
     case Grid:
         if(event == EditEvent)
             show_options(app);
-        else if(event == UseEvent && !app->layout.buttons[app->slot].label[0])
+        else if(event == UseEvent && app->slot == button_count(app))
             show_stock(app);
         else if(event == UseEvent) {
-            if(eddy_layout_signal(app->storage, path, app->slot, app->signal)) {
+            if(app->standard ? infrared_remote_load_signal(app->ir, app->signal, app->slot) ==
+                                   InfraredErrorCodeNone :
+                               eddy_layout_signal(
+                                   app->storage, path, layout_slot(app, app->slot), app->signal)) {
                 infrared_signal_transmit(app->signal);
                 show_grid(app, false, "Sent");
             } else
@@ -614,15 +744,24 @@ static bool handle_event(void* context, uint32_t event) {
     case RenameLabel:
         if(event == TextEvent) {
             strlcpy(app->pending.label, app->entry, sizeof(app->pending.label));
-            refresh_saved(
-                app,
-                eddy_layout_set(
-                    app->storage,
-                    path,
-                    app->slot,
-                    &app->pending,
-                    app->screen == SaveLabel ? app->signal : NULL),
-                "Button saved");
+            const InfraredSignal* signal = app->screen == SaveLabel ? app->signal : NULL;
+            bool saved;
+            if(app->standard) {
+                InfraredErrorCode result =
+                    app->slot == button_count(app) ?
+                        infrared_remote_append_signal(app->ir, signal, app->pending.label) :
+                        infrared_remote_set_signal(app->ir, app->slot, app->pending.label, signal);
+                saved = result == InfraredErrorCodeNone;
+            } else {
+                size_t slot = layout_slot(app, app->slot);
+                saved = eddy_layout_set(app->storage, path, slot, &app->pending, signal);
+                if(saved && !app->layout.buttons[slot].label[0]) {
+                    app->slot = 0;
+                    for(size_t i = 0; i < slot; ++i)
+                        if(app->layout.buttons[i].label[0]) app->slot++;
+                }
+            }
+            refresh_saved(app, saved, "Button saved");
         }
         break;
     case Options:
@@ -635,14 +774,51 @@ static bool handle_event(void* context, uint32_t event) {
             else
                 refresh_saved(
                     app,
-                    eddy_layout_move(app->storage, path, app->move_from, app->slot),
+                    app->standard ?
+                        infrared_remote_move_signal(app->ir, app->move_from, app->slot) ==
+                            InfraredErrorCodeNone :
+                        eddy_layout_move(
+                            app->storage,
+                            path,
+                            layout_slot(app, app->move_from),
+                            layout_slot(app, app->slot)),
                     "Button moved");
         }
         break;
     case ConfirmRemove:
         if(event == ConfirmEvent)
             refresh_saved(
-                app, eddy_layout_remove(app->storage, path, app->slot), "Button removed");
+                app,
+                app->standard ?
+                    infrared_remote_delete_signal(app->ir, app->slot) == InfraredErrorCodeNone :
+                    eddy_layout_remove(app->storage, path, layout_slot(app, app->slot)),
+                "Button removed");
+        break;
+    case ConfirmDelete:
+        if(event == ConfirmEvent) {
+            bool ok = true;
+            if(!app->standard) {
+                // Do not let an interrupted older replacement resurrect the deleted remote.
+                FuriString* ready = furi_string_alloc_printf("%s.ready", path);
+                ok = storage_simply_remove(app->storage, furi_string_get_cstr(ready));
+                furi_string_free(ready);
+            }
+            if(ok)
+                ok = app->standard ? infrared_remote_remove(app->ir) == InfraredErrorCodeNone :
+                                     storage_common_remove(app->storage, path) == FSE_OK;
+            if(!ok)
+                show_error(app, "Could not delete remote.", Grid);
+            else {
+                EddyPinResult cleanup = eddy_remote_pins_update(app->storage, path, NULL);
+                app->page = 0;
+                if(cleanup != EddyPinOk)
+                    show_error(app, "Deleted. Could not\nclear shortcut.", Library);
+                else if(app->direct)
+                    view_dispatcher_stop(app->dispatcher);
+                else
+                    show_library(app);
+            }
+        }
         break;
     case Error:
         if(event == ConfirmEvent && !go_back(app)) view_dispatcher_stop(app->dispatcher);
@@ -654,6 +830,7 @@ static bool handle_event(void* context, uint32_t event) {
 int32_t eddy_remote_builder_app(void* argument) {
     Builder* app = calloc(1, sizeof(Builder));
     app->storage = furi_record_open(RECORD_STORAGE);
+    infrared_remote_recover_library(app->storage);
     app->dispatcher = view_dispatcher_alloc();
     FuriEventLoop* loop = view_dispatcher_get_event_loop(app->dispatcher);
     app->capture_ready = furi_event_flag_alloc();
@@ -666,6 +843,9 @@ int32_t eddy_remote_builder_app(void* argument) {
     app->text = text_input_alloc();
     app->dialog = dialog_ex_alloc();
     app->path = furi_string_alloc();
+    app->ir = infrared_remote_alloc();
+    for(size_t i = 0; i < PageSize; i++)
+        app->paths[i] = furi_string_alloc();
     app->signal = infrared_signal_alloc();
     app->receiver = infrared_worker_alloc();
     infrared_worker_rx_set_received_signal_callback(app->receiver, received, app);
@@ -704,6 +884,9 @@ int32_t eddy_remote_builder_app(void* argument) {
     view_dispatcher_free(app->dispatcher);
     infrared_worker_free(app->receiver);
     infrared_signal_free(app->signal);
+    infrared_remote_free(app->ir);
+    for(size_t i = 0; i < PageSize; i++)
+        furi_string_free(app->paths[i]);
     furi_string_free(app->path);
     furi_record_close(RECORD_GUI);
     furi_record_close(RECORD_STORAGE);

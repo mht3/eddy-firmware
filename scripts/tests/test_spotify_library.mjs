@@ -195,3 +195,26 @@ test('signed-in Flipper browses real response rows and plays only the displayed 
   assert.equal(auth.linked(id), false);
   assert.match(dom.notice.textContent, /unlinked/);
 });
+
+test('device scan starts PKCE once, guide visits and linked accounts stay on the page', async () => {
+  auth.unlink();
+  const nodes = new Map();
+  globalThis.document = {getElementById(key) {
+    if (!nodes.has(key)) nodes.set(key, {});
+    return nodes.get(key);
+  }};
+  globalThis.window = new EventTarget();
+  location.destination = undefined;
+  await startBridge(id);
+  assert.equal(location.destination, undefined);
+  await startBridge(id, true);
+  assert.equal(location.destination.origin, 'https://accounts.spotify.com');
+  assert.equal(location.destination.searchParams.get('code_challenge_method'), 'S256');
+  assert.equal(location.destination.searchParams.get('redirect_uri'), redirect);
+  await signIn();
+  location.destination = undefined;
+  await startBridge(id, true);
+  assert.equal(location.destination, undefined);
+  assert.equal(nodes.get('pair').hidden, false);
+  auth.unlink();
+});

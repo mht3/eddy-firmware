@@ -8,6 +8,10 @@ const roku = ['Power','Home','Vol -','Vol +','Exit','D-pad'];
 
 const arrows=[['up','Up',64,18],['left','Left',35,32],['ok','OK',64,32],['right','Right',93,32],['down','Down',64,46]];
 
+export function presetButtons(index) {
+  return index===3 ? [...roku.slice(0,5),...arrows.map(([,label])=>label)] : standard;
+}
+
 export function tvPadStatus(state) {
   if(state.navigation) return 'TCL Roku D-pad. '+(state.sentUntil>performance.now()?'Demo sent: '+state.lastKey:'Arrows and OK send. Back returns to remote.');
   if(state.profile===3 && state.row===5) return 'TCL Roku TV. D-pad. OK to open.';

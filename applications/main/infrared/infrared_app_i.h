@@ -27,7 +27,7 @@
 #include <infrared/worker/infrared_worker.h>
 
 #include "infrared_app.h"
-#include "infrared_remote.h"
+#include <infrared/remote/infrared_remote.h>
 #include "infrared_custom_event.h"
 
 #include "scenes/infrared_scene.h"

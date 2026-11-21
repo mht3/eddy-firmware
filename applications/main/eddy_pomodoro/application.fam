@@ -3,7 +3,7 @@ App(
     name="Pomodoro Timer",
     apptype=FlipperAppType.MENUEXTERNAL,
     entry_point="eddy_pomodoro_app",
-    icon="I_Clock_18x18",
+    icon="I_FocusTimer_14x14",
     order=70,
     stack_size=2048,
     fap_category="assets",

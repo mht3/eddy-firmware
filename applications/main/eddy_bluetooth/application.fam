@@ -9,5 +9,4 @@ App(
     order=100,
     stack_size=2048,
     fap_category="assets",
-    fap_libs=["ble_profile"],
 )

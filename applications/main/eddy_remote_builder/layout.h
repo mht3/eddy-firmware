@@ -3,7 +3,7 @@
 #include <toolbox/eddy_layout_path.h>
 #include <lib/infrared/signal/infrared_signal.h>
 
-#define EDDY_LAYOUT_SLOTS     6
+#define EDDY_LAYOUT_SLOTS     24
 #define EDDY_LAYOUT_LABEL_MAX 16
 #define EDDY_LAYOUT_GLYPHS    9
 

@@ -163,6 +163,7 @@ static bool desktop_back_event_callback(void* context) {
 static void desktop_tick_event_callback(void* context) {
     furi_assert(context);
     Desktop* app = context;
+    eddy_timer_tick(app->focus_timer);
     scene_manager_handle_tick_event(app->scene_manager);
 }
 
@@ -356,6 +357,7 @@ static Desktop* desktop_alloc(void) {
 
     desktop->storage = furi_record_open(RECORD_STORAGE);
     desktop->notification = furi_record_open(RECORD_NOTIFICATION);
+    desktop->focus_timer = eddy_timer_alloc(desktop->storage, desktop->notification);
     desktop->input_events_pubsub = furi_record_open(RECORD_INPUT_EVENTS);
     desktop->ascii_events_pubsub = furi_record_open(RECORD_ASCII_EVENTS);
 

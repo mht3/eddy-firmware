@@ -1,6 +1,6 @@
 App(
     appid="eddy_remote_builder",
-    name="Remote Builder",
+    name="Remotes",
     apptype=FlipperAppType.MENUEXTERNAL,
     entry_point="eddy_remote_builder_app",
     targets=["f7"],

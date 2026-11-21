@@ -1,14 +1,15 @@
 import {getAppOrder, getSelectedApps, restoreAppOrder} from './app-catalog.js';
 import {openSpotifyDemo, drawSpotify, spotifyStatus, spotifyKey} from './spotify-preview.js';
 import {openMusicDemo, drawMusic, musicStatus, musicKey} from './music-preview.js';
-import {tvPresetRows, tvPadStatus, tvPadKey, drawTvPad, tvPadHit, tvNavigationHit} from './tv-presets.js';
+import {presetButtons, tvPresetRows, tvPadStatus, tvPadKey, drawTvPad, tvPadHit, tvNavigationHit} from './tv-presets.js';
 import {openBuilder, builderKey, builderStatus, drawBuilder} from './builder-preview.js';
 import {bluetoothKey, bluetoothStatus, drawBluetooth} from './bluetooth-preview.js';
+import {focus, remaining, drawPomodoro, pomodoroKey} from './pomodoro.js';
 import {drawMetronome, metronomeInput, metronomeStatus} from './metronome.js';
 import {drawLauncher, layoutApps, verticalApp, sections, apps, launcherArt} from './launcher.js';
 import {settingsRows, settingsSamples, drawQuick, quickStatus, adjustQuick} from './quick-settings.js';
 import {listNotes, nameNote} from './observation-preview.js';
-import {remoteDemo} from './remote-preview.js';
+import {layoutDemo, remoteDemo} from './remote-preview.js';
 import {powerLists, powerSamples, powerTitles, powerAction} from './power-preview.js';
 import {drawCloseUpHome, drawBattery, sampleCharge} from './home-screen.js';
 
@@ -19,7 +20,7 @@ const status = document.querySelector('#preview-state');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const ink = '#432a14';
 const titles = {
-  music:'Music', spotify:'Spotify', tvPresets:'Choose your TV', tvPad:'TV remote', builder:'Remote Builder', btRemote:'Bluetooth Remote', noteList:'Saved observations', noteDetail:'Saved observation',
+  music:'Music', spotify:'Spotify', tvPresets:'Choose your TV', tvPad:'TV remote', builder:'Remotes', btRemote:'Bluetooth Remote', noteList:'Saved observations', noteDetail:'Saved observation',
   home:'Home screen', menu:'Launcher', apps:'Apps', settings:'Settings', power:'Power',
   signal:'Sub-GHz', rfid:'RFID', nfc:'NFC', infrared:'Infrared', gpio:'GPIO', ibutton:'iButton',
   metronome:'Metronome', pomodoro:'Pomodoro Timer', battery:'Battery info', restart:'Restart?', shutdown:'Power off?',
@@ -39,6 +40,9 @@ const readers = {
   ibutton:['contact','Touch key to','the contacts'],
 };
 const readerTypes = {rfid:'EM4100', nfc:'ISO 14443-4A', ibutton:'Dallas'};
+const meterPresets = [310000,315000,390000,433920,868350,915000];
+const meterBands = [[300000,348000],[387000,464000],[779000,928000]];
+const meterLabel = khz => (khz/1000).toFixed(3)+' MHz';
 const samples = {
   pinStorage:['Check browser storage.','Back to return'], pinsFull:['Unpin another remote.','Back to return'], deleteRemote:['Left: Cancel','Right: Delete'],
   tester:['Try a demo IR button','OK for a sample signal'], detected:['Sample IR detected','OK to test another'],
@@ -51,6 +55,7 @@ const samples = {
 Object.assign(titles,Object.fromEntries(settingsRows.map(([name,page])=>[page,name])),powerTitles);
 Object.assign(samples,settingsSamples,powerSamples);
 const lists = {
+  tuning:[...meterPresets.map(khz=>[meterLabel(khz)]),...meterBands.map(([lo,hi])=>[`Other: ${lo/1000}–${hi/1000} MHz`])],
   menu:sections.map(([name,page])=>[name,page==='settings'?'quick':page]), apps, settings:settingsRows,
   infrared:[['My remotes','remotes'],['Learn a remote','learn'],['TV presets','tvPresets'],['Button tester','tester']], tvPresets:tvPresetRows,
   gpio:[['GPIO pins','pins'],['USB to UART','uart']],
@@ -67,7 +72,7 @@ let visibleShortcuts = [];
 function refreshRemotes() {
   const saved=remoteDemo.rows;
   const enabled = requestedApps ?? getSelectedApps();
-  visibleShortcuts = remoteDemo.shortcuts.filter(([,type])=>enabled.has(type==='layout'?'builder':'infrared'));
+  visibleShortcuts = remoteDemo.shortcuts.filter(([,type])=>enabled.has('builder') || (type==='remote' && enabled.has('infrared')));
   lists.apps=layoutApps([...apps.filter(([,id])=>enabled.has(id)),...visibleShortcuts],requestedOrder ?? getAppOrder());
   lists.remotes=saved.length ? saved : [['Learn a remote','learn']];
   titles.remotes=saved.length?'My remotes':'No remotes yet';
@@ -85,56 +90,6 @@ let history = [{page:'home',row:0}];
 let timer;
 let inView = false;
 const current = () => history[history.length-1];
-const minuteMs = 60000;
-const maxTimerMinutes = 99;
-let focusMs = 25*minuteMs;
-let breakMs = 5*minuteMs;
-let focus = {rest:false, left:focusMs, deadline:0};
-
-function remaining() {
-  const now = Date.now();
-  if (focus.deadline && now >= focus.deadline) {
-    if (!focus.rest && now < focus.deadline+breakMs) {
-      focus = {rest:true,left:breakMs,deadline:focus.deadline+breakMs};
-    } else focus = {rest:false,left:focusMs,deadline:0};
-  }
-  return focus.deadline ? focus.deadline-now : focus.left;
-}
-
-function adjustTimer(left, increase) {
-  if (focus.deadline || (increase && left>=maxTimerMinutes*minuteMs) ||
-      (!increase && left<=minuteMs)) return;
-  const minutes=increase ? Math.floor(left/minuteMs)+1 : Math.ceil(left/minuteMs)-1;
-  focus.left=minutes*minuteMs;
-  if (focus.rest) breakMs=focus.left;
-  else focusMs=focus.left;
-}
-
-function drawPomodoro() {
-  const left=remaining(), sec=Math.ceil(left/1000);
-  ctx.textAlign = 'start';
-  ctx.font = '8px sans-serif';
-  ctx.fillText(focus.rest ? 'Short break' : 'Focus session',3,2);
-  ctx.textAlign = 'center';
-  ctx.font = 'bold 24px monospace';
-  const clock = String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0');
-  ctx.fillText(clock,64,17);
-  if (!focus.deadline) {
-    ctx.beginPath();
-    if (left>minuteMs) {
-      ctx.moveTo(18,26); ctx.lineTo(12,32); ctx.lineTo(18,38);
-    }
-    if (left<maxTimerMinutes*minuteMs) {
-      ctx.moveTo(109,26); ctx.lineTo(115,32); ctx.lineTo(109,38);
-    }
-    ctx.stroke();
-  }
-  ctx.font = '8px sans-serif';
-  const verb=focus.deadline?'pause':focus.left<(focus.rest?breakMs:focusMs)?'resume':'start';
-  ctx.fillText('OK '+verb,64,52);
-  ctx.textAlign = 'start';
-}
-
 function beginNote(page, detail) {
   nameNote(page,detail,note => {
     history.push({page:'noteDetail',row:0,note});
@@ -206,6 +161,29 @@ function drawList(page,row) {
 }
 
 let signalDbm;
+titles.tuning='Tune receiver';
+function tuneMeter(khz) {
+  history.pop();
+  current().frequency=khz;
+  draw();
+  announce();
+}
+function enterFrequency(band) {
+  const dialog=document.querySelector('#frequency-dialog');
+  const input=dialog.querySelector('input');
+  [input.min,input.max]=band;
+  dialog.querySelector('label').textContent=`Receive frequency (${input.min}–${input.max} kHz)`;
+  input.value='';
+  dialog.querySelector('form').onsubmit=event=>{
+    event.preventDefault();
+    if(!input.reportValidity()) return;
+    dialog.close();
+    tuneMeter(input.valueAsNumber);
+  };
+  dialog.querySelector('[type=button]').onclick=()=>dialog.close();
+  dialog.showModal();
+  input.focus();
+}
 function drawMeter(tick) {
   ctx.font = '8px monospace';
   ctx.strokeRect(2.5,14.5,123,24);
@@ -216,7 +194,8 @@ function drawMeter(tick) {
     if (x===119) signalDbm = -110+3*height;
   }
   ctx.fillText(signalDbm+' dBm',3,41);
-  ctx.fillText('433.92 MHz',76,41);
+  ctx.fillText(meterLabel(current().frequency ?? 433920),71,41);
+  ctx.fillText('◀ Tune',3,54);
   ctx.fillText('Saved ▶',89,54);
   ctx.fillText('OK Save',50,54);
 }
@@ -233,7 +212,7 @@ function draw() {
   }
   ctx.setTransform(width/128,0,0,height/64,0,0);
   const {page,row} = current();
-  display.classList.toggle('selectable',['menu','apps','quick','tvPad'].includes(page) || (page==='pomodoro' && !focus.deadline));
+  display.classList.toggle('selectable',['menu','apps','quick','tvPad','pomodoro'].includes(page));
   const tick = reducedMotion.matches ? 4 : Math.floor(performance.now()/167);
   ctx.clearRect(0,0,128,64);
   ctx.fillStyle = ctx.strokeStyle = ink;
@@ -261,7 +240,7 @@ function draw() {
     const delay=drawMetronome(ctx,current(),performance.now());
     if (delay) timer=setTimeout(draw,delay);
   } else if (page === 'pomodoro') {
-    drawPomodoro();
+    drawPomodoro(ctx);
   } else {
     if (readers[page]) ctx.font = 'bold 8px monospace';
     const sent = page==='remote' && current().sentUntil > performance.now();
@@ -313,11 +292,11 @@ function announce() {
   if (page==='btRemote') text+='. '+bluetoothStatus(current());
   if (page!=='off') text += '. Sample battery '+sampleCharge+'%, not charging.';
   if (page==='home') text += ' Press OK for the launcher or Up for quick settings.';
-  if (page==='signal') text+='. Sample signal at 433.92 MHz. OK to save this reading, Right for saved readings.';
+  if (page==='signal') text+='. Sample signal at '+meterLabel(current().frequency ?? 433920)+'. Left to tune, OK to save this reading, Right for saved readings.';
   if (page==='spotify') text += '. '+spotifyStatus(current());
   if (page==='music') text += '. '+musicStatus(current());
   if (page==='metronome') text += '. '+metronomeStatus(current());
-  if (page==='pomodoro') text += '. '+Math.ceil(remaining()/1000)+' seconds. '+(focus.deadline?'Running. OK to pause.':'Paused. Left or Right to set minutes, OK to start.');
+  if (page==='pomodoro') text += '. '+Math.ceil(remaining()/1000)+' seconds. '+(focus.deadline?'Running. OK to pause.':'Paused. Left or Right to adjust by five seconds, OK to start.')+' Up toggles sound. '+(focus.muted?'Muted.':'Sound on.');
   status.textContent=text;
 }
 
@@ -327,8 +306,10 @@ function press(key) {
   if(page==='tvPad' && state.navigation && key==='back') {
     tvPadKey(state,key); draw(); announce(); return;
   }
-  if(page==='builder' && builderKey(state,key,()=>{refreshHistory(); draw(); announce();})) {
-    refreshHistory(); draw(); announce(); return;
+  if(page==='builder') {
+    const handled=builderKey(state,key,()=>{refreshHistory(); draw(); announce();});
+    if(state.exit && history.length>1) history.pop();
+    if(handled || state.exit) { refreshHistory(); draw(); announce(); return; }
   }
   if(page==='btRemote' && bluetoothKey(state,key,()=>{draw(); announce();})) { draw(); announce(); return; }
   if(page==='remote') state.sentUntil=0;
@@ -342,7 +323,7 @@ function press(key) {
   } else if (page==='home') {
     if (key==='down' && visibleShortcuts.length) {
       const [name,target]=visibleShortcuts.at(-1);
-      if(target==='layout') history.push(openBuilder(name));
+      if(target==='layout' || (requestedApps ?? getSelectedApps()).has('builder')) history.push(openBuilder(name,target));
       else { remoteDemo.select(name); refreshRemotes(); history.push({page:'remote',row:0}); }
       draw(); announce(); return;
     }
@@ -351,8 +332,13 @@ function press(key) {
   } else if(page==='tvPad') {
     tvPadKey(state,key);
   } else if(page==='signal') {
-    if(key==='ok' && Number.isFinite(signalDbm)) beginNote(page,signalDbm+' dBm at 433.92 MHz');
+    if(key==='left') history.push({page:'tuning',row:state.tuningRow ?? 3});
+    if(key==='ok' && Number.isFinite(signalDbm)) beginNote(page,signalDbm+' dBm at '+meterLabel(state.frequency ?? 433920));
     if(key==='right') browseNotes(page);
+  } else if(page==='tuning' && key==='ok') {
+    history[history.length-2].tuningRow=state.row;
+    if(state.row<meterPresets.length) tuneMeter(meterPresets[state.row]);
+    else enterFrequency(meterBands[state.row-meterPresets.length]);
   } else if(readers[page]) {
     if(key==='left') state.detected=false;
     if(key==='right') browseNotes(page);
@@ -391,12 +377,7 @@ function press(key) {
   } else if(page==='metronome') {
     metronomeInput(state,key,performance.now());
   } else if(page==='pomodoro') {
-    const left=remaining();
-    if(key==='ok') {
-      if(focus.deadline) { focus.left=left; focus.deadline=0; }
-      else focus.deadline=Date.now()+left;
-    }
-    if(key==='left' || key==='right') adjustTimer(left,key==='right');
+    pomodoroKey(key);
   } else if(rows?.length) {
     if(key==='ok') {
       const [name,next]=rows[state.row];
@@ -410,10 +391,14 @@ function press(key) {
       } else if(next==='rename' || next==='add') openRemoteForm(next);
       else {
         if(next==='remote') { remoteDemo.select(name); refreshRemotes(); }
-        if(next==='layout' || next==='builder') history.push(openBuilder(next==='layout'?name:undefined));
+        if(page==='apps' && next==='remote' && (requestedApps ?? getSelectedApps()).has('builder')) history.push(openBuilder(name,'remote'));
+        else if(next==='layout' || next==='builder') history.push(openBuilder(next==='layout'?name:undefined));
         else if(next==='music') history.push(openMusicDemo());
         else if(next==='spotify') history.push(openSpotifyDemo());
-        else if(next==='tvPad') history.push({page:next,profile:state.row,row:2});
+        else if(next==='tvPad') {
+          layoutDemo.addPreset(name,presetButtons(state.row));
+          history.push({page:next,profile:state.row,row:2});
+        }
         else history.push({page:next,row:0});
       }
     }
@@ -534,6 +519,10 @@ display.addEventListener('click', event=>{
     if(button>=0) { state.row=button; press('ok'); }
     return;
   }
+  if (state.page==='pomodoro' && y>=52) {
+    press(x<64?'up':'ok');
+    return;
+  }
   if (state.page==='pomodoro' && !focus.deadline && y>=20 && y<=44) {
     if (x<=26) press('left');
     if (x>=102) press('right');
@@ -555,6 +544,28 @@ display.addEventListener('click', event=>{
   else press('ok');
 });
 
+for (const key of ['left','right']) {
+  const button=panel.querySelector('[data-key='+key+']');
+  let repeat, repeated=false;
+  function stop() { clearTimeout(repeat); }
+  function step() {
+    if (current().page!=='pomodoro' || focus.deadline) return;
+    repeated=true;
+    pomodoroKey(key,true);
+    draw(); announce();
+    repeat=setTimeout(step,200);
+  }
+  button.addEventListener('pointerdown',event=>{
+    repeated=false;
+    if (current().page!=='pomodoro' || focus.deadline || event.button!==0) return;
+    button.setPointerCapture(event.pointerId);
+    repeat=setTimeout(step,500);
+  });
+  for (const event of ['pointerup','pointercancel','lostpointercapture','blur']) button.addEventListener(event,stop);
+  button.addEventListener('click',event=>{
+    if (repeated) { repeated=false; event.stopPropagation(); }
+  });
+}
 const upButton=panel.querySelector('[data-key=up]');
 let upTimer;
 let heldUp=false;

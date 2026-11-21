@@ -17,8 +17,8 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Check radio restrictions
-        run: python3 scripts/tests/test_radio_policy.py
+      - name: Check radio restrictions and remote storage
+        run: python3 -m unittest discover -s scripts/tests
       - name: Fetch pinned firmware dependencies
         run: git submodule update --init --jobs 8 -- assets/protobuf lib
       - name: Build the F7 main package

@@ -65,7 +65,7 @@ export function spotifyKey(s,key) {
 export function spotifyStatus(s) {
   const collection=collections[s.category];
   const heading=collection?.name ?? 'Library';
-  if(s.overlay==='setup') return 'Scan the QR code for the Spotify setup guide. OK returns to '+heading+'.';
+  if(s.overlay==='setup') return 'Scan the QR code to link Spotify in a browser with Bluetooth. OK returns to '+heading+'.';
   const title=currentRows(s)[s.row];
   if(s.overlay==='playing') return 'Playing '+title+' in the sample library. OK or Back returns to '+heading+'.';
   if(!collection) return 'Sample library. '+title+'. Up or Down selects a category. OK opens it.';
@@ -86,7 +86,7 @@ export function drawSpotify(ctx,s) {
     if(setupQr.naturalWidth) ctx.drawImage(setupQr,2,18,setupQr.naturalWidth,setupQr.naturalHeight);
     ctx.fillText('Spotify setup',46,24);
     ctx.font='8px sans-serif';
-    ctx.fillText('Scan for guide',46,37);
+    ctx.fillText('Scan to link',46,37);
     ctx.fillText('OK: Done',46,55);
   } else if(s.overlay==='playing') {
     ctx.font='8px sans-serif';

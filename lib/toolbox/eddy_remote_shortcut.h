@@ -4,7 +4,9 @@
 #include <storage/storage.h>
 #include <strings.h>
 #include "eddy_layout_path.h"
+#include "eddy_ir_snapshot.h"
 
+#define EDDY_REMOTES_FAP       EXT_PATH("apps/assets/eddy_remote_builder.fap")
 #define EDDY_REMOTE_PIN_PATH   EXT_PATH("infrared/.eddy_pin")
 #define EDDY_REMOTE_PIN_TEMP   EDDY_REMOTE_PIN_PATH ".tmp"
 #define EDDY_REMOTE_PIN_V1     "Eddy IR 1\n"
@@ -128,13 +130,12 @@ static inline bool eddy_remote_pins_load(Storage* storage, EddyRemotePins* pins)
     if(!eddy_remote_pins_read(storage, pins, NULL)) return false;
     if(!pins->count) return true;
     const bool infrared = storage_file_exists(storage, EXT_PATH("apps/Infrared/infrared.fap"));
-    const bool builder =
-        storage_file_exists(storage, EXT_PATH("apps/assets/eddy_remote_builder.fap"));
+    const bool builder = storage_file_exists(storage, EDDY_REMOTES_FAP);
     for(size_t i = pins->count; i > 0; --i) {
         const char* path = furi_string_get_cstr(pins->paths[i - 1]);
         bool exists = eddy_layout_path_valid(path) ?
                           builder && eddy_layout_restore_file(storage, path) :
-                          infrared && storage_file_exists(storage, path);
+                          (infrared || builder) && eddy_ir_restore(storage, path) == FSE_OK;
         if(!exists) {
             eddy_remote_pin_erase(pins, i - 1);
         }
@@ -203,7 +204,8 @@ static inline EddyPinResult
         for(size_t i = pins.count; i > 0; --i) {
             const char* path = furi_string_get_cstr(pins.paths[i - 1]);
             if(storage_common_stat(storage, path, NULL) == FSE_NOT_EXIST &&
-               !(eddy_layout_path_valid(path) && eddy_layout_restore_file(storage, path))) {
+               !(eddy_layout_path_valid(path) ? eddy_layout_restore_file(storage, path) :
+                                                eddy_ir_restore(storage, path) == FSE_OK)) {
                 eddy_remote_pin_erase(&pins, i - 1);
             }
         }

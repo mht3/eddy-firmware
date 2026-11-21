@@ -1,6 +1,7 @@
 #pragma once
 
 #include "desktop.h"
+#include "eddy_timer.h"
 #include "desktop_settings.h"
 #include "desktop_keybinds.h"
 
@@ -74,6 +75,7 @@ struct Desktop {
     FuriPubSub* input_events_pubsub;
     FuriPubSubSubscription* input_events_subscription;
 
+    EddyTimer* focus_timer;
     FuriTimer* auto_lock_timer;
     FuriTimer* update_clock_timer;
 
@@ -98,3 +100,6 @@ void desktop_unlock(Desktop* desktop);
 int32_t desktop_shutdown(void* context);
 void desktop_set_stealth_mode_state(Desktop* desktop, bool enabled);
 void desktop_launch_archive(Desktop* desktop, const char* open_dir);
+
+EddyTimer* eddy_timer_alloc(Storage* storage, NotificationApp* notification);
+void eddy_timer_tick(EddyTimer* timer);

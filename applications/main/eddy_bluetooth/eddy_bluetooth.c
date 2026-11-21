@@ -1,15 +1,14 @@
 #include <bt/bt_service/bt.h>
 #include <dialogs/dialogs.h>
-#include <extra_profiles/hid_profile.h>
+#include <profiles/serial_profile.h>
 #include <furi.h>
 #include <furi_hal_bt.h>
-#include <furi_hal_usb_hid.h>
+#include <furi_hal_version.h>
 #include <gui/view_dispatcher.h>
 #include <gui/modules/text_input.h>
 #include <toolbox/saved_struct.h>
 #include <storage/storage.h>
 
-#define REMOTE_KEYS     APP_DATA_PATH(".remote.keys")
 #define HOST_LABEL_SIZE 15
 
 enum {
@@ -40,7 +39,6 @@ typedef struct {
 typedef struct {
     Bt* bt;
     View* view;
-    FuriHalBleProfileBase* hid;
     ViewDispatcher* dispatcher;
     TextInput* name_input;
     Storage* storage;
@@ -75,8 +73,8 @@ static void remote_draw(Canvas* canvas, void* context) {
     canvas_draw_str(canvas, 2, 10, model->in_mode ? mode_names[model->mode] : "Bluetooth Remote");
     canvas_set_font(canvas, FontSecondary);
     if(!model->available) {
-        canvas_draw_str(canvas, 3, 32, "Bluetooth unavailable");
-        canvas_draw_str(canvas, 3, 55, "Back to Apps");
+        canvas_draw_str(canvas, 3, 32, "Turn Bluetooth on in");
+        canvas_draw_str(canvas, 3, 45, "Settings > Bluetooth.");
         return;
     }
     if(!model->in_mode) {
@@ -148,12 +146,22 @@ static void remote_draw(Canvas* canvas, void* context) {
     }
 }
 
+static void remote_link_event(BleMediaEvent event, const void* data, size_t size, void* context) {
+    UNUSED(data);
+    UNUSED(size);
+    if(event != BleMediaLink) return;
+    Remote* app = context;
+    // Require the foreground UI to identify the new peer before sending another button.
+    with_view_model(app->view, RemoteModel * model, { model->connected = false; }, true);
+}
+
 // Display and act on the paired link only. A new host must be drawn before it can receive input.
 static bool remote_refresh(Remote* app) {
     uint8_t peer[GAP_MAC_ADDR_SIZE];
-    bool connected = app->hid && bt_get_connected_peer_address(app->bt, peer);
+    bool available = ble_svc_media_listen(remote_link_event, app) && furi_hal_bt_is_active();
+    bool connected = available && bt_get_connected_peer_address(app->bt, peer);
     RemoteModel* model = view_get_model(app->view);
-    bool changed = model->connected != connected ||
+    bool changed = model->available != available || model->connected != connected ||
                    (connected && memcmp(model->peer, peer, sizeof(peer)) != 0);
     if(changed) {
         view_commit_model(app->view, false);
@@ -161,6 +169,7 @@ static bool remote_refresh(Remote* app) {
         if(connected) remote_load_label(app, peer, label);
         model = view_get_model(app->view);
         strlcpy(model->label, label, sizeof(model->label));
+        model->available = available;
         model->connected = connected;
         if(connected) memcpy(model->peer, peer, sizeof(peer));
         model->feedback = NULL;
@@ -176,33 +185,24 @@ static void remote_tick(void* context) {
 }
 
 static const char* remote_action(Remote* app, RemoteMode mode, InputKey key) {
-    uint16_t usage;
+    BleMediaCommand command;
     const char* feedback;
-    bool keyboard = mode == RemoteSlides;
     if(mode == RemoteCamera && key == InputKeyOk) {
-        usage = HID_CONSUMER_VOLUME_INCREMENT;
+        command = BleMediaVolumeUp;
         feedback = "Shutter sent";
     } else if(mode == RemoteMedia && key == InputKeyOk) {
-        usage = HID_CONSUMER_PLAY_PAUSE;
+        command = BleMediaPlayPause;
         feedback = "Play / pause sent";
     } else if(mode != RemoteCamera && key == InputKeyLeft) {
-        usage = keyboard ? HID_KEYBOARD_LEFT_ARROW : HID_CONSUMER_SCAN_PREVIOUS_TRACK;
+        command = mode == RemoteSlides ? BleMediaPreviousSlide : BleMediaPrevious;
         feedback = "Previous sent";
     } else if(mode != RemoteCamera && key == InputKeyRight) {
-        usage = keyboard ? HID_KEYBOARD_RIGHT_ARROW : HID_CONSUMER_SCAN_NEXT_TRACK;
+        command = mode == RemoteSlides ? BleMediaNextSlide : BleMediaNext;
         feedback = "Next sent";
     } else {
         return NULL;
     }
-    bool pressed, released;
-    if(keyboard) {
-        pressed = ble_profile_hid_kb_press(app->hid, usage);
-        released = ble_profile_hid_kb_release(app->hid, usage);
-    } else {
-        pressed = ble_profile_hid_consumer_key_press(app->hid, usage);
-        released = ble_profile_hid_consumer_key_release(app->hid, usage);
-    }
-    return pressed && released ? feedback : "Try again";
+    return ble_svc_media_send(app, command, true) ? feedback : "Try again";
 }
 
 static uint32_t remote_name_back(void* context) {
@@ -315,16 +315,16 @@ int32_t eddy_bluetooth_app(void* argument) {
     app.storage = furi_record_open(RECORD_STORAGE);
     text_input_set_header_text(app.name_input, "Name this device");
     view_set_previous_callback(text_input_get_view(app.name_input), remote_name_back);
-    BleProfileHidParams params = {.device_name_prefix = "Eddy", .mac_xor = 0xED01};
-    GapConfig config;
-    ble_profile_hid->get_gap_config(&config, &params);
     view_allocate_model(app.view, ViewModelTypeLocking, sizeof(RemoteModel));
     with_view_model(
         app.view,
         RemoteModel * model,
         {
             *model = (RemoteModel){0};
-            strlcpy(model->advertised_name, config.adv_name + 1, sizeof(model->advertised_name));
+            strlcpy(
+                model->advertised_name,
+                furi_hal_version_get_device_name_ptr(),
+                sizeof(model->advertised_name));
         },
         false);
     view_set_context(app.view, &app);
@@ -336,33 +336,12 @@ int32_t eddy_bluetooth_app(void* argument) {
     view_dispatcher_add_view(dispatcher, RemoteViewMain, app.view);
     view_dispatcher_add_view(dispatcher, RemoteViewName, text_input_get_view(app.name_input));
 
-    bt_disconnect(app.bt);
-    furi_delay_ms(200); // Give the radio time to flush the previous profile's keys.
-    bt_keys_storage_set_storage_path(app.bt, REMOTE_KEYS);
-    app.hid = bt_profile_start(app.bt, ble_profile_hid, &params);
-    if(app.hid) {
-        furi_hal_bt_start_advertising();
-        with_view_model(app.view, RemoteModel * model, { model->available = true; }, false);
-    }
+    remote_refresh(&app);
     view_dispatcher_attach_to_gui(dispatcher, gui, ViewDispatcherTypeFullscreen);
     view_dispatcher_switch_to_view(dispatcher, RemoteViewMain);
     view_dispatcher_run(dispatcher);
 
-    if(app.hid) {
-        bt_disconnect(app.bt);
-        furi_delay_ms(200);
-    }
-    bt_keys_storage_set_default_path(app.bt);
-    if(!bt_profile_restore_default(app.bt)) {
-        DialogsApp* dialogs = furi_record_open(RECORD_DIALOGS);
-        DialogMessage* message = dialog_message_alloc();
-        dialog_message_set_text(
-            message, "Restart Flipper to\nrestore Bluetooth.", 64, 30, AlignCenter, AlignCenter);
-        dialog_message_set_buttons(message, NULL, "OK", NULL);
-        dialog_message_show(dialogs, message);
-        dialog_message_free(message);
-        furi_record_close(RECORD_DIALOGS);
-    }
+    ble_svc_media_unlisten(&app);
     view_dispatcher_remove_view(dispatcher, RemoteViewName);
     view_dispatcher_remove_view(dispatcher, RemoteViewMain);
     text_input_free(app.name_input);

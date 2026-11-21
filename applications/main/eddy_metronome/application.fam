@@ -3,7 +3,7 @@ App(
     name="Metronome",
     apptype=FlipperAppType.MENUEXTERNAL,
     entry_point="eddy_metronome_app",
-    icon="I_music_10px",
+    icon="I_Metronome_14x14",
     order=80,
     stack_size=2048,
     fap_category="assets",

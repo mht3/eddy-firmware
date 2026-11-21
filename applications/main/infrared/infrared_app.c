@@ -506,6 +506,7 @@ int32_t infrared_app(void* p) {
 
     infrared_load_settings(infrared);
     infrared_make_app_folder(infrared);
+    infrared_remote_recover_library(infrared->storage);
 
     bool is_remote_loaded = false;
     bool is_rpc_mode = false;

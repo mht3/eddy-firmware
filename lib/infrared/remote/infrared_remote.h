@@ -12,6 +12,9 @@
 #pragma once
 
 #include <lib/infrared/signal/infrared_signal.h>
+#include <storage/storage.h>
+
+void infrared_remote_recover_library(Storage* storage);
 
 /**
  * @brief InfraredRemote opaque type declaration.
@@ -160,6 +163,13 @@ InfraredErrorCode infrared_remote_insert_signal(
  */
 InfraredErrorCode
     infrared_remote_rename_signal(InfraredRemote* remote, size_t index, const char* new_name);
+
+/** Rename a signal and optionally replace its waveform in the same file update. */
+InfraredErrorCode infrared_remote_set_signal(
+    InfraredRemote* remote,
+    size_t index,
+    const char* new_name,
+    const InfraredSignal* signal);
 
 /**
  * @brief Change a signal's position in the file associated with an InfraredRemote instance.

@@ -32,13 +32,15 @@ typedef void (
     *BleMediaEventCallback)(BleMediaEvent event, const void* data, size_t size, void* context);
 
 // These values are shared with the optional browser bridge. HID uses the
-// corresponding bits in its single consumer-control input report.
+// corresponding bits in its consumer report. Slide controls are HID-only.
 typedef enum {
     BleMediaPrevious = 1,
     BleMediaPlayPause,
     BleMediaNext,
     BleMediaVolumeUp,
     BleMediaVolumeDown,
+    BleMediaPreviousSlide,
+    BleMediaNextSlide,
 } BleMediaCommand;
 
 bool ble_svc_media_listen(BleMediaEventCallback callback, void* context);

@@ -32,7 +32,6 @@ static void quick_draw(Canvas* canvas, void* context) {
     const QuickSettings* model = context;
     const NotificationSettings* settings = &model->notification->settings;
     const char* labels[] = {"Brightness", "Volume", "Settings"};
-    const Icon* icons[] = {&I_Pin_star_7x7, &I_Volup_8x6, &I_CC_Settings_16x16};
     for(size_t i = 0; i < QuickCount; i++) {
         const int x = 21 + i * 42;
         const int width = i == QuickDetails ? 27 : 15;
@@ -42,13 +41,12 @@ static void quick_draw(Canvas* canvas, void* context) {
         if(i != QuickDetails) {
             unsigned pct = level_percent(
                 i == QuickBrightness ? settings->display_brightness : settings->speaker_volume);
-            int height = (23 * pct + 50) / 100;
-            if(height) canvas_draw_box(canvas, x - 5, 36 - height, 11, height);
-            canvas_set_color(canvas, ColorXOR);
+            // Keep the fill inside the straight sides, clear of the rounded corners.
+            int height = (19 * pct + 50) / 100;
+            if(height) canvas_draw_box(canvas, x - 4, 35 - height, 9, height);
+        } else {
+            canvas_draw_icon(canvas, x - 8, 16, &I_CC_Settings_16x16);
         }
-        canvas_draw_icon(
-            canvas, x - icon_get_width(icons[i]) / 2, 24 - icon_get_height(icons[i]) / 2, icons[i]);
-        canvas_set_color(canvas, ColorBlack);
         canvas_set_font(canvas, FontSecondary);
         canvas_draw_str_aligned(canvas, x, 49, AlignCenter, AlignBottom, labels[i]);
     }

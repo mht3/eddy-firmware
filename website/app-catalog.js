@@ -2,7 +2,7 @@ import {spotifyConfigured} from './spotify/config.js';
 
 // The id opens the same app in the web preview. appId identifies its packaged FAP.
 export const catalog = [
-  {id:'signal', name:'Sub-GHz', appId:'eddy_signal', core:true, description:'Watch signal strength at 433.92 MHz and save a reading.'},
+  {id:'signal', name:'Sub-GHz', appId:'eddy_signal', core:true, description:'Tune a receive frequency, watch signal strength and save a reading.'},
   {id:'rfid', name:'RFID', appId:'eddy_rfid', core:true, description:'Identify a 125 kHz tag and save its type with a name.'},
   {id:'nfc', name:'NFC', appId:'eddy_nfc', core:true, description:'Identify the protocol of a nearby contactless card.'},
   {id:'infrared', name:'Infrared', appId:'infrared', core:true, description:'Use a TV preset or learn buttons from your own remote.'},
@@ -10,7 +10,7 @@ export const catalog = [
   {id:'ibutton', name:'iButton', appId:'eddy_ibutton', core:true, description:'Touch a contact key to the Flipper to identify its type.'},
   {id:'pomodoro', name:'Pomodoro Timer', appId:'eddy_pomodoro', core:false, description:'Set timers for focus sessions and short breaks.'},
   {id:'metronome', name:'Metronome', appId:'eddy_metronome', core:false, description:'Tap in a tempo and feel each beat on your Flipper.'},
-  {id:'builder', name:'Remote Builder', appId:'eddy_remote_builder', core:false, description:'Design a six-button infrared remote with your own labels.'},
+  {id:'builder', name:'Remotes', appId:'eddy_remote_builder', core:false, description:'Save infrared remotes, add TV presets and arrange your own buttons.'},
   {id:'btRemote', name:'Bluetooth Remote', appId:'eddy_bluetooth', core:false, description:'Control a camera shutter, presentation, or music over Bluetooth.'},
   {id:'music', name:'Music', appId:'eddy_music', core:false, description:'Control Apple Music or Spotify on your phone. See the song and artist with a paired iPhone.'},
   {id:'spotify', name:'Spotify', appId:'eddy_spotify', core:false, description:spotifyConfigured ? 'Browse Liked Songs, playlists and albums. Account linking is available to invited testers.' : 'Try sample Liked Songs, playlists and albums. Personal account linking is currently unavailable.'},

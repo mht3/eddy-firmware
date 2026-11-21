@@ -89,7 +89,9 @@ bool desktop_scene_main_on_event(void* context, SceneManagerEvent event) {
             FuriString* path = furi_string_alloc();
             if(eddy_remote_shortcut_get(desktop->storage, path)) {
                 const char* file = furi_string_get_cstr(path);
-                const char* app = eddy_layout_path_valid(file) ? "Remote Builder" : "Infrared";
+                const char* app = storage_file_exists(desktop->storage, EDDY_REMOTES_FAP) ?
+                                      "Remotes" :
+                                      "Infrared";
                 loader_start_detached_with_gui_error(desktop->loader, app, file);
             } else {
                 loader_start_detached_with_gui_error(

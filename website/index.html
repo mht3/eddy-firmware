@@ -150,6 +150,13 @@
           <a class="cta" href="update/">Open Eddy updater</a>
         </div>
       </section>
+      <dialog id="frequency-dialog" class="name-dialog" aria-labelledby="frequency-label">
+        <form method="dialog">
+          <label id="frequency-label" for="receive-frequency">Receive frequency (kHz)</label>
+          <input type="number" id="receive-frequency" inputmode="numeric" step="1" required>
+          <div><button type="button">Cancel</button><button type="submit">Tune</button></div>
+        </form>
+      </dialog>
       <dialog id="observation-dialog" class="name-dialog" aria-label="Save observation">
         <form method="dialog">
           <label for="observation-name">Name observation</label>
