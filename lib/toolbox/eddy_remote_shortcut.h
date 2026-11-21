@@ -3,6 +3,7 @@
 #include <furi.h>
 #include <storage/storage.h>
 #include <strings.h>
+#include "eddy_layout_path.h"
 
 #define EDDY_REMOTE_PIN_PATH   EXT_PATH("infrared/.eddy_pin")
 #define EDDY_REMOTE_PIN_TEMP   EDDY_REMOTE_PIN_PATH ".tmp"
@@ -13,6 +14,7 @@
 
 // Accept normal user remote paths, including remotes saved in nested directories.
 static inline bool eddy_remote_path_valid(const char* path) {
+    if(eddy_layout_path_valid(path)) return true;
     const char root[] = EXT_PATH("infrared/");
     if(strncmp(path, root, sizeof(root) - 1) != 0) return false;
     const char* component = path + sizeof(root) - 1;
@@ -125,7 +127,10 @@ static inline void eddy_remote_pin_erase(EddyRemotePins* pins, size_t index) {
 static inline bool eddy_remote_pins_load(Storage* storage, EddyRemotePins* pins) {
     if(!eddy_remote_pins_read(storage, pins, NULL)) return false;
     for(size_t i = pins->count; i > 0; --i) {
-        if(!storage_file_exists(storage, furi_string_get_cstr(pins->paths[i - 1]))) {
+        const char* path = furi_string_get_cstr(pins->paths[i - 1]);
+        bool exists = eddy_layout_path_valid(path) ? eddy_layout_restore_file(storage, path) :
+                                                     storage_file_exists(storage, path);
+        if(!exists) {
             eddy_remote_pin_erase(pins, i - 1);
         }
     }
@@ -191,8 +196,9 @@ static inline EddyPinResult
     } else if(new_path && eddy_remote_pin_index(&pins, new_path) == pins.count) {
         // Manually deleted remotes do not consume a shortcut slot.
         for(size_t i = pins.count; i > 0; --i) {
-            if(storage_common_stat(storage, furi_string_get_cstr(pins.paths[i - 1]), NULL) ==
-               FSE_NOT_EXIST) {
+            const char* path = furi_string_get_cstr(pins.paths[i - 1]);
+            if(storage_common_stat(storage, path, NULL) == FSE_NOT_EXIST &&
+               !(eddy_layout_path_valid(path) && eddy_layout_restore_file(storage, path))) {
                 eddy_remote_pin_erase(&pins, i - 1);
             }
         }

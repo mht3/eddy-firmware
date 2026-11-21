@@ -49,6 +49,16 @@ void bt_set_status_changed_callback(Bt* bt, BtStatusChangedCallback callback, vo
     bt->status_changed_ctx = context;
 }
 
+bool bt_get_connected_peer_address(Bt* bt, uint8_t* address) {
+    furi_check(bt);
+    furi_check(address);
+    FURI_CRITICAL_ENTER();
+    bool connected = bt->has_connected_peer;
+    if(connected) memcpy(address, bt->connected_peer, sizeof(bt->connected_peer));
+    FURI_CRITICAL_EXIT();
+    return connected;
+}
+
 void bt_forget_bonded_devices(Bt* bt) {
     furi_check(bt);
     BtMessage message = {.type = BtMessageTypeForgetBondedDevices};

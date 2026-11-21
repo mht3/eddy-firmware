@@ -26,9 +26,12 @@ typedef enum {
     GapEventTypeUpdateMTU,
     GapEventTypeBeaconStart,
     GapEventTypeBeaconStop,
+    GapEventTypePeerSecurityChanged,
 } GapEventType;
 
 typedef union {
+    // Borrowed during connected and peer-security callbacks. NULL on security loss.
+    const uint8_t* peer_address;
     uint32_t pin_code;
     uint16_t max_packet_size;
 } GapEventData;

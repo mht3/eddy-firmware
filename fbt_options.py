@@ -103,6 +103,8 @@ FIRMWARE_APPS = {
         "eddy_ibutton",
         "eddy_pomodoro",
         "eddy_metronome",
+        "eddy_remote_builder",
+        "eddy_bluetooth",
         "eddy_signal",
         "infrared",
         "gpio",

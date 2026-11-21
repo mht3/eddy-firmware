@@ -88,8 +88,9 @@ bool desktop_scene_main_on_event(void* context, SceneManagerEvent event) {
         case DesktopMainEventOpenShortcut: {
             FuriString* path = furi_string_alloc();
             if(eddy_remote_shortcut_get(desktop->storage, path)) {
-                loader_start_detached_with_gui_error(
-                    desktop->loader, "Infrared", furi_string_get_cstr(path));
+                const char* file = furi_string_get_cstr(path);
+                const char* app = eddy_layout_path_valid(file) ? "Remote Builder" : "Infrared";
+                loader_start_detached_with_gui_error(desktop->loader, app, file);
             } else {
                 loader_start_detached_with_gui_error(
                     desktop->loader, LOADER_APPLICATIONS_NAME, NULL);

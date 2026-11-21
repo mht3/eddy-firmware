@@ -1,3 +1,5 @@
+import {openBuilder, builderKey, builderStatus, drawBuilder} from './builder-preview.js';
+import {bluetoothKey, bluetoothStatus, drawBluetooth} from './bluetooth-preview.js';
 import {drawMetronome, metronomeInput, metronomeStatus} from './metronome.js';
 import {drawLauncher, sections, apps, launcherArt} from './launcher.js';
 import {settingsRows, settingsSamples, drawQuick, quickStatus, adjustQuick} from './quick-settings.js';
@@ -13,12 +15,12 @@ const status = document.querySelector('#preview-state');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const ink = '#432a14';
 const titles = {
-  noteList:'Saved observations', noteDetail:'Saved observation',
+  builder:'Remote Builder', btRemote:'Bluetooth Remote', noteList:'Saved observations', noteDetail:'Saved observation',
   home:'Home screen', menu:'Launcher', apps:'Apps', settings:'Settings', power:'Power',
   signal:'Sub-GHz', rfid:'RFID', nfc:'NFC', infrared:'Infrared', gpio:'GPIO', ibutton:'iButton',
   metronome:'Metronome', pomodoro:'Pomodoro Timer', battery:'Battery info', restart:'Restart?', shutdown:'Power off?',
   off:'Powered off', about:'About', clock:'Clock & Alarm', passport:'Passport', remotes:'My remotes',
-  savedRemote:'Remote saved', pinsFull:'Apps shortcuts full', deleteRemote:'Delete this remote?', tester:'Button tester', detected:'Signal detected', quick:'Quick settings', remote:'Remote', editRemote:'Edit remote', learn:'Learn a demo remote', pins:'GPIO pins', uart:'USB to UART',
+  savedRemote:'Remote saved', pinsFull:'Apps shortcuts full', pinStorage:'Could not save shortcut', deleteRemote:'Delete this remote?', tester:'Button tester', detected:'Signal detected', quick:'Quick settings', remote:'Remote', editRemote:'Edit remote', learn:'Learn a demo remote', pins:'GPIO pins', uart:'USB to UART',
 };
 const readerArt = {};
 for (const kind of ['card','contact']) {
@@ -34,7 +36,7 @@ const readers = {
 };
 const readerTypes = {rfid:'EM4100', nfc:'ISO 14443-4A', ibutton:'Dallas'};
 const samples = {
-  pinsFull:['Unpin another remote.','Back to return'], deleteRemote:['Left: Cancel','Right: Delete'],
+  pinStorage:['Check browser storage.','Back to return'], pinsFull:['Unpin another remote.','Back to return'], deleteRemote:['Left: Cancel','Right: Delete'],
   tester:['Try a demo IR button','OK for a sample signal'], detected:['Sample IR detected','OK to test another'],
   remotes:['No remotes yet'],
   learn:['Point your remote','at the Flipper'], pins:['No module attached'], uart:['Connect via USB'],
@@ -53,7 +55,7 @@ const lists = {
 };
 function refreshRemotes() {
   const saved=remoteDemo.rows;
-  lists.apps=[...apps,...remoteDemo.pins.map(name=>[name,'remote'])];
+  lists.apps=[...apps,...remoteDemo.shortcuts];
   lists.remotes=saved.length ? saved : [['Learn a remote','learn']];
   titles.remotes=saved.length?'My remotes':'No remotes yet';
   delete samples.remotes;
@@ -230,6 +232,10 @@ function draw() {
     drawLauncher(ctx,page,row,lists.apps);
   } else if (page === 'quick') {
     drawQuick(ctx,row);
+  } else if (page === 'builder') {
+    drawBuilder(ctx,current());
+  } else if (page === 'btRemote') {
+    drawBluetooth(ctx,current());
   } else if (page === 'metronome') {
     const delay=drawMetronome(ctx,current(),performance.now());
     if (delay) timer=setTimeout(draw,delay);
@@ -280,7 +286,9 @@ function announce() {
   if (page==='remote' && current().sentUntil > performance.now()) text += '. Demo button pressed.';
   if (page==='deleteRemote') text+='. Left to cancel. Right to confirm.';
   if (page==='quick') text+=', '+quickStatus(row);
-  if (page==='home' && remoteDemo.pin) text+='. Down opens '+remoteDemo.pin;
+  if (page==='home' && remoteDemo.shortcuts.length) text+='. Down opens '+remoteDemo.shortcuts.at(-1)[0];
+  if (page==='builder') text+='. '+(current().name || '')+' '+builderStatus(current());
+  if (page==='btRemote') text+='. '+bluetoothStatus(current());
   if (page!=='off') text += '. Sample battery '+sampleCharge+'%, not charging.';
   if (page==='home') text += ' Press OK for the launcher or Up for quick settings.';
   if (page==='signal') text+='. Sample signal at 433.92 MHz. OK to save this reading, Right for saved readings.';
@@ -291,6 +299,10 @@ function announce() {
 
 function press(key) {
   const state=current(), page=state.page, rows=lists[page];
+  if(page==='builder' && builderKey(state,key,()=>{refreshHistory(); draw(); announce();})) {
+    refreshHistory(); draw(); announce(); return;
+  }
+  if(page==='btRemote' && bluetoothKey(state,key,()=>{draw(); announce();})) { draw(); announce(); return; }
   if(page==='remote') state.sentUntil=0;
   const action = page==='menu' && key==='ok' && rows[state.row][1]==='off'
     ? 'off' : powerAction(page,state.row,key);
@@ -300,10 +312,10 @@ function press(key) {
   } else if (key==='back') {
     if (history.length>1) history.pop();
   } else if (page==='home') {
-    if (key==='down' && remoteDemo.pin) {
-      remoteDemo.select(remoteDemo.pin);
-      refreshRemotes();
-      history.push({page:'remote',row:0});
+    if (key==='down' && remoteDemo.shortcuts.length) {
+      const [name,target]=remoteDemo.shortcuts.at(-1);
+      if(target==='layout') history.push(openBuilder(name));
+      else { remoteDemo.select(name); refreshRemotes(); history.push({page:'remote',row:0}); }
       draw(); announce(); return;
     }
     const next={ok:'menu',up:'quick',down:'apps',right:'passport',left:'clock'}[key];
@@ -333,7 +345,7 @@ function press(key) {
     if(key==='left') history.pop();
     if(key==='right') {
       if(remoteDemo.setPinned(true)) history.pop();
-      else history.push({page:'pinsFull',row:0});
+      else history.push({page:remoteDemo.pinError==='full'?'pinsFull':'pinStorage',row:0});
       refreshHistory();
     }
   } else if(page==='deleteRemote') {
@@ -356,14 +368,17 @@ function press(key) {
     if(key==='ok') {
       const [name,next]=rows[state.row];
       if(next==='pin') {
-        if(!remoteDemo.setPinned(!remoteDemo.pins.includes(remoteDemo.active))) history.push({page:'pinsFull',row:0});
+        if(!remoteDemo.setPinned(!remoteDemo.pins.includes(remoteDemo.active))) {
+          history.push({page:remoteDemo.pinError==='full'?'pinsFull':'pinStorage',row:0});
+        }
         refreshHistory();
       } else if(next==='command') {
         state.sentUntil=performance.now()+700;
       } else if(next==='rename' || next==='add') openRemoteForm(next);
       else {
         if(next==='remote') { remoteDemo.select(name); refreshRemotes(); }
-        history.push({page:next,row:0});
+        if(next==='layout' || next==='builder') history.push(openBuilder(next==='layout'?name:undefined));
+        else history.push({page:next,row:0});
       }
     }
     else if(page==='apps' && (key==='up' || key==='down')) {
@@ -442,6 +457,19 @@ display.addEventListener('click', event=>{
   else press('ok');
 });
 
+const okButton=panel.querySelector('[data-key=ok]');
+let editTimer;
+let heldOk=false;
+okButton.addEventListener('pointerdown',event=>{
+  heldOk=false;
+  if(!(current().page==='builder' && current().step==='grid') &&
+     !(current().page==='btRemote' && !current().mode)) return;
+  okButton.setPointerCapture(event.pointerId);
+  editTimer=setTimeout(()=>{ heldOk=true; press('hold'); },600);
+});
+for(const event of ['pointerup','pointercancel','lostpointercapture']) {
+  okButton.addEventListener(event,()=>clearTimeout(editTimer));
+}
 const backButton=panel.querySelector('[data-key=back]');
 let hold;
 let heldBack=false;
@@ -460,6 +488,7 @@ for(const event of ['pointerup','pointercancel','lostpointercapture']) {
 }
 panel.addEventListener('click', event => {
   const button = event.target.closest('[data-key]');
+  if (button===okButton && heldOk) { heldOk=false; return; }
   if (button===backButton && heldBack) { heldBack=false; return; }
   if (button) press(button.dataset.key);
 });

@@ -59,6 +59,13 @@ void bt_disconnect(Bt* bt);
  */
 void bt_set_status_changed_callback(Bt* bt, BtStatusChangedCallback callback, void* context);
 
+/** Copy the active paired peer's address in controller (least significant byte first) order.
+ * The address may be private and change between connections.
+ * @param address Storage for GAP_MAC_ADDR_SIZE bytes
+ * @return true if a paired peer is connected
+ */
+bool bt_get_connected_peer_address(Bt* bt, uint8_t* address);
+
 /** Forget bonded devices
  * @note Leads to wipe ble key storage and deleting bt.keys
  *

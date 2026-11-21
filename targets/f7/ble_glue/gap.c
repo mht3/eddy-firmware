@@ -21,6 +21,7 @@ typedef struct {
     uint16_t dev_name_char_handle;
     uint16_t appearance_char_handle;
     uint16_t connection_handle;
+    uint8_t peer_address[GAP_MAC_ADDR_SIZE];
     uint8_t adv_svc_uuid_len;
     uint8_t adv_svc_uuid[20];
     uint8_t mfg_data_len;
@@ -148,6 +149,26 @@ BleEventFlowStatus ble_event_app_notification(void* pckt) {
         gap->on_event_cb(event, gap->context);
     } break;
 
+    case HCI_ENCRYPTION_CHANGE_EVT_CODE: {
+        // Bonded reconnects may resume encryption without repeating pairing.
+        // Only expose the peer after the controller confirms an authenticated link.
+        const hci_encryption_change_event_rp0* change = (const void*)event_pckt->data;
+        if(change->Connection_Handle == gap->service.connection_handle) {
+            uint8_t mode = 0;
+            uint8_t level = 0;
+            bool authenticated =
+                change->Status == BLE_STATUS_SUCCESS && change->Encryption_Enabled &&
+                aci_gap_get_security_level(change->Connection_Handle, &mode, &level) ==
+                    BLE_STATUS_SUCCESS &&
+                mode == 1 && level >= 3;
+            GapEvent event = {
+                .type = GapEventTypePeerSecurityChanged,
+                .data.peer_address = authenticated ? gap->service.peer_address : NULL,
+            };
+            gap->on_event_cb(event, gap->context);
+        }
+    } break;
+
     case HCI_LE_META_EVT_CODE:
         meta_evt = (evt_le_meta_event*)event_pckt->data;
         switch(meta_evt->subevent) {
@@ -191,6 +212,7 @@ BleEventFlowStatus ble_event_app_notification(void* pckt) {
             // Update connection status and handle
             gap->state = GapStateConnected;
             gap->service.connection_handle = event->Connection_Handle;
+            memcpy(gap->service.peer_address, event->Peer_Address, GAP_MAC_ADDR_SIZE);
 
             gap_verify_connection_parameters(gap);
             if(gap->config->pairing_method != GapPairingNone) {
@@ -277,7 +299,8 @@ BleEventFlowStatus ble_event_app_notification(void* pckt) {
                 aci_gap_terminate(gap->service.connection_handle, 5);
             } else {
                 FURI_LOG_I(TAG, "Pairing complete");
-                GapEvent event = {.type = GapEventTypeConnected};
+                GapEvent event = {
+                    .type = GapEventTypeConnected, .data.peer_address = gap->service.peer_address};
                 gap->on_event_cb(event, gap->context); //-V595
             }
             break;

@@ -118,6 +118,8 @@ static const LauncherItem apps[] = {
     {"iButton", &A_iButton_14},
     {"Pomodoro Timer", &I_Clock_18x18},
     {"Metronome", &I_music_10px},
+    {"Remote Builder", &I_RemoteLayout_14x14},
+    {"Bluetooth Remote", &I_Ble_connected_15x15},
 };
 
 static const LauncherItem sections[] = {
@@ -254,7 +256,8 @@ static bool launcher_input(InputEvent* event, void* context) {
     }
     if(remote_path) {
         if(storage_file_exists(launcher->storage, remote_path)) {
-            loader_start_detached_with_gui_error(launcher->menu->loader, "Infrared", remote_path);
+            const char* app = eddy_layout_path_valid(remote_path) ? "Remote Builder" : "Infrared";
+            loader_start_detached_with_gui_error(launcher->menu->loader, app, remote_path);
         } else {
             with_view_model(
                 launcher->grid, LauncherModel * grid, { grid->remote_unavailable = true; }, true);

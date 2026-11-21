@@ -1,5 +1,5 @@
 entry,status,name,type,params
-Version,+,87.1,,
+Version,+,87.2,,
 Header,+,applications/drivers/subghz/cc1101_ext/cc1101_ext_interconnect.h,,
 Header,+,applications/main/archive/helpers/archive_helpers_ext.h,,
 Header,+,applications/services/applications.h,,
@@ -811,6 +811,7 @@ Function,+,ble_svc_serial_update_tx,_Bool,"BleServiceSerial*, uint8_t*, uint16_t
 Function,-,bsearch,void*,"const void*, const void*, size_t, size_t, __compar_fn_t"
 Function,+,bt_disconnect,void,Bt*
 Function,+,bt_forget_bonded_devices,void,Bt*
+Function,+,bt_get_connected_peer_address,_Bool,"Bt*, uint8_t*"
 Function,+,bt_keys_storage_alloc,BtKeysStorage*,const char*
 Function,+,bt_keys_storage_delete,_Bool,BtKeysStorage*
 Function,+,bt_keys_storage_free,void,BtKeysStorage*
@@ -4200,6 +4201,7 @@ Variable,+,I_RFIDDolphinSend_97x61,const Icon,
 Variable,+,I_RFIDSmallChip_14x14,const Icon,
 Variable,+,I_Raw_9x7,const Icon,
 Variable,+,I_Release_arrow_18x15,const Icon,
+Variable,+,I_RemoteLayout_14x14,const Icon,
 Variable,+,I_Right_mouse_icon_9x9,const Icon,
 Variable,+,I_Rpc_active_7x8,const Icon,
 Variable,+,I_SDQuestion_35x43,const Icon,

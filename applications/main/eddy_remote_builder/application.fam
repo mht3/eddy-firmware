@@ -1,0 +1,12 @@
+App(
+    appid="eddy_remote_builder",
+    name="Remote Builder",
+    apptype=FlipperAppType.MENUEXTERNAL,
+    entry_point="eddy_remote_builder_app",
+    targets=["f7"],
+    icon="I_RemoteLayout_14x14",
+    order=90,
+    stack_size=4096,
+    fap_libs=["infrared"],
+    fap_category="assets",
+)

@@ -158,6 +158,7 @@ Bt* bt_alloc(void) {
     // Init default maximum packet size
     bt->max_packet_size = BLE_PROFILE_SERIAL_PACKET_SIZE_MAX;
     bt->current_profile = NULL;
+    bt->has_connected_peer = false;
     // Keys storage
     bt->keys_storage = bt_keys_storage_alloc(BT_KEYS_STORAGE_PATH);
     // Alloc queue
@@ -258,6 +259,13 @@ static void bt_serial_buffer_is_empty_callback(void* context) {
 }
 
 // Called from GAP thread
+static void bt_set_connected_peer(Bt* bt, const uint8_t* address) {
+    FURI_CRITICAL_ENTER();
+    bt->has_connected_peer = address != NULL;
+    if(address) memcpy(bt->connected_peer, address, sizeof(bt->connected_peer));
+    FURI_CRITICAL_EXIT();
+}
+
 static bool bt_on_gap_event_callback(GapEvent event, void* context) {
     furi_assert(context);
     Bt* bt = context;
@@ -267,6 +275,7 @@ static bool bt_on_gap_event_callback(GapEvent event, void* context) {
         furi_hal_bt_check_profile_type(bt->current_profile, ble_profile_serial);
 
     if(event.type == GapEventTypeConnected) {
+        bt_set_connected_peer(bt, event.data.peer_address);
         // Update status bar
         bt->status = BtStatusConnected;
         do_update_status = true;
@@ -280,7 +289,11 @@ static bool bt_on_gap_event_callback(GapEvent event, void* context) {
         furi_check(
             furi_message_queue_put(bt->message_queue, &message, FuriWaitForever) == FuriStatusOk);
         ret = true;
+    } else if(event.type == GapEventTypePeerSecurityChanged) {
+        bt_set_connected_peer(bt, event.data.peer_address);
+        ret = true;
     } else if(event.type == GapEventTypeDisconnected) {
+        bt_set_connected_peer(bt, NULL);
         if(current_profile_is_serial && bt->rpc_session) {
             FURI_LOG_I(TAG, "Close RPC connection");
             ble_profile_serial_set_rpc_active(
@@ -296,6 +309,7 @@ static bool bt_on_gap_event_callback(GapEvent event, void* context) {
         do_update_status = true;
         ret = true;
     } else if(event.type == GapEventTypeStopAdvertising) {
+        bt_set_connected_peer(bt, NULL);
         bt->status = BtStatusOff;
         do_update_status = true;
         ret = true;
@@ -403,6 +417,7 @@ void bt_close_rpc_connection(Bt* bt) {
 }
 
 static void bt_change_profile(Bt* bt, BtMessage* message) {
+    bt_set_connected_peer(bt, NULL);
     if(furi_hal_bt_is_gatt_gap_supported()) {
         bt_settings_load(&bt->bt_settings);
 

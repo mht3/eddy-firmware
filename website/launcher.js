@@ -7,6 +7,7 @@ export const sections = [
 export const apps = [
   ['Sub-GHz','signal'], ['RFID','rfid'], ['NFC','nfc'], ['Infrared','infrared'],
   ['GPIO','gpio'], ['iButton','ibutton'], ['Pomodoro Timer','pomodoro'], ['Metronome','metronome'],
+  ['Remote Builder','builder'], ['Bluetooth Remote','btRemote'],
 ];
 
 export function drawLauncher(ctx, page, selected, gridItems = apps) {
@@ -38,6 +39,15 @@ export function drawLauncher(ctx, page, selected, gridItems = apps) {
         label+=char;
       }
       ctx.fillText(label,x,y-3);
+    } else if (grid && ['builder','btRemote'].includes(items[i][1])) {
+      ctx.beginPath();
+      if (items[i][1]==='btRemote') {
+        ctx.moveTo(x-4,y-4); ctx.lineTo(x+4,y+3); ctx.lineTo(x,y+7);
+        ctx.lineTo(x,y-7); ctx.lineTo(x+4,y-3); ctx.lineTo(x-4,y+4);
+      } else {
+        for (let r=0;r<2;r++) for (let c=0;c<3;c++) ctx.rect(x-7+c*5,y-4+r*5,3,3);
+      }
+      ctx.stroke();
     } else if (launcherArt.naturalWidth) {
       const index = grid ? i + sections.length : i;
       ctx.drawImage(launcherArt,index*18,0,18,18,x-9,y-9,18,18);

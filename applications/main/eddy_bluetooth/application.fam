@@ -1,0 +1,13 @@
+App(
+    appid="eddy_bluetooth",
+    name="Bluetooth Remote",
+    apptype=FlipperAppType.MENUEXTERNAL,
+    entry_point="eddy_bluetooth_app",
+    requires=["bt"],
+    targets=["f7"],
+    icon="I_Ble_connected_15x15",
+    order=100,
+    stack_size=2048,
+    fap_category="assets",
+    fap_libs=["ble_profile"],
+)
