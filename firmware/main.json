@@ -1,0 +1,51 @@
+{
+  "parts": [
+    {
+      "name": "firmware.dfu",
+      "size": 824097,
+      "sha256": "cb37f1822110a34aa0d8ada6cb4b2a5fb469d8a1a31fdd69b1ef249758710827",
+      "md5": "6dba55ba29ee26b20ed783f1b9d1cc36"
+    },
+    {
+      "name": "firstboot.bin",
+      "size": 1137,
+      "sha256": "e958623314829213bda2733aa939f8935f2fd300db65881d162d15577b21f6ec",
+      "md5": "641082f1794c730c3112ec76f937ec16"
+    },
+    {
+      "name": "radio.bin",
+      "size": 116956,
+      "sha256": "134a9af448d2bc35995600c9e95723a387c144c2d1adea671086f16f95d327df",
+      "md5": "0b84a0f95ec17c9c3b26e9169865e10a"
+    },
+    {
+      "name": "resources.tar.gz",
+      "size": 391843,
+      "sha256": "69abc07b5d6dbe5bceb8dfa7041a59039879ce1e5c2c7c8fc145dc82f5fe63c5",
+      "md5": "31f64dc6a2fc0aa7b9419d5b6a01a58a"
+    },
+    {
+      "name": "splash.bin",
+      "size": 361,
+      "sha256": "a8f900cdbf530966549e2e3028d12d7797dfebac0b944133f3cc1479be2a50dd",
+      "md5": "c8b671f598fb38249f40ead5d471fbb1"
+    },
+    {
+      "name": "update.fuf",
+      "size": 1589,
+      "sha256": "521f1c262907eddcacf82558aa91f85050adb95a23b1ba7472d5c0d8c127e20e",
+      "md5": "5e31e06574a7608cf2f9e30107a4daa2"
+    },
+    {
+      "name": "updater.bin",
+      "size": 120605,
+      "sha256": "8cd6fc18c4cd70633080cd4062103f963a203347752a198e738cecd49be27117",
+      "md5": "f9c58fbb96774a4d0dd2ba03e2c43574"
+    }
+  ],
+  "target": "f7",
+  "version": "eddy-dev-0df75f76",
+  "file": "flipper-z-f7-update-eddy-dev-0df75f76.tgz",
+  "commit": "0df75f763b16e9e3b6b311e1c7b004330004909b",
+  "sha256": "d97f1132c54c88211c886d54724150dedc0a678c7c9e3e1fa3ad831ef04d9357"
+}

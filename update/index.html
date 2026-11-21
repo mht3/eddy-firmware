@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Web updater · Eddy Firmware</title>
+    <link rel="icon" href="../eddy.svg">
+    <link rel="stylesheet" href="../style.css">
+    <script type="module" src="update.js"></script>
+  </head>
+  <body>
+    <header>
+      <div class="bar">
+        <a class="brand" href="../">
+          <img src="../eddy.svg" alt=""> Eddy <span>Firmware</span>
+        </a>
+        <nav aria-label="Main">
+          <a href="../wiki/">Wiki</a>
+          <a href="../resources/">Resources</a>
+          <a class="small-cta" href="./" aria-current="page">Install</a>
+        </nav>
+      </div>
+    </header>
+    <main class="install-wrap updater">
+      <div>
+        <div class="eyebrow"><i></i> FLIPPER ZERO · F7</div>
+        <h1>Eddy updater.</h1>
+        <p>Insert a microSD card, connect your Flipper with a USB data cable, and close qFlipper and Flipper Lab.</p>
+      </div>
+      <section class="release" aria-labelledby="release-title">
+        <h2 id="release-title">Main build</h2>
+        <p>Includes Sub-GHz, RFID, NFC, Infrared, GPIO, iButton, and Pomodoro Timer.</p>
+        <p id="build-status" role="status">Checking for a release…</p>
+        <button class="cta" id="action" disabled>Connect Flipper Zero</button>
+        <p id="connection" role="status"></p>
+        <progress id="progress" aria-label="Transfer progress" hidden></progress>
+        <div class="downloads">
+          <a id="download" hidden>Download for qFlipper</a>
+          <a id="lab" hidden>Open in Flipper Lab</a>
+          <a id="source" hidden>Source for this build</a>
+        </div>
+        <noscript>Enable JavaScript to load the current build.</noscript>
+      </section>
+    </main>
+  </body>
+</html>

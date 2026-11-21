@@ -1,0 +1,32 @@
+Eddy Firmware product preview
+
+Flipper Zero enclosure, controls and socket
+Flipper Devices Inc., production hardware F7B9C6, distributed under GPLv3.
+Eddy Firmware converted the public exterior STEP model to a glTF mesh and
+assigned surface materials for this website. The original geometry is
+available here as models/flipper-zero.stp.gz. Unzip it to edit the STEP file.
+License: models/LICENSE-flipper.txt
+Source: https://github.com/flipperdevices/flipperzero-3d-models/blob/dff3b17f58a3ec59b8d7104d6c37f450691758a4/flipper-zero/body-3d/flipper-zero-body-3d.stp
+
+USB-C plug
+From the KiCad 10.0.7 3D model library, by its library contributors.
+Shenzhen Jing Tuo Jin 918-118A2021Y40002 vertical plug, converted and
+reoriented for the animation. The original STEP file is models/usb-c.step.gz.
+The plug model and its adaptation are licensed under Creative Commons
+Attribution-ShareAlike 4.0 International, with the KiCad library exception.
+License: models/LICENSE-kicad.md
+Terms: https://creativecommons.org/licenses/by-sa/4.0/
+Source: https://gitlab.com/kicad/libraries/kicad-packages3D/-/blob/10.0.7/Connector_USB.3dshapes/USB_C_Plug_ShenzhenJingTuoJin_918-118A2021Y40002_Vertical.step
+
+Rendering and source
+Eddy Firmware contributors added the cable jacket, strain relief, surface
+markings, lighting, screen interface and animation. The WebP images are
+renders of the same models, including the interactive face-on view. Rebuild the two meshes from the included
+sources using Python 3 and KiCad CLI 10.0.7.
+    python3 models/convert.py --kicad-cli /path/to/kicad-cli
+The live renderer is models/renderer.js. The enlarged dolphin in home-screen.js
+redraws the Eddy firmware sprite with scalable paths for high-density displays.
+
+Launcher preview
+The grid uses the same launcher icons as the device, from assets/icons in this
+repository. The web preview uses a sample charge and simulated peripherals.
