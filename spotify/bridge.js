@@ -2,6 +2,7 @@ import {authorize, callback, command, linked, playback, PlaybackError, unlink} f
 
 const uuid = n => "efdd000" + n + "-5a34-4a32-9fab-1f72e60d00ed";
 const get = id => document.getElementById(id);
+const maxQueuedControls = 16;
 
 function textPackets(tag, text) {
   const bytes = new Uint8Array(95);
@@ -44,7 +45,7 @@ async function connect(onCommand, onDrop) {
   let controls;
   function notification(event) {
     const bytes = event.target.value;
-    if (bytes?.byteLength === 1 && [1, 2, 3].includes(bytes.getUint8(0))) onCommand(bytes.getUint8(0));
+    if (bytes?.byteLength === 1 && [1, 2, 3, 4, 5].includes(bytes.getUint8(0))) onCommand(bytes.getUint8(0));
   }
   function detach() {
     device.removeEventListener("gattserverdisconnected", dropped);
@@ -101,19 +102,27 @@ export async function startBridge(id) {
     notice(text);
   };
 
-  // Each session owns its poll, write queue and abort signal. Disconnect drops queued input.
-  async function sync(session, controlCode = 0) {
-    if (remote !== session) return;
-    if (session.busy) {
-      if (controlCode && !session.queued) session.queued = controlCode;
+  function enqueue(code) {
+    if (!remote) return;
+    if (remote.controls.length >= maxQueuedControls) {
+      notice("Playback controls are catching up. Try that button again in a moment.");
       return;
     }
+    remote.controls.push(code);
+    sync(remote);
+  }
+
+  // A timer wakes the queue. The session keeps ownership of each command until it completes.
+  async function sync(session) {
+    if (remote !== session || session.busy) return;
     clearTimeout(session.timer);
     if (Date.now() < cooldown) {
       session.timer = setTimeout(() => sync(session), cooldown - Date.now());
       return;
     }
     session.busy = true;
+    const controlCode = session.controls[0];
+    let retryControl = false;
     let wait = 5000;
     const signal = AbortSignal.any([session.abort.signal, AbortSignal.timeout(12000)]);
     try {
@@ -137,7 +146,10 @@ export async function startBridge(id) {
       notice(issue.message);
       get("track").hidden = true;
       wait = issue.retryMs;
-      if (issue.code === 4) cooldown = Date.now() + wait;
+      if (issue.code === 4) {
+        cooldown = Date.now() + wait;
+        retryControl = true;
+      }
       try { await session.device.write(Uint8Array.of(5, issue.code)); }
       catch {
         if (remote === session) disconnect("Bluetooth disconnected. Choose your Flipper to reconnect.");
@@ -151,9 +163,9 @@ export async function startBridge(id) {
     } finally {
       session.busy = false;
       if (remote === session) {
-        const next = session.queued;
-        session.queued = 0;
-        session.timer = setTimeout(() => sync(session, next), next ? 0 : wait);
+        if (controlCode && !retryControl) session.controls.shift();
+        const delay = Math.max(cooldown - Date.now(), session.controls.length ? 0 : wait);
+        session.timer = setTimeout(() => sync(session), delay);
       }
     }
   }
@@ -174,10 +186,10 @@ export async function startBridge(id) {
     notice("Choose your paired Flipper in the browser’s device list.");
     try {
       const device = await connect(
-        code => { if (remote) sync(remote, code); },
+        enqueue,
         () => disconnect("Bluetooth disconnected. Choose your Flipper to reconnect."),
       );
-      remote = {device, abort: new AbortController(), timer: null, queued: 0, busy: false};
+      remote = {device, abort: new AbortController(), timer: null, controls: [], busy: false};
       notice("Connected to " + device.name + ".");
       sync(remote);
     } catch (error) {

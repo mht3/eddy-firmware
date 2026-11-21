@@ -26,13 +26,25 @@
     <main class="updater catalog-page">
       <div class="catalog-intro">
         <h1>Choose your apps.</h1>
-        <p>Pick the tools you want on your Flipper Zero. Try them in the emulator before you install.</p>
+        <p>Pick the tools you want on your Flipper Zero. Arrange your Apps menu and try it in the emulator before you install.</p>
         <a class="skip-to-install" href="#your-build">Go to installation</a>
       </div>
       <div class="catalog-layout">
         <div class="catalog-library">
           <fieldset id="app-picker">
             <legend class="sr-only">Apps to install</legend>
+            <details id="arrange-apps" class="arrange-apps">
+              <summary>Arrange my Apps menu</summary>
+              <p id="arrange-help">Choose two apps to swap their positions. Your Flipper skips the dimmed positions as you navigate.</p>
+              <div class="arrange-pages">
+                <div><h3>Page 1</h3><div class="slot-grid" id="order-page-1" role="group" aria-label="Page 1 positions"></div></div>
+                <div><h3>Page 2</h3><div class="slot-grid" id="order-page-2" role="group" aria-label="Page 2 positions"></div></div>
+              </div>
+              <div class="order-footer">
+                <p id="arrange-status" role="status"></p>
+                <button type="button" id="reset-order" disabled>Restore default order</button>
+              </div>
+            </details>
             <h2 id="core-heading">Core tools</h2>
             <ul id="core-apps" class="app-grid" aria-labelledby="core-heading"></ul>
             <h2 id="extras-heading">Extras</h2>

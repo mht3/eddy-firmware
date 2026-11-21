@@ -109,11 +109,48 @@ export async function playback(id, signal) {
 }
 
 export async function command(id, code, player, signal) {
-  const actions = {1: ["previous", "POST", "skipping_prev"],
-    2: player.is_playing ? ["pause", "PUT", "pausing"] : ["play", "PUT", "resuming"],
-    3: ["next", "POST", "skipping_next"]};
-  const [path, method, restriction] = actions[code];
-  if (player.actions?.disallows?.[restriction]) throw new PlaybackError(3, "Spotify has disabled that control for this track.");
-  const target = player.device.id ? "?device_id=" + encodeURIComponent(player.device.id) : "";
-  await request(id, "/" + path + target, method, signal);
+  const query = new URLSearchParams();
+  if (player.device.id) query.set("device_id", player.device.id);
+  let path, method = "PUT", restriction;
+  switch (code) {
+    case 1:
+      if (Number.isFinite(player.progress_ms) && player.progress_ms >= 3000) {
+        path = "seek";
+        query.set("position_ms", "0");
+        restriction = "seeking";
+      } else {
+        path = "previous";
+        method = "POST";
+        restriction = "skipping_prev";
+      }
+      break;
+    case 2:
+      path = player.is_playing ? "pause" : "play";
+      restriction = player.is_playing ? "pausing" : "resuming";
+      break;
+    case 3:
+      path = "next";
+      method = "POST";
+      restriction = "skipping_next";
+      break;
+    case 4:
+    case 5: {
+      const volume = player.device.volume_percent;
+      if (player.device.supports_volume === false || !Number.isInteger(volume) || volume < 0 || volume > 100) {
+        throw new PlaybackError(3, "This playback device handles volume on its own.");
+      }
+      const next = Math.max(0, Math.min(100, volume + (code === 4 ? 5 : -5)));
+      if (volume === next) return;
+      path = "volume";
+      query.set("volume_percent", String(next));
+      break;
+    }
+    default:
+      throw new Error("Unknown playback control.");
+  }
+  if (restriction && player.actions?.disallows?.[restriction]) {
+    throw new PlaybackError(3, "Spotify has disabled that control for this track.");
+  }
+  const params = query.toString();
+  await request(id, "/" + path + (params ? "?" + params : ""), method, signal);
 }

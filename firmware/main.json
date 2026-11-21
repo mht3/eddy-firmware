@@ -2,9 +2,9 @@
   "parts": [
     {
       "name": "firmware.dfu",
-      "size": 798377,
-      "sha256": "a1bf9d905fdfe5db0d42a76496d0c0741f7c0cf64dee1aa6b755cd78c4676f0b",
-      "md5": "c46876717136113399b28547ec1deb48"
+      "size": 799313,
+      "sha256": "370672dddd5a024b26220e0f64f3e44747272d9e3b993f737d95e611e30d14f1",
+      "md5": "4f8d38c16248289e1713d46e7251ed6f"
     },
     {
       "name": "firstboot.bin",
@@ -20,9 +20,9 @@
     },
     {
       "name": "resources.tar.gz",
-      "size": 195918,
-      "sha256": "a26214b7c9349651ae03ea956acae2193ba95617f1faef60fb61a4980629e769",
-      "md5": "8376396e62ed65e5bb36443ecc1725e9"
+      "size": 196421,
+      "sha256": "9cc45c5c6eadea25e52e0479cecb54979d5b81e1262fddbd26a9d884ad9f1512",
+      "md5": "0a84e7d9717812ea67d36637001ea3c3"
     },
     {
       "name": "splash.bin",
@@ -33,18 +33,19 @@
     {
       "name": "update.fuf",
       "size": 1589,
-      "sha256": "15342afc0e80670e9665e471c9fe853c6f436d23de3cb870a86d70909c9a7138",
-      "md5": "35529f85621a4cc6a3a7d3ba854b3674"
+      "sha256": "8742cddf7e554f07a39b473ebabe185f6edb1ea0af4a985f7a52e31c8993d9ed",
+      "md5": "376c2ed12314edfb97a4c36aace0542e"
     },
     {
       "name": "updater.bin",
       "size": 120797,
-      "sha256": "a2e69d0e20c41529f59adc5d1d41b38cfbe498f66b96a9f2c01498a4452c3344",
-      "md5": "73f2830728006161f84a3165fecdaa10"
+      "sha256": "5f3a4aaa978544a5349c466d370dfaae6e47ad82c2828d4818a21839ce9c03cf",
+      "md5": "a40a00aebb9d22c6dd9ea239514cafde"
     }
   ],
   "resourceIndex": {
     "manifest": 512,
+    "launcherOrder": 477696,
     "apps": {
       "gpio": {
         "name": "apps/GPIO/gpio.fap",
@@ -88,57 +89,57 @@
       },
       "eddy_nfc": {
         "name": "apps/assets/eddy_nfc.fap",
-        "offset": 265216
+        "offset": 265728
       },
       "eddy_pomodoro": {
         "name": "apps/assets/eddy_pomodoro.fap",
-        "offset": 275456
+        "offset": 275968
       },
       "eddy_remote_builder": {
         "name": "apps/assets/eddy_remote_builder.fap",
-        "offset": 281088
+        "offset": 281600
       },
       "eddy_rfid": {
         "name": "apps/assets/eddy_rfid.fap",
-        "offset": 339456
+        "offset": 339968
       },
       "eddy_signal": {
         "name": "apps/assets/eddy_signal.fap",
-        "offset": 349696
+        "offset": 350208
       },
       "expansion_settings": {
         "name": "apps/assets/expansion_settings.fap",
-        "offset": 359936
+        "offset": 360448
       },
       "input_settings": {
         "name": "apps/assets/input_settings.fap",
-        "offset": 364544
+        "offset": 365056
       },
       "notification_settings": {
         "name": "apps/assets/notification_settings.fap",
-        "offset": 370176
+        "offset": 370688
       },
       "passport": {
         "name": "apps/assets/passport.fap",
-        "offset": 379392
+        "offset": 379904
       },
       "power_settings": {
         "name": "apps/assets/power_settings.fap",
-        "offset": 384512
+        "offset": 385024
       },
       "storage_settings": {
         "name": "apps/assets/storage_settings.fap",
-        "offset": 412160
+        "offset": 412672
       },
       "system_settings": {
         "name": "apps/assets/system_settings.fap",
-        "offset": 439808
+        "offset": 440320
       }
     }
   },
   "target": "f7",
-  "version": "eddy-dev-81b65b64",
-  "file": "flipper-z-f7-update-eddy-dev-81b65b64.tgz",
-  "commit": "81b65b64f0f278ef29958bd18b6f87ceca80c682",
-  "sha256": "bad2968bbd8994b10fdb30f54e706cae13485b9d39ea1fb951f9356a633d7f6c"
+  "version": "eddy-dev-c598a7bc",
+  "file": "flipper-z-f7-update-eddy-dev-c598a7bc.tgz",
+  "commit": "c598a7bc4e22678e91908e8f81c512336ae4d3ca",
+  "sha256": "3e52d5315e6cb1ba1389b200b549696ffe42dee85615b8f721f1fc24daa0f843"
 }

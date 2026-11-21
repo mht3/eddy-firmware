@@ -1,4 +1,4 @@
-import {catalog} from './app-catalog.js';
+import {catalog, getAppOrder} from './app-catalog.js';
 // Icons and positions match the device launcher in loader_menu.c.
 export const launcherArt = new Image();
 launcherArt.src = new URL('launcher.png', import.meta.url).href;
@@ -7,7 +7,38 @@ export const sections = [
 ];
 export const apps = catalog.map(({name,id})=>[name,id]);
 
-export function drawLauncher(ctx, page, selected, gridItems = apps) {
+// The list stays dense for Left/Right. Its third field is the physical cell on the display.
+export function layoutApps(items, order = getAppOrder()) {
+  const cells = [];
+  order.forEach((id,slot) => {
+    const item = items.find(([,target]) => target === id);
+    if (item) cells.push([item[0],id,slot]);
+  });
+  let next = cells.length ? Math.max(8,cells.at(-1)[2]+1) : 0;
+  for (const [name,id] of items) {
+    if (!order.includes(id)) cells.push([name,id,next++]);
+  }
+  return cells;
+}
+
+export function verticalApp(items,index,key) {
+  const slot = items[index][2];
+  const rows = Math.floor(items.at(-1)[2]/4)+1;
+  const row = Math.floor(slot/4);
+  for (let step=1; step<rows; step++) {
+    const target = (row+(key==='up' ? rows-step : step))%rows;
+    let best = index, distance = 4;
+    items.forEach(([, ,cell],i) => {
+      if (Math.floor(cell/4)!==target) return;
+      const gap = Math.abs(cell%4-slot%4);
+      if (gap<distance) { best=i; distance=gap; }
+    });
+    if (distance<4) return best;
+  }
+  return index;
+}
+
+export function drawLauncher(ctx, page, selected, gridItems = layoutApps(apps)) {
   const grid = page === 'apps';
   const items = grid ? gridItems : sections;
   ctx.font = '7px sans-serif';
@@ -18,16 +49,17 @@ export function drawLauncher(ctx, page, selected, gridItems = apps) {
     ctx.textAlign = 'start';
     return;
   }
-  const first = grid ? Math.floor(selected/8)*8 : 0;
-  if (items.length>8) {
+  const pageNumber = grid ? Math.floor(items[selected][2]/8) : 0;
+  const pageCount = grid ? Math.floor(items.at(-1)[2]/8)+1 : 1;
+  if (pageCount>1) {
     ctx.textAlign = 'left';
-    ctx.fillText('Apps '+(first/8+1)+'/'+Math.ceil(items.length/8),2,0);
+    ctx.fillText('Apps '+(pageNumber+1)+'/'+pageCount,2,0);
     ctx.textAlign = 'center';
   }
-  items.slice(first,first+8).forEach(([name],slot) => {
-    const i = first+slot;
-    const x = grid ? 16 + 32*(i%4) : 21 + 42*i;
-    const y = grid ? 18 + 20*Math.floor(slot/4) : 26;
+  items.forEach(([name,id,cell],i) => {
+    if (grid && Math.floor(cell/8)!==pageNumber) return;
+    const x = grid ? 16 + 32*(cell%4) : 21 + 42*i;
+    const y = grid ? 18 + 20*Math.floor((cell%8)/4) : 26;
     ctx.save();
     ctx.beginPath();
     ctx.roundRect(x-12,y-(grid?9:10),25,grid?19:21,4);
@@ -53,7 +85,7 @@ export function drawLauncher(ctx, page, selected, gridItems = apps) {
       }
       ctx.stroke();
     } else if (launcherArt.naturalWidth) {
-      const index = grid ? (items[i][1]==='music' ? 7 : appIndex) + sections.length : i;
+      const index = grid ? (id==='music' ? 11 : appIndex+sections.length) : i;
       ctx.drawImage(launcherArt,index*18,0,18,18,x-9,y-9,18,18);
     }
     ctx.restore();

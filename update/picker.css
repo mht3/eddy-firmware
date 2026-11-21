@@ -30,7 +30,7 @@
   display:flex; align-items:flex-start; flex-direction:column; align-self:stretch;
   padding:0; text-align:left; color:var(--light); background:none; border:0;
 }
-.app-toggle:focus-visible,.app-preview:focus-visible,.menu-preview:focus-visible {
+.app-toggle:focus-visible,.app-preview:focus-visible,.excluded:focus-visible,.menu-preview:focus-visible {
   outline:3px solid var(--surf); outline-offset:3px; border-radius:.3rem;
 }
 .updater .app-toggle {font-size:1rem}
@@ -70,7 +70,10 @@
 .app-card:hover .app-description,.app-card:focus-within .app-description {color:#e8f4ff}
 .app-preview,.excluded {margin-top:auto; font-size:.875rem; line-height:1.4}
 .app-preview {text-decoration:underline; text-underline-offset:.2em; color:#9dd4ff; align-self:flex-start}
-.excluded {color:#9cadc0}
+.updater .excluded {
+  align-self:flex-start; width:auto; padding:0; border:0; background:transparent;
+  font:inherit; font-size:.875rem; color:var(--surf); text-decoration:underline; text-underline-offset:.2em;
+}
 .app-idea {margin:1.45rem 0 0; font-size:1rem; max-width:none}
 .app-idea a,.skip-to-install {color:var(--surf); text-decoration:underline; text-underline-offset:.2em}
 .catalog-page .build-panel {
@@ -113,3 +116,31 @@
 @media (max-height:680px) {
   .catalog-page .build-panel {position:static}
 }
+
+.arrange-apps {
+  margin:0 0 2rem; padding:.95rem 1.1rem; border:1px solid #3a5870;
+  border-radius:.95rem; background:#12283d;
+}
+.arrange-apps summary {cursor:pointer; color:#d7edff; font-weight:700; width:fit-content}
+.arrange-apps summary:focus-visible,.app-slot:focus-visible,.order-footer button:focus-visible {
+  outline:3px solid var(--surf); outline-offset:3px; border-radius:.4rem;
+}
+.arrange-apps #arrange-help {font-size:.95rem; margin:.75rem 0 1rem; color:#cadbea}
+.arrange-pages h3 {font-size:.85rem; color:#b6cddd; margin:.9rem 0 .4rem}
+.slot-grid {display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.35rem}
+.updater .app-slot {
+  display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:.35rem;
+  min-width:0; padding:.55rem .2rem; border-radius:.5rem; background:#0b1c2b;
+  color:#9bafc0; border:1px solid #33495c; font-size:.76rem; line-height:1.25; text-align:center;
+}
+.updater .app-slot.included {color:#e6f3ff; background:#1b3348; border-color:#49657b}
+.updater .app-slot[aria-pressed=true] {outline:2px solid var(--surf); outline-offset:-2px; background:#253e55}
+.app-slot .app-icon {width:2.25rem; height:2.25rem; border-radius:.6rem}
+.app-slot .app-icon::after {transform:scale(.72)}
+.order-footer {display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:.5rem; margin-top:1rem}
+.order-footer p {margin:0; color:#cee6fa; font-size:.85rem}
+.updater .order-footer button {
+  width:auto; background:none; padding:.45rem 0; border:0; font:inherit; font-size:.85rem;
+  color:var(--surf); text-decoration:underline; text-underline-offset:.18em;
+}
+.order-footer button:disabled {opacity:.55}

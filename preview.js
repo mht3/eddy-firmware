@@ -1,10 +1,10 @@
-import {getSelectedApps} from './app-catalog.js';
+import {getAppOrder, getSelectedApps, validAppOrder} from './app-catalog.js';
 import {openMusicDemo, drawMusic, musicStatus, musicKey} from './music-preview.js';
 import {tvPresetRows, tvPadStatus, tvPadKey, drawTvPad, tvPadHit, tvNavigationHit} from './tv-presets.js';
 import {openBuilder, builderKey, builderStatus, drawBuilder} from './builder-preview.js';
 import {bluetoothKey, bluetoothStatus, drawBluetooth} from './bluetooth-preview.js';
 import {drawMetronome, metronomeInput, metronomeStatus} from './metronome.js';
-import {drawLauncher, sections, apps, launcherArt} from './launcher.js';
+import {drawLauncher, layoutApps, verticalApp, sections, apps, launcherArt} from './launcher.js';
 import {settingsRows, settingsSamples, drawQuick, quickStatus, adjustQuick} from './quick-settings.js';
 import {listNotes, nameNote} from './observation-preview.js';
 import {remoteDemo} from './remote-preview.js';
@@ -59,12 +59,14 @@ const lists = {
 const previewParams = new URLSearchParams(location.search);
 export const pickerPreview = previewParams.has('apps') || previewParams.has('app');
 const requestedApps = previewParams.has('apps') ? new Set(previewParams.get('apps').split(',')) : null;
+const orderParam = previewParams.get('order')?.split(',');
+const requestedOrder = validAppOrder(orderParam) ? orderParam : null;
 let visibleShortcuts = [];
 function refreshRemotes() {
   const saved=remoteDemo.rows;
   const enabled = requestedApps ?? getSelectedApps();
   visibleShortcuts = remoteDemo.shortcuts.filter(([,type])=>enabled.has(type==='layout'?'builder':'infrared'));
-  lists.apps=[...apps.filter(([,id])=>enabled.has(id)),...visibleShortcuts];
+  lists.apps=layoutApps([...apps.filter(([,id])=>enabled.has(id)),...visibleShortcuts],requestedOrder ?? getAppOrder());
   lists.remotes=saved.length ? saved : [['Learn a remote','learn']];
   titles.remotes=saved.length?'My remotes':'No remotes yet';
   delete samples.remotes;
@@ -410,9 +412,7 @@ function press(key) {
       }
     }
     else if(page==='apps' && (key==='up' || key==='down')) {
-      const rowCount=Math.ceil(rows.length/4);
-      const row=(Math.floor(state.row/4)+(key==='up'?rowCount-1:1))%rowCount;
-      state.row=Math.min(row*4+state.row%4,rows.length-1);
+      state.row=verticalApp(rows,state.row,key);
     } else if(page!=='menu' || key==='left' || key==='right') {
       state.row=(state.row+(key==='left'||key==='up'?-1:1)+rows.length)%rows.length;
     }
@@ -446,7 +446,7 @@ if(pickerPreview) {
   const back=document.querySelector('#return-to-picker');
   const selection = lists.apps.filter(([,page])=>apps.some(([,id])=>id===page)).map(([,id])=>id);
   const returnTo = selection.includes(id) ? 'try-'+id : 'try-app-menu';
-  back.href='update/?'+new URLSearchParams({apps:selection.join(',')})+'#'+returnTo;
+  back.href='update/?'+new URLSearchParams({apps:selection.join(','),order:(requestedOrder ?? getAppOrder()).join(',')})+'#'+returnTo;
   back.hidden=false;
 }
 window.addEventListener('eddy-apps-changed', () => {
@@ -526,13 +526,55 @@ display.addEventListener('click', event=>{
   if (!['menu','apps','quick'].includes(state.page)) return;
   const grid=state.page==='apps';
   if(y>=(grid?48:50) || y<(state.page==='menu'?12:8)) return;
-  const index=grid ? Math.floor(state.row/8)*8+Math.floor((y-8)/20)*4+Math.floor(x/32) : Math.min(2,Math.floor(x/42));
-  if(grid && index>=lists.apps.length) return;
+  let index;
+  if(grid) {
+    if(!lists.apps.length) return;
+    const page=Math.floor(lists.apps[state.row][2]/8);
+    const cell=page*8+Math.floor((y-8)/20)*4+Math.floor(x/32);
+    index=lists.apps.findIndex(([, ,slot])=>slot===cell);
+    if(index<0) return;
+  } else index=Math.min(2,Math.floor(x/42));
   state.row=index;
   if(state.page==='quick' && index<2) { draw(); announce(); }
   else press('ok');
 });
 
+const upButton=panel.querySelector('[data-key=up]');
+let upTimer;
+let heldUp=false;
+function startMusicUpHold() {
+  heldUp=false;
+  clearTimeout(upTimer);
+  const state=current();
+  upTimer=setTimeout(()=>{
+    if(current()===state) {
+      heldUp=true;
+      press('holdUp');
+    }
+  },600);
+}
+upButton.addEventListener('pointerdown',event=>{
+  heldUp=false;
+  if(current().page!=='music' || event.button!==0) return;
+  upButton.setPointerCapture(event.pointerId);
+  startMusicUpHold();
+});
+for(const event of ['pointerup','pointercancel','lostpointercapture','blur']) {
+  upButton.addEventListener(event,()=>clearTimeout(upTimer));
+}
+// Let a focused Up button perform both gestures with native button activation keys.
+upButton.addEventListener('keydown',event=>{
+  if(current().page!=='music' || !['Enter',' '].includes(event.key)) return;
+  event.preventDefault();
+  if(!event.repeat) startMusicUpHold();
+});
+upButton.addEventListener('keyup',event=>{
+  if(current().page!=='music' || !['Enter',' '].includes(event.key)) return;
+  event.preventDefault();
+  clearTimeout(upTimer);
+  if(!heldUp) press('up');
+  heldUp=false;
+});
 const okButton=panel.querySelector('[data-key=ok]');
 let editTimer;
 let heldOk=false;
@@ -564,6 +606,7 @@ for(const event of ['pointerup','pointercancel','lostpointercapture']) {
 }
 panel.addEventListener('click', event => {
   const button = event.target.closest('[data-key]');
+  if (button===upButton && heldUp) { heldUp=false; return; }
   if (button===okButton && heldOk) { heldOk=false; return; }
   if (button===backButton && heldBack) { heldBack=false; return; }
   if (button) press(button.dataset.key);
