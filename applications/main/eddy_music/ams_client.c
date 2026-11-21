@@ -6,6 +6,7 @@
 #include <furi.h>
 #include <furi_ble/gatt.h>
 #include <furi_hal_bt.h>
+#include <profiles/serial_profile.h>
 #include <math.h>
 #include <stdlib.h>
 
@@ -291,7 +292,7 @@ static void notification(Session* s, const uint8_t* p, size_t size) {
     if(handle == s->command.value && handle) {
         s->supported = 0;
         for(size_t i = 0; i < count; i++) {
-            if(p[i] <= 4) s->supported |= 1u << p[i];
+            if(p[i] <= 6) s->supported |= 1u << p[i];
         }
     } else if(handle == s->update.value && handle && count >= 3) {
         for(Field field = Playback; field < FieldCount; field++) {
@@ -573,6 +574,11 @@ void ams_client_close(AmsClient* client) {
     }
 }
 
+bool ams_client_supports_volume(AmsClient* client, bool up) {
+    // Apple Media Service RemoteCommandIDVolumeUp and RemoteCommandIDVolumeDown.
+    return (client->session.supported & (1u << (up ? 5 : 6))) != 0;
+}
+
 bool ams_client_send(AmsClient* client, uint8_t command) {
     Session* s = &client->session;
     if(s->phase != Ready || s->busy || !s->command.value || s->rediscover ||
@@ -580,14 +586,20 @@ bool ams_client_send(AmsClient* client, uint8_t command) {
         return false;
     uint8_t remote;
     switch(command) {
-    case 1:
+    case BleMediaPrevious:
         remote = 4;
         break;
-    case 2:
+    case BleMediaPlayPause:
         remote = (s->supported & (1u << 2)) ? 2 : (s->playing ? 1 : 0);
         break;
-    case 3:
+    case BleMediaNext:
         remote = 3;
+        break;
+    case BleMediaVolumeUp:
+        remote = 5;
+        break;
+    case BleMediaVolumeDown:
+        remote = 6;
         break;
     default:
         return false;

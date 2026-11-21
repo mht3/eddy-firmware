@@ -27,9 +27,9 @@
         <ol>
           <li>Open <strong>Apps → Spotify</strong> on the Flipper.</li>
           <li>The first time you open it, scan the QR code on the Flipper to open Spotify on your phone. Press <strong>OK</strong> on the Flipper to close the code.</li>
-          <li>Play a song on your phone. Press <strong>OK</strong> on the Flipper to pause, or <strong>Left / Right</strong> to skip tracks.</li>
+          <li>Play a song on your phone. Press <strong>OK</strong> on the Flipper to pause and again to resume. Use <strong>Up / Down</strong> to adjust media volume.</li>
         </ol>
-        <p class="note">Next time, open Apps → Spotify and play a song. Press <strong>Up</strong> whenever you want the QR code again.</p>
+        <p class="note">Next time, open Apps → Spotify and play a song. Hold <strong>Up</strong> whenever you want the QR code again.</p>
       </section>
 
       <div class="platforms" id="platforms" aria-label="Choose your phone" hidden>
@@ -39,12 +39,12 @@
 
       <section id="iphone" aria-labelledby="iphone-title">
         <h2 id="iphone-title">On iPhone</h2>
-        <p>Your Flipper shows the song title, artist and playback time from the active player. Start playback in Spotify to see its track.</p>
+        <p>Your Flipper shows the song title, artist and playback time from the active player. Start playback in Spotify to see its track. Pressing Left sends Previous to the iPhone. Spotify decides whether to restart the song or go back a track.</p>
       </section>
 
       <section id="android" aria-labelledby="android-title">
         <h2 id="android-title">On Android</h2>
-        <p id="android-mode">Use the Flipper as a three-button remote on phones that support Bluetooth media controls. View the song title and artist on your phone.</p>
+        <p id="android-mode">Use the Flipper to control playback and volume on phones that support Bluetooth media controls. View the song title and artist on your phone.</p>
         <div id="bridge" hidden>
           <h3>Show track details</h3>
           <p>Link Spotify, then choose your Flipper. Keep this Chrome tab active while you use the remote. Spotify playback controls require Premium and an account eligible for this integration.</p>
@@ -70,7 +70,15 @@
           <figure><img src="handheld-track.png" width="256" height="128" alt="Flipper track view showing a song, artist and playback progress."><figcaption>Flipper track view · sample song</figcaption></figure>
         </div>
         <p class="note">This first release has passed simulated playback tests. Pairing and reconnecting after a power cycle still need confirmation on physical phones and Flippers.</p>
-        <dl><div><dt>Left</dt><dd>Previous</dd></div><div><dt>OK</dt><dd>Play / pause</dd></div><div><dt>Right</dt><dd>Next</dd></div></dl>
+        <dl>
+          <div><dt>OK</dt><dd>Play or pause</dd></div>
+          <div><dt>Left</dt><dd>Restart or previous</dd></div>
+          <div><dt>Right</dt><dd>Next track</dd></div>
+          <div><dt>Up</dt><dd>Volume up</dd></div>
+          <div><dt>Down</dt><dd>Volume down</dd></div>
+          <div><dt>Hold Up</dt><dd>Show QR code</dd></div>
+        </dl>
+        <p class="note">In the <a href="../#home-screen">Meet Eddy preview</a>, Left restarts the song at three seconds or later. Press Left during the first three seconds to go back a track.</p>
       </section>
     </main>
   </body>

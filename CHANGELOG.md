@@ -1,5 +1,7 @@
 # Eddy Firmware changes
 
+- The installer opens with nine apps selected. You can add Pomodoro Timer and Metronome, swap app positions across pages, and try your layout before installing it.
+- The first Apps page groups Spotify, Remote Builder, and Bluetooth Remote along the bottom. In Spotify, tap Up or Down for phone volume and hold Up for the setup QR. The playable demo features Low Tide, High Tide, and Dolphin Days.
 - The installer lets you choose apps, try each one in the emulator, and install the same selection over USB or through qFlipper.
 - Apps → Spotify adds a first-run QR, playback controls over the Flipper’s existing phone pairing and an iPhone track display. The website includes handheld screen captures and a playable demo.
 - Sub-GHz remains a receive-only signal meter. The radio drivers enforce the factory region, and the protocol library rejects saving and transmitting decoded dynamic codes. A microSD card can no longer override these limits.

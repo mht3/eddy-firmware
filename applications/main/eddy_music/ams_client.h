@@ -17,4 +17,5 @@ void ams_client_set_link(AmsClient* client, uint16_t handle);
 void ams_client_event(AmsClient* client, const void* event);
 // Call on the app thread. connected means an authenticated link is available.
 void ams_client_tick(AmsClient* client, bool connected, AmsReceive receive, void* context);
+bool ams_client_supports_volume(AmsClient* client, bool up);
 bool ams_client_send(AmsClient* client, uint8_t command);

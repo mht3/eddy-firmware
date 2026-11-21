@@ -1,4 +1,4 @@
-import {catalog} from '../app-catalog.js';
+import {catalog,defaultAppOrder,getAppOrder,validAppOrder} from '../app-catalog.js';
 import {md5} from './md5.js';
 
 const firmwareRoot = new URL('../firmware/',import.meta.url);
@@ -44,7 +44,11 @@ function locateEntry(tar,offset,name) {
   return {offset,end,header,data:tar.subarray(dataStart,dataStart+size)};
 }
 
-async function filterResources(bytes,index,excluded) {
+function replaceEntry(entry,data) {
+  return {...entry,replacement:[finalizeHeader(entry.header.slice(),data.length),data,padding(data.length)]};
+}
+
+async function filterResources(bytes,index,excluded,order) {
   const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
   const tar = new Uint8Array(await new Response(stream).arrayBuffer());
   const manifest = locateEntry(tar,index.manifest,'Manifest');
@@ -54,14 +58,25 @@ async function filterResources(bytes,index,excluded) {
     edits.push(locateEntry(tar,record.offset,record.name));
     omit.add(record.name);
   }
-  const keep = decoder.decode(manifest.data).split('\n').filter(line=>{
+  const layoutPath = 'eddy/launcher_order.txt';
+  const layout = locateEntry(tar,index.launcherOrder,layoutPath);
+  const layoutData = encoder.encode(order.join('\n')+'\n');
+  edits.push(replaceEntry(layout,layoutData));
+  const keep = [];
+  let hasLayout = false;
+  for(const line of decoder.decode(manifest.data).split('\n')) {
     const row = /^F:[a-f0-9]{32}:\d+:(.+?)\r?$/.exec(line);
-    return !(row && omit.delete(row[1]));
-  });
+    if (row && omit.delete(row[1])) continue;
+    if (row && row[1]===layoutPath) {
+      if(hasLayout) throw Error('Duplicate launcher layout in this release.');
+      hasLayout = true;
+      keep.push('F:'+md5(layoutData)+':'+layoutData.length+':'+layoutPath);
+    } else keep.push(line);
+  }
+  if (!hasLayout) throw Error('The launcher layout is missing from the resource manifest.');
   if (omit.size) throw Error('The installed-app manifest is incomplete.');
   const updated = encoder.encode(keep.join('\n'));
-  const header = finalizeHeader(manifest.header.slice(),updated.length);
-  edits.push({...manifest,replacement:[header,updated,padding(updated.length)]});
+  edits.push(replaceEntry(manifest,updated));
   const pieces = [];
   let cursor=0;
   for (const edit of edits.sort((a,b)=>a.offset-b.offset)) {
@@ -75,9 +90,10 @@ async function filterResources(bytes,index,excluded) {
   return new Uint8Array(await compressed.arrayBuffer());
 }
 
-export async function prepareInstall(build,selectedIds,onPart) {
-  if (!build.resourceIndex?.apps || !build.parts.some(part=>part.name==='resources.tar.gz')) {
-    throw Error('This release does not include an app catalog. Refresh for the latest build.');
+export async function prepareInstall(build,selectedIds,onPart,order=getAppOrder()) {
+  if (!build.resourceIndex?.apps || !Number.isSafeInteger(build.resourceIndex.launcherOrder) ||
+      !build.parts.some(part=>part.name==='resources.tar.gz')) {
+    throw Error('This release does not include an editable launcher. Refresh for the latest build.');
   }
   for (const {appId} of catalog) {
     const path = build.resourceIndex.apps[appId]?.name;
@@ -87,6 +103,7 @@ export async function prepareInstall(build,selectedIds,onPart) {
   }
   const selected = new Set(selectedIds);
   if ([...selected].some(id=>!catalog.some(app=>app.id===id))) throw Error('Unknown app selection.');
+  if (!validAppOrder(order)) throw Error('Invalid app order. Reload the installer to try again.');
   const excluded = catalog.filter(app=>!selected.has(app.id));
   const files = [];
   for (const part of build.parts) {
@@ -99,9 +116,9 @@ export async function prepareInstall(build,selectedIds,onPart) {
     }
     files.push({part,bytes});
   }
-  if (excluded.length) {
+  if (excluded.length || order.some((id,i)=>id!==defaultAppOrder[i])) {
     const resources = files.find(({part})=>part.name==='resources.tar.gz');
-    const bytes = await filterResources(resources.bytes,build.resourceIndex,excluded);
+    const bytes = await filterResources(resources.bytes,build.resourceIndex,excluded,order);
     resources.bytes=bytes;
     resources.part={...resources.part,size:bytes.length,sha256:await sha256(bytes),md5:md5(bytes)};
   }

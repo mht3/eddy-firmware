@@ -5,6 +5,7 @@ App(
     entry_point="loader_srv",
     cdefines=["SRV_LOADER"],
     requires=["gui"],
+    resources="resources",
     stack_size=2 * 1024,
     order=90,
     sdk_headers=[

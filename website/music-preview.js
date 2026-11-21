@@ -1,8 +1,8 @@
 // Sample titles for the website's local demo. The player never connects to a listener's account.
 const tracks = [
   {title:'Low Tide', artist:'Eddy demo', length:208},
-  {title:'Night Ferry', artist:'Eddy demo', length:174},
-  {title:'Sea Glass', artist:'Eddy demo', length:242},
+  {title:'High Tide', artist:'Eddy demo', length:174},
+  {title:'Dolphin Days', artist:'Eddy demo', length:242},
 ];
 
 // Reuse the firmware capture so the QR on the preview opens the same link as the device.
@@ -33,7 +33,10 @@ let seenSetup = false;
 try { seenSetup = localStorage.getItem('eddy-preview-spotify-ready') === '1'; } catch {}
 
 export function openMusicDemo(sampleTrack = false) {
-  return {setup:!sampleTrack && !seenSetup, page:'music', row:0, index:0, elapsed:42, started:performance.now(), playing:true};
+  return {
+    setup:!sampleTrack && !seenSetup, page:'music', row:0, index:0,
+    elapsed:42, started:performance.now(), playing:true, volume:50, volumeUntil:0,
+  };
 }
 
 function position(s) {
@@ -41,8 +44,9 @@ function position(s) {
 }
 
 export function musicKey(s,key) {
-  if (key==='up' || (s.setup && (key==='ok' || key==='back'))) {
+  if (key==='holdUp' || (s.setup && (key==='ok' || key==='back'))) {
     s.setup = !s.setup;
+    s.volumeUntil=0;
     if (!s.setup) {
       seenSetup = true;
       try { localStorage.setItem('eddy-preview-spotify-ready','1'); } catch {}
@@ -51,9 +55,15 @@ export function musicKey(s,key) {
   }
   if (s.setup) return;
   if(key==='left' || key==='right') {
-    s.index=(s.index+(key==='right' ? 1 : tracks.length-1))%tracks.length;
+    const at=position(s);
+    s.playing=s.playing && at<tracks[s.index].length;
+    if (key==='right') s.index=(s.index+1)%tracks.length;
+    else if (at<3) s.index=(s.index+tracks.length-1)%tracks.length;
     s.elapsed=0;
     s.started=performance.now();
+  } else if(key==='up' || key==='down') {
+    s.volume=Math.max(0,Math.min(100,s.volume+(key==='up' ? 5 : -5)));
+    s.volumeUntil=performance.now()+1500;
   } else if(key==='ok') {
     const at=position(s);
     s.playing=!(s.playing && at<tracks[s.index].length);
@@ -66,7 +76,8 @@ export function musicStatus(s) {
   if (s.setup) return 'Scan the QR code to open Spotify on your phone. OK for the sample track.';
   const track=tracks[s.index];
   return 'Sample track. '+track.title+' by '+track.artist+'. '+
-    (s.playing && position(s)<track.length ? 'Playing.' : 'Paused.')+' Left or Right for tracks, OK for play or pause, Up for the Spotify QR code.';
+    (s.playing && position(s)<track.length ? 'Playing.' : 'Paused.')+
+    ' Position '+clock(position(s))+'. Media volume '+s.volume+'%. Left restarts the song, or goes back a track in its first three seconds. Right skips. OK plays or pauses. Up and Down adjust volume. Hold Up for the QR code.';
 }
 
 function clock(seconds) {
@@ -83,7 +94,8 @@ export function drawMusic(ctx,s) {
   ctx.textBaseline='alphabetic';
   ctx.font='7px sans-serif';
   ctx.fillText('iPhone',2,8);
-  ctx.fillText(playing?'Playing':'Paused',45,8);
+  const showVolume=performance.now()<s.volumeUntil;
+  ctx.fillText(showVolume?'Volume '+s.volume+'%':playing?'Playing':'Paused',45,8);
   ctx.font='bold 11px sans-serif';
   ctx.fillText(track.title,2,22);
   ctx.font='8px sans-serif';
@@ -98,5 +110,5 @@ export function drawMusic(ctx,s) {
   ctx.globalCompositeOperation='destination-out';
   ctx.textAlign='center'; ctx.fillText(playing?'Pause':'Play',64,61);
   ctx.restore();
-  return playing;
+  return playing || showVolume;
 }

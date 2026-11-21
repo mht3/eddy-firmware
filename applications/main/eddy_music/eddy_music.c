@@ -17,7 +17,7 @@ typedef struct {
     MusicFrame iphone;
     uint32_t sample_tick;
     uint32_t title_tick;
-    uint32_t failed_tick;
+    uint32_t feedback_tick;
     bool manual_setup;
     bool bridge_selected;
     uint8_t sample_peer[GAP_MAC_ADDR_SIZE];
@@ -33,7 +33,7 @@ typedef struct {
 
 static void clear_session(MusicModel* model) {
     model->screen.connected = false;
-    model->screen.failed_command = false;
+    model->screen.feedback = MusicFeedbackNone;
     model->screen.iphone = false;
     model->screen.track = (MusicTrackInfo){0};
     model->screen.position = 0;
@@ -64,7 +64,6 @@ static void receive_packet(MusicApp* app, bool iphone, const uint8_t* data, size
             memcpy(model->sample_peer, peer, sizeof(peer));
             model->screen.linked = true;
             if(!model->manual_setup) model->screen.setup = false;
-            model->screen.failed_command = false;
             model->sample_tick = furi_get_tick();
             model->screen.position = model->screen.track.elapsed;
             if(new_title) {
@@ -133,8 +132,9 @@ static void music_tick(void* context) {
         screen->position = MIN(position, UINT32_MAX);
         screen->scroll = (now - model->title_tick) / furi_ms_to_ticks(60);
     }
-    if(model->screen.failed_command && now - model->failed_tick >= furi_ms_to_ticks(1800))
-        model->screen.failed_command = false;
+    if(model->screen.feedback != MusicFeedbackNone &&
+       now - model->feedback_tick >= furi_ms_to_ticks(1800))
+        model->screen.feedback = MusicFeedbackNone;
     bool save_setup = !model->screen.setup && !app->persisted;
     view_commit_model(app->view, true);
 
@@ -147,7 +147,10 @@ static void music_tick(void* context) {
 }
 
 static bool music_input(InputEvent* event, void* context) {
-    if(event->type != InputTypeShort) return false;
+    // The input service emits either Long or Short for each physical press.
+    // Repeats and release events from a held Up button send no volume commands.
+    bool setup_shortcut = event->type == InputTypeLong && event->key == InputKeyUp;
+    if(event->type != InputTypeShort && !setup_shortcut) return false;
     MusicApp* app = context;
     MusicModel* model = view_get_model(app->view);
     bool handled = true;
@@ -157,22 +160,25 @@ static bool music_input(InputEvent* event, void* context) {
                    (iphone && model->screen.state == MusicIdle);
     uint8_t sample_peer[GAP_MAC_ADDR_SIZE];
     memcpy(sample_peer, model->sample_peer, sizeof(sample_peer));
-    if(event->key == InputKeyUp) {
-        model->screen.setup = !model->screen.setup;
-        model->manual_setup = model->screen.setup;
+    bool player = model->screen.connected && (use_hid || model->screen.state == MusicTrack);
+    if(setup_shortcut || (event->key == InputKeyUp && !model->screen.setup && !player)) {
+        model->screen.setup = true;
+        model->manual_setup = true;
     } else if((event->key == InputKeyBack || event->key == InputKeyOk) && model->manual_setup) {
         model->manual_setup = false;
         model->screen.setup = false;
-    } else if(
-        !model->screen.setup && model->screen.connected &&
-        (use_hid || model->screen.state == MusicTrack)) {
+    } else if(!model->screen.setup && player) {
         if(event->key == InputKeyLeft)
-            command = 1;
+            command = BleMediaPrevious;
         else if(event->key == InputKeyOk)
-            command = 2;
+            command = BleMediaPlayPause;
         else if(event->key == InputKeyRight)
-            command = 3;
-        else
+            command = BleMediaNext;
+        else if(event->key == InputKeyUp || event->key == InputKeyDown) {
+            bool up = event->key == InputKeyUp;
+            command = up ? BleMediaVolumeUp : BleMediaVolumeDown;
+            if(iphone && !ams_client_supports_volume(app->ams, up)) use_hid = true;
+        } else
             handled = false;
     } else {
         handled = false;
@@ -185,13 +191,16 @@ static bool music_input(InputEvent* event, void* context) {
                     (use_hid ? ble_svc_media_send(app, command, true) :
                      iphone  ? ams_client_send(app->ams, command) :
                                ble_svc_media_send(app, command, false));
-        if(!sent) {
+        bool volume = command == BleMediaVolumeUp || command == BleMediaVolumeDown;
+        if(!sent || (volume && (use_hid || iphone))) {
             with_view_model(
                 app->view,
                 MusicModel * state,
                 {
-                    state->failed_tick = furi_get_tick();
-                    state->screen.failed_command = true;
+                    state->feedback_tick = furi_get_tick();
+                    state->screen.feedback = !sent                       ? MusicFeedbackFailed :
+                                             command == BleMediaVolumeUp ? MusicFeedbackLouder :
+                                                                           MusicFeedbackQuieter;
                 },
                 true);
         }

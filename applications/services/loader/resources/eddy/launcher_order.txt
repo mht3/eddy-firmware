@@ -1,0 +1,11 @@
+signal
+rfid
+infrared
+pomodoro
+music
+builder
+btRemote
+metronome
+gpio
+ibutton
+nfc

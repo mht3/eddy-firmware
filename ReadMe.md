@@ -12,7 +12,7 @@ Eddy is a new firmware for Flipper Zero! Eddy started from Next-Flip’s Momentu
 
 Pair your phone with your Flipper once in Bluetooth settings. Spotify uses the same connection after a power cycle. [Bluetooth pairing guide](https://mht3.github.io/eddy-firmware/bluetooth/)
 
-Open **Apps → Spotify** on the Flipper. Scan its first-run QR code to open Spotify on your phone, press **OK** on the Flipper to dismiss the code, and play a song. **Left / Right** skip tracks and **OK** plays or pauses. Press **Up** to see the QR code again. On iPhone, the current song, artist and playback time appear on the Flipper through Apple Media Service. Android phones with Bluetooth media controls support the three playback buttons. [Spotify guide and screen captures](https://mht3.github.io/eddy-firmware/spotify/) · [Apple Media Service reference](https://developer.apple.com/library/archive/documentation/CoreBluetooth/Reference/AppleMediaService_Reference/Introduction/Introduction.html)
+Open **Apps → Spotify** on the Flipper. Scan its first-run QR code to open Spotify on your phone, press **OK** on the Flipper to dismiss the code, and play a song. **OK** plays or pauses, **Right** skips to the next track, and **Up / Down** change media volume. **Left** sends Previous to the phone. On iPhone, Spotify decides whether to restart the song or play the previous one. Hold **Up** to see the QR code again. The iPhone shares the song, artist and playback time through Apple Media Service. On Android, standard Bluetooth media controls work with compatible phones. [Spotify guide and screen captures](https://mht3.github.io/eddy-firmware/spotify/) · [Apple Media Service reference](https://developer.apple.com/library/archive/documentation/CoreBluetooth/Reference/AppleMediaService_Reference/Introduction/Introduction.html)
 
 Other apps include Sub-GHz, RFID, NFC, Infrared, GPIO, iButton, Pomodoro Timer, Metronome, Remote Builder, and Bluetooth Remote. In Infrared, choose **Learn a remote** to save your own buttons. Saved remotes appear under **My remotes**.
 
@@ -33,7 +33,7 @@ git submodule update --init --jobs 8 -- assets/protobuf lib
 FBT_NO_SYNC=1 ./fbt updater_package
 ```
 
-FBT downloads the Flipper toolchain on its first run. The update archive appears under `dist/f7-C/flipper-z-f7-update-eddy-*.tgz`. The main build selects its applications explicitly. The website lets you choose which of the eleven app binaries to install.
+FBT downloads the Flipper toolchain on its first run. The update archive appears under `dist/f7-C/flipper-z-f7-update-eddy-*.tgz`. The website lets you choose which of the eleven apps to install and arrange them across the two launcher pages.
 
 Use qFlipper’s **Install from file** with the TGZ, or connect the powered-on device with its microSD card installed, close qFlipper, and use the build tool.
 

@@ -31,6 +31,16 @@ typedef enum {
 typedef void (
     *BleMediaEventCallback)(BleMediaEvent event, const void* data, size_t size, void* context);
 
+// These values are shared with the optional browser bridge. HID uses the
+// corresponding bits in its single consumer-control input report.
+typedef enum {
+    BleMediaPrevious = 1,
+    BleMediaPlayPause,
+    BleMediaNext,
+    BleMediaVolumeUp,
+    BleMediaVolumeDown,
+} BleMediaCommand;
+
 bool ble_svc_media_listen(BleMediaEventCallback callback, void* context);
 void ble_svc_media_unlisten(void* context);
 bool ble_svc_media_send(void* context, uint8_t command, bool hid);

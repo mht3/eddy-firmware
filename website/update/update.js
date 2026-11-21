@@ -1,4 +1,4 @@
-import {catalog,getSelectedApps} from '../app-catalog.js';
+import {catalog,defaultAppOrder,getAppOrder,getSelectedApps} from '../app-catalog.js';
 import {prepareInstall,makeDownload} from './package.js';
 import {FlipperUpdater} from './flipper.js';
 
@@ -18,7 +18,8 @@ function updateControls() {
   picker.disabled = busy;
   action.disabled = busy || accepted || !build || !isSecureContext || !navigator.serial;
   download.disabled = busy || !build;
-  lab.hidden = busy || !lab.hasAttribute('href') || getSelectedApps().size !== catalog.length;
+  const stockLayout = getAppOrder().every((id,i)=>id===defaultAppOrder[i]);
+  lab.hidden = busy || !lab.hasAttribute('href') || getSelectedApps().size !== catalog.length || !stockLayout;
 }
 window.addEventListener('eddy-apps-changed', updateControls);
 
@@ -53,7 +54,8 @@ async function loadBuild() {
         data.parts.some(p=> !/^[\w-]+(?:\.[\w-]+)+$/.test(p.name) || !Number.isSafeInteger(p.size) ||
           p.size<=0 || !/^[a-f0-9]{64}$/.test(p.sha256) || !/^[a-f0-9]{32}$/.test(p.md5)) ||
         new Set(data.parts.map(p=>p.name)).size !== data.parts.length) throw Error('This release is missing verified update components.');
-    if (!catalog.every(app=>data.resourceIndex?.apps?.[app.appId])) throw Error('This release does not support app selection yet.');
+    if (!catalog.every(app=>data.resourceIndex?.apps?.[app.appId]) ||
+        !Number.isSafeInteger(data.resourceIndex?.launcherOrder)) throw Error('Refresh for a release with an editable app layout.');
     if (!window.CompressionStream || !window.DecompressionStream || !crypto.subtle) {
       throw Error('Open this page in a current browser over HTTPS to prepare your selection.');
     }

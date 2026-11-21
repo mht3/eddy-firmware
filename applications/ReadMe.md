@@ -1,6 +1,6 @@
 # Eddy applications
 
-The installer starts with Sub-GHz, RFID, NFC, Infrared, GPIO, and iButton selected. You can remove any of them and add any of the five optional apps below.
+The installer includes nine apps by default. Use **Add to build** for Pomodoro Timer or Metronome. Open **Arrange my Apps menu** and choose two apps to swap their positions, including across pages. The emulator, USB installer and qFlipper download use your layout.
 
 | Apps tile | Source |
 | --- | --- |
@@ -16,6 +16,6 @@ The installer starts with Sub-GHz, RFID, NFC, Infrared, GPIO, and iButton select
 | Bluetooth Remote | [eddy_bluetooth](main/eddy_bluetooth/) |
 | Spotify | [eddy_music](main/eddy_music/) |
 
-[The Eddy build profile](../fbt_options.py) selects the apps to package. [The launcher](services/loader/loader_menu.c) shows installed apps in manifest order and adds available pinned infrared remotes after those tiles.
+[The Eddy build profile](../fbt_options.py) selects the apps to package. In the default layout, Spotify, Remote Builder, and Bluetooth Remote share the bottom row of the first page. GPIO, iButton, and NFC appear on page two. [The launcher](services/loader/loader_menu.c) places saved remote shortcuts after your apps.
 
 Device settings live in [settings](settings/), background services in [services](services/), and the firmware updater in [system/updater](system/updater/). The repository also includes development tools, tests, and sources for other build profiles.

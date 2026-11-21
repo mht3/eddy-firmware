@@ -30,7 +30,7 @@ struct LoaderMenu {
     FuriPubSubSubscription* subscription;
 
     uint8_t section;
-    uint8_t app_index;
+    size_t app_index;
     bool in_apps;
     uint32_t selected_setting;
     LoaderMenuView current_view;
@@ -114,11 +114,39 @@ static const LauncherItem sections[] = {
     {"Settings", &A_Settings_14},
     {"Power off", &I_PowerOff_16x16}};
 
+// Catalog IDs are shared with the web installer. Names identify compiled menu apps.
+static const struct {
+    const char* id;
+    const char* name;
+} launcher_catalog[] = {
+    {"signal", "Sub-GHz"},
+    {"rfid", "RFID"},
+    {"infrared", "Infrared"},
+    {"pomodoro", "Pomodoro Timer"},
+    {"music", "Spotify"},
+    {"builder", "Remote Builder"},
+    {"btRemote", "Bluetooth Remote"},
+    {"metronome", "Metronome"},
+    {"gpio", "GPIO"},
+    {"ibutton", "iButton"},
+    {"nfc", "NFC"},
+};
+enum {
+    LauncherPageSize = 8,
+    LauncherColumns = 4
+};
+
+typedef struct {
+    const FlipperExternalApplication* app;
+    size_t slot;
+} LauncherApp;
+
 typedef struct {
     uint8_t section;
-    uint8_t app_index;
+    size_t app_index;
     bool in_apps;
-    const FlipperExternalApplication** apps;
+    LauncherApp* apps;
+    size_t first_pin_slot;
     size_t app_count;
     FuriString* pinned_labels[EDDY_REMOTE_PIN_MAX];
     size_t pin_count;
@@ -134,30 +162,130 @@ typedef struct {
     EddyRemotePins pins;
 } Launcher;
 
+static size_t launcher_catalog_index(const char* name) {
+    for(size_t i = 0; i < COUNT_OF(launcher_catalog); ++i) {
+        if(strcmp(name, launcher_catalog[i].name) == 0) return i;
+    }
+    return COUNT_OF(launcher_catalog);
+}
+
+static void launcher_read_order(Storage* storage, uint8_t* order) {
+    bool seen[COUNT_OF(launcher_catalog)] = {false};
+    size_t count = 0;
+    File* file = storage_file_alloc(storage);
+    if(storage_file_open(
+           file, EXT_PATH("eddy/launcher_order.txt"), FSAM_READ, FSOM_OPEN_EXISTING)) {
+        char text[256];
+        uint64_t size = storage_file_size(file);
+        if(size <= sizeof(text) && storage_file_read(file, text, size) == size &&
+           !memchr(text, '\0', size)) {
+            size_t start = 0;
+            for(size_t end = 0; end <= size; ++end) {
+                if(end != size && text[end] != '\n') continue;
+                size_t len = end - start;
+                if(len && text[end - 1] == '\r') --len;
+                for(size_t i = 0; i < COUNT_OF(launcher_catalog); ++i) {
+                    const char* id = launcher_catalog[i].id;
+                    if(!seen[i] && strlen(id) == len && !memcmp(text + start, id, len)) {
+                        seen[i] = true;
+                        order[count++] = i;
+                        break;
+                    }
+                }
+                start = end + 1;
+            }
+        }
+    }
+    storage_file_free(file);
+    // Older installations may omit later apps. Append each missing ID once.
+    for(size_t i = 0; i < COUNT_OF(launcher_catalog); ++i) {
+        if(!seen[i]) order[count++] = i;
+    }
+}
+
+static void launcher_load_apps(LauncherModel* model, Storage* storage) {
+    uint8_t order[COUNT_OF(launcher_catalog)];
+    launcher_read_order(storage, order);
+    const FlipperExternalApplication* installed[COUNT_OF(launcher_catalog)] = {0};
+    model->apps = malloc((FLIPPER_EXTERNAL_APPS_COUNT + 1) * sizeof(LauncherApp));
+    model->app_count = 0;
+    for(size_t i = 0; i < FLIPPER_EXTERNAL_APPS_COUNT; ++i) {
+        const FlipperExternalApplication* app = &FLIPPER_EXTERNAL_APPS[i];
+        size_t index = launcher_catalog_index(app->name);
+        if(index < COUNT_OF(installed) && storage_file_exists(storage, app->path))
+            installed[index] = app;
+    }
+    size_t next = 0;
+    for(size_t i = 0; i < COUNT_OF(installed); ++i) {
+        const FlipperExternalApplication* app = installed[order[i]];
+        if(!app) continue;
+        // Omitted neighbors leave their slots empty on both installer pages.
+        model->apps[model->app_count++] = (LauncherApp){.app = app, .slot = i};
+        next = MAX((size_t)LauncherPageSize, i + 1);
+    }
+    // Keep additional menu apps supplied by other builds discoverable as well.
+    for(size_t i = 0; i < FLIPPER_EXTERNAL_APPS_COUNT; ++i) {
+        const FlipperExternalApplication* app = &FLIPPER_EXTERNAL_APPS[i];
+        if(launcher_catalog_index(app->name) == COUNT_OF(installed) &&
+           storage_file_exists(storage, app->path))
+            model->apps[model->app_count++] = (LauncherApp){.app = app, .slot = next++};
+    }
+    model->first_pin_slot = next;
+}
+
+static size_t launcher_slot(const LauncherModel* model, size_t index) {
+    if(index < model->app_count) return model->apps[index].slot;
+    return model->first_pin_slot + index - model->app_count;
+}
+
+// In a sparse row, land on the nearest available column. An empty row is skipped.
+static size_t launcher_vertical(const LauncherModel* model, bool up) {
+    size_t count = model->app_count + model->pin_count;
+    size_t slot = launcher_slot(model, model->app_index);
+    size_t rows = launcher_slot(model, count - 1) / LauncherColumns + 1;
+    size_t row = slot / LauncherColumns;
+    size_t column = slot % LauncherColumns;
+    for(size_t step = 1; step < rows; ++step) {
+        size_t target = (row + (up ? rows - step : step)) % rows;
+        size_t best = model->app_index;
+        size_t distance = LauncherColumns;
+        for(size_t i = 0; i < count; ++i) {
+            size_t cell = launcher_slot(model, i);
+            if(cell / LauncherColumns != target) continue;
+            size_t other = cell % LauncherColumns;
+            size_t gap = column > other ? column - other : other - column;
+            if(gap < distance) {
+                distance = gap;
+                best = i;
+            }
+        }
+        if(distance < LauncherColumns) return best;
+    }
+    return model->app_index;
+}
+
 static void launcher_draw(Canvas* canvas, void* context) {
     const LauncherModel* model = context;
     bool grid = model->in_apps;
     size_t count = grid ? model->app_count + model->pin_count : COUNT_OF(sections);
     size_t selected = grid ? model->app_index : model->section;
     canvas_set_font(canvas, FontSecondary);
-    const size_t first = grid ? selected / 8 * 8 : 0;
     if(grid && !count) {
         canvas_draw_str_aligned(canvas, 64, 35, AlignCenter, AlignCenter, "No apps installed");
         return;
     }
-    if(count > 8) {
+    const size_t page_number = grid ? launcher_slot(model, selected) / LauncherPageSize : 0;
+    const size_t pages = grid ? launcher_slot(model, count - 1) / LauncherPageSize + 1 : 1;
+    if(pages > 1) {
         char page[32];
-        snprintf(
-            page,
-            sizeof(page),
-            "Apps %u/%u",
-            (unsigned)(first / 8 + 1),
-            (unsigned)((count + 7) / 8));
+        snprintf(page, sizeof(page), "Apps %u/%u", (unsigned)(page_number + 1), (unsigned)pages);
         canvas_draw_str(canvas, 2, 7, page);
     }
-    for(size_t i = first; i < MIN(first + 8, count); ++i) {
-        int x = grid ? 16 + 32 * (i % 4) : 21 + 42 * i;
-        int y = grid ? 18 + 20 * ((i - first) / 4) : 26;
+    for(size_t i = 0; i < count; ++i) {
+        size_t cell = grid ? launcher_slot(model, i) : i;
+        if(cell / LauncherPageSize != page_number) continue;
+        int x = grid ? 16 + 32 * (cell % LauncherColumns) : 21 + 42 * i;
+        int y = grid ? 18 + 20 * ((cell % LauncherPageSize) / LauncherColumns) : 26;
         if(i == selected) {
             canvas_draw_rbox(canvas, x - 12, y - (grid ? 9 : 10), 25, grid ? 19 : 21, 4);
             canvas_set_color(canvas, ColorWhite);
@@ -168,7 +296,7 @@ static void launcher_draw(Canvas* canvas, void* context) {
             elements_scrollable_text_line_centered(
                 canvas, x, y + 3, 21, model->pinned_labels[i - model->app_count], 0, false, true);
         } else {
-            const Icon* icon = grid ? model->apps[i]->icon : sections[i].icon;
+            const Icon* icon = grid ? model->apps[i].app->icon : sections[i].icon;
             if(!icon) icon = &A_Plugins_14;
             canvas_draw_icon(
                 canvas, x - icon_get_width(icon) / 2, y - icon_get_height(icon) / 2, icon);
@@ -195,7 +323,7 @@ static void launcher_draw(Canvas* canvas, void* context) {
                 true);
         } else {
             canvas_draw_str_aligned(
-                canvas, 64, 63, AlignCenter, AlignBottom, model->apps[selected]->name);
+                canvas, 64, 63, AlignCenter, AlignBottom, model->apps[selected].app->name);
         }
     }
 }
@@ -216,7 +344,7 @@ static bool launcher_input(InputEvent* event, void* context) {
     const char* launch = NULL;
     const char* remote_path = NULL;
     bool power = false;
-    unsigned app_count = model->app_count + model->pin_count;
+    size_t app_count = model->app_count + model->pin_count;
     model->remote_unavailable = false;
     bool settings = false;
     bool handled = true;
@@ -230,7 +358,7 @@ static bool launcher_input(InputEvent* event, void* context) {
                 remote_path = furi_string_get_cstr(
                     launcher->pins.paths[model->app_index - model->app_count]);
             else
-                launch = model->apps[model->app_index]->name;
+                launch = model->apps[model->app_index].app->name;
         } else if(model->in_apps) {
             handled = false;
         } else if(model->section == 0)
@@ -240,15 +368,18 @@ static bool launcher_input(InputEvent* event, void* context) {
         else
             power = true;
     } else if(event->key == InputKeyLeft || event->key == InputKeyRight) {
-        uint8_t* index = model->in_apps ? &model->app_index : &model->section;
-        unsigned count = model->in_apps ? app_count : COUNT_OF(sections);
-        if(count) *index = (*index + (event->key == InputKeyLeft ? count - 1 : 1)) % count;
+        size_t count = model->in_apps ? app_count : COUNT_OF(sections);
+        size_t index = model->in_apps ? model->app_index : model->section;
+        if(count) {
+            index = (index + (event->key == InputKeyLeft ? count - 1 : 1)) % count;
+            if(model->in_apps)
+                model->app_index = index;
+            else
+                model->section = index;
+        }
     } else if(
         model->in_apps && app_count && (event->key == InputKeyDown || event->key == InputKeyUp)) {
-        const unsigned rows = (app_count + 3) / 4;
-        const unsigned row =
-            (model->app_index / 4 + (event->key == InputKeyUp ? rows - 1 : 1)) % rows;
-        model->app_index = MIN(row * 4 + model->app_index % 4, app_count - 1);
+        model->app_index = launcher_vertical(model, event->key == InputKeyUp);
     } else
         handled = false;
     view_commit_model(launcher->grid, handled);
@@ -307,16 +438,7 @@ static int32_t loader_menu_thread(void* context) {
         launcher.grid,
         LauncherModel * model,
         {
-            model->apps = FLIPPER_EXTERNAL_APPS_COUNT ?
-                              malloc(FLIPPER_EXTERNAL_APPS_COUNT * sizeof(*model->apps)) :
-                              NULL;
-            model->app_count = 0;
-            for(size_t i = 0; i < FLIPPER_EXTERNAL_APPS_COUNT; ++i) {
-                const FlipperExternalApplication* app = &FLIPPER_EXTERNAL_APPS[i];
-                if(storage_file_exists(launcher.storage, app->path)) {
-                    model->apps[model->app_count++] = app;
-                }
-            }
+            launcher_load_apps(model, launcher.storage);
             model->section = menu->section;
             model->pin_count = launcher.pins.count;
             for(size_t i = 0; i < model->pin_count; ++i) {

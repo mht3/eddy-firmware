@@ -5,7 +5,7 @@ App(
     entry_point="eddy_music_app",
     requires=["bt"],
     targets=["f7"],
-    icon="I_music_10px",
+    icon="I_Spotify_16x16",
     order=101,
     stack_size=3072,
     fap_category="assets",

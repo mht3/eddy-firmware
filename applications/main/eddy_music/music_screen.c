@@ -45,13 +45,25 @@ static void format_time(char* out, size_t size, uint32_t ms) {
     }
 }
 
+static const char* feedback_text(MusicFeedback feedback, const char* fallback) {
+    switch(feedback) {
+    case MusicFeedbackFailed:
+        return "Try again";
+    case MusicFeedbackLouder:
+        return "Vol +";
+    case MusicFeedbackQuieter:
+        return "Vol -";
+    default:
+        return fallback;
+    }
+}
+
 static void draw_track(Canvas* canvas, const MusicScreen* model) {
     canvas_set_font(canvas, FontSecondary);
     const char* source = model->iphone ? "iPhone" : "Spotify";
     canvas_draw_str(canvas, 2, 8, source);
-    const char* status = model->failed_command ? "Try again" :
-                         model->track.playing  ? "Playing" :
-                                                 "Paused";
+    const char* status =
+        feedback_text(model->feedback, model->track.playing ? "Playing" : "Paused");
     canvas_draw_str(canvas, 88 - canvas_string_width(canvas, status), 8, status);
     canvas_set_font(canvas, FontPrimary);
     draw_marquee(canvas, 22, model->track.title, model->scroll);
@@ -69,7 +81,8 @@ static void draw_track(Canvas* canvas, const MusicScreen* model) {
         format_time(total, sizeof(total), model->track.duration);
         canvas_draw_str(canvas, 126 - canvas_string_width(canvas, total), 49, total);
     }
-    canvas_draw_str(canvas, 2, 61, "< Prev");
+    canvas_draw_str(
+        canvas, 2, 61, !model->iphone && model->position >= 3000 ? "< Start" : "< Prev");
     canvas_draw_str(canvas, 99, 61, "Next >");
     const char* action = model->track.playing ? "Pause" : "Play";
     canvas_draw_rbox(canvas, 43, 51, 42, 13, 5);
@@ -94,10 +107,7 @@ void music_screen_draw(Canvas* canvas, void* context) {
     if(model->available && model->connected && model->state == MusicWaiting) {
         canvas_draw_str(canvas, 2, 29, "Media controls");
         canvas_draw_str(
-            canvas,
-            2,
-            41,
-            model->failed_command ? "Try the button again." : "Play music on your phone.");
+            canvas, 2, 41, feedback_text(model->feedback, "Play music on your phone."));
         canvas_draw_str(canvas, 2, 61, "< Prev");
         canvas_draw_rbox(canvas, 39, 51, 50, 13, 5);
         canvas_set_color(canvas, ColorWhite);
@@ -115,7 +125,9 @@ void music_screen_draw(Canvas* canvas, void* context) {
         switch(model->state) {
         case MusicIdle:
             line = "Nothing playing";
-            hint = model->iphone ? "OK: resume on iPhone" : "Start a song on your phone.";
+            hint = feedback_text(
+                model->feedback,
+                model->iphone ? "OK: resume on iPhone" : "Start a song on your phone.");
             break;
         case MusicLogin:
             line = "Open Spotify on your phone";
@@ -139,5 +151,5 @@ void music_screen_draw(Canvas* canvas, void* context) {
     }
     canvas_draw_str(canvas, 2, 31, line);
     canvas_draw_str(canvas, 2, 43, hint);
-    canvas_draw_str(canvas, 2, 61, model->available ? "Up: setup QR" : "Back to Apps");
+    canvas_draw_str(canvas, 2, 61, model->available ? "Hold Up: setup QR" : "Back to Apps");
 }

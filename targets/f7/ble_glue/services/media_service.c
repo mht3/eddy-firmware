@@ -165,7 +165,7 @@ void ble_svc_media_unlisten(void* context) {
 }
 
 bool ble_svc_media_send(void* context, uint8_t command, bool hid) {
-    if(!guard || command < 1 || command > 3) return false;
+    if(!guard || command < BleMediaPrevious || command > BleMediaVolumeDown) return false;
     furi_mutex_acquire(guard, FuriWaitForever);
     bool sent = active && active->context == context && active->callback &&
                 active->connection != UINT16_MAX &&

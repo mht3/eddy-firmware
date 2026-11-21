@@ -2,9 +2,10 @@
 #include <furi.h>
 #include <ble/ble.h>
 #include <furi_ble/gatt.h>
+#include <profiles/serial_profile.h>
 
 // A media accessory appears in iPhone Bluetooth settings. Its single input report
-// exposes only Previous, Play/Pause and Next for the physical transport buttons.
+// exposes the three transport controls and the two volume controls.
 static const uint8_t report_map[] = {
     0x05, 0x0c, // Usage Page (Consumer)
     0x09, 0x01, // Usage (Consumer Control)
@@ -13,9 +14,11 @@ static const uint8_t report_map[] = {
     0x09, 0xb6, // Scan Previous Track
     0x09, 0xcd, // Play/Pause
     0x09, 0xb5, // Scan Next Track
+    0x09, 0xe9, // Volume increment
+    0x09, 0xea, // Volume decrement
     0x15, 0x00, 0x25, 0x01, // Logical range 0..1
-    0x75, 0x01, 0x95, 0x03, 0x81, 0x02, // Three one-bit inputs
-    0x75, 0x05, 0x95, 0x01, 0x81, 0x03, // Five padding bits
+    0x75, 0x01, 0x95, 0x05, 0x81, 0x02, // Five one-bit inputs
+    0x75, 0x03, 0x95, 0x01, 0x81, 0x03, // Three padding bits
     0xc0,
 };
 static const uint8_t hid_info[] = {0x11, 0x01, 0, 0x02};
@@ -108,7 +111,7 @@ MusicHid* music_hid_start(void) {
 }
 
 bool music_hid_send(MusicHid* hid, uint8_t command) {
-    if(command < 1 || command > 3) return false;
+    if(command < BleMediaPrevious || command > BleMediaVolumeDown) return false;
     uint8_t pressed = 1U << (command - 1U);
     if(ble_gatt_characteristic_update(hid->handle, &hid->chars[HidInput], &pressed)) return false;
     return !ble_gatt_characteristic_update(hid->handle, &hid->chars[HidInput], &released);

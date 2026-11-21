@@ -13,46 +13,74 @@ export const catalog = [
   {id:'music', name:'Spotify', appId:'eddy_music', core:false, description:'Control phone playback. With iPhone, see the song and artist on your Flipper.'},
 ];
 
-const storageKey = 'eddy-install-apps-v1';
-const defaults = catalog.filter(app => app.core).map(app => app.id);
+export const defaultAppOrder = Object.freeze([
+  'signal','rfid','infrared','pomodoro','music','builder','btRemote','metronome','gpio','ibutton','nfc',
+]);
+const defaultIds = defaultAppOrder.filter(id => id!=='pomodoro' && id!=='metronome');
+const selectionKey = 'eddy-install-apps-v1';
+const orderKey = 'eddy-install-order-v1';
 
 function normalize(ids) {
   if (!Array.isArray(ids) || !ids.every(id => typeof id === 'string')) return null;
   return catalog.filter(app => ids.includes(app.id)).map(app => app.id);
 }
 
-function savedSelection() {
-  const entry = normalize(globalThis.history?.state?.eddyInstallApps);
-  if (entry) return entry;
-  try {
-    const value = localStorage.getItem(storageKey);
-    if (value !== null) return normalize(JSON.parse(value)) ?? defaults;
-  } catch {}
-  return defaults;
+export function validAppOrder(ids) {
+  return Array.isArray(ids) && ids.length === defaultAppOrder.length &&
+    defaultAppOrder.every(id => ids.includes(id));
 }
 
-let selected = savedSelection();
+function readSetting(key, historyKey, validate) {
+  const entry = validate(globalThis.history?.state?.[historyKey]);
+  if (entry) return entry;
+  try { return validate(JSON.parse(localStorage.getItem(key))); } catch { return null; }
+}
+
+function readSelection() {
+  return readSetting(selectionKey,'eddyInstallApps',normalize);
+}
+
+function readOrder() {
+  return readSetting(orderKey,'eddyInstallOrder',ids => validAppOrder(ids) ? ids : null);
+}
+
+let selected = readSelection();
+let order = readOrder();
 
 export function getSelectedApps() {
-  return new Set(selected);
+  return new Set(selected ?? defaultIds);
+}
+
+export function getAppOrder() {
+  return [...(order ?? defaultAppOrder)];
+}
+
+function persist(key, historyKey, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    if (history.state?.[historyKey]) {
+      const saved = {...history.state};
+      delete saved[historyKey];
+      history.replaceState(saved, '');
+    }
+  } catch {
+    // Keep this history entry usable if browser storage is blocked or full.
+    try { history.replaceState({...history.state, [historyKey]:value}, ''); } catch {}
+  }
+  window.dispatchEvent(new Event('eddy-apps-changed'));
 }
 
 export function setSelectedApps(ids) {
   const next = normalize([...ids]);
   if (!next) return;
   selected = next;
-  try {
-    localStorage.setItem(storageKey, JSON.stringify(next));
-    if (history.state?.eddyInstallApps) {
-      const saved = {...history.state};
-      delete saved.eddyInstallApps;
-      history.replaceState(saved, '');
-    }
-  } catch {
-    // Keep this history entry usable if browser storage is blocked or full.
-    try { history.replaceState({...history.state, eddyInstallApps:next}, ''); } catch {}
-  }
-  window.dispatchEvent(new Event('eddy-apps-changed'));
+  persist(selectionKey, 'eddyInstallApps', selected);
+}
+
+export function setAppOrder(ids) {
+  if (!validAppOrder(ids)) return;
+  order = [...ids];
+  persist(orderKey, 'eddyInstallOrder', order);
 }
 
 export function setAppSelected(id, enabled) {
@@ -64,8 +92,8 @@ export function setAppSelected(id, enabled) {
 }
 
 globalThis.addEventListener?.('storage', event => {
-  if (event.key === storageKey || event.key === null) {
-    selected = savedSelection();
-    window.dispatchEvent(new Event('eddy-apps-changed'));
-  }
+  if (event.key !== null && event.key !== selectionKey && event.key !== orderKey) return;
+  selected = readSelection();
+  order = readOrder();
+  window.dispatchEvent(new Event('eddy-apps-changed'));
 });

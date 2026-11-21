@@ -30,13 +30,20 @@ SYSTEM_APPS = {
 
 
 def resource_index(data, profile):
-    """Locate app binaries and the SD manifest in the verified resource tar."""
+    """Locate app binaries, launcher layout and SD manifest in the verified resource tar."""
     apps = {}
     with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as archive:
         manifest = archive.getmember("Manifest")
         if not manifest.isfile() or manifest.offset_data != manifest.offset + 512:
             raise ValueError("Unsupported SD resource manifest")
         rows = set(archive.extractfile(manifest).read().decode().splitlines())
+        layout = archive.getmember("eddy/launcher_order.txt")
+        if not layout.isfile() or layout.offset_data != layout.offset + 512:
+            raise ValueError("Unsupported launcher layout entry")
+        layout_data = archive.extractfile(layout).read()
+        layout_md5 = hashlib.md5(layout_data, usedforsecurity=False).hexdigest()
+        if f"F:{layout_md5}:{layout.size}:{layout.name}" not in rows:
+            raise ValueError("Launcher layout does not match the SD resource manifest")
         for member in archive:
             if (
                 member.name.endswith(".fal")
@@ -64,7 +71,7 @@ def resource_index(data, profile):
             if f"F:{digest.hexdigest()}:{member.size}:{member.name}" not in rows:
                 raise ValueError(f"Resource manifest mismatch: {member.name}")
             apps[app_id] = {"name": member.name, "offset": member.offset}
-    return {"manifest": manifest.offset, "apps": apps}
+    return {"manifest": manifest.offset, "launcherOrder": layout.offset, "apps": apps}
 
 
 def stage(package=None):

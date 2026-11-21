@@ -2,6 +2,13 @@
 #include "music_state.h"
 #include <gui/canvas.h>
 
+typedef enum {
+    MusicFeedbackNone,
+    MusicFeedbackFailed,
+    MusicFeedbackLouder,
+    MusicFeedbackQuieter,
+} MusicFeedback;
+
 typedef struct {
     MusicState state;
     MusicTrackInfo track;
@@ -10,7 +17,7 @@ typedef struct {
     bool iphone;
     bool setup;
     bool linked;
-    bool failed_command;
+    MusicFeedback feedback;
     uint32_t position;
     uint32_t scroll;
 } MusicScreen;
