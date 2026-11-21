@@ -60,7 +60,7 @@ async function filterResources(bytes,index,excluded,order) {
   }
   const layoutPath = 'eddy/launcher_order.txt';
   const layout = locateEntry(tar,index.launcherOrder,layoutPath);
-  const layoutData = encoder.encode(order.join('\n')+'\n');
+  const layoutData = encoder.encode(order.map(id => id+'\n').join(''));
   edits.push(replaceEntry(layout,layoutData));
   const keep = [];
   let hasLayout = false;
@@ -118,7 +118,7 @@ export async function prepareInstall(build,selectedIds,onPart,order=getAppOrder(
   }
   if (excluded.length || order.some((id,i)=>id!==defaultAppOrder[i])) {
     const resources = files.find(({part})=>part.name==='resources.tar.gz');
-    const bytes = await filterResources(resources.bytes,build.resourceIndex,excluded,order);
+    const bytes = await filterResources(resources.bytes,build.resourceIndex,excluded,order.filter(id => selected.has(id)));
     resources.bytes=bytes;
     resources.part={...resources.part,size:bytes.length,sha256:await sha256(bytes),md5:md5(bytes)};
   }

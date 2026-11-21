@@ -1,6 +1,6 @@
 # Eddy applications
 
-The installer includes nine apps by default. Use **Add to build** for Spotify, Pomodoro Timer, or Metronome. Open **Arrange my Apps menu** and choose two apps to swap their positions, including across pages. The emulator, USB installer and qFlipper download use your layout.
+The installer includes nine apps by default. Use **Add to build** for Spotify, Pomodoro Timer, or Metronome. Open **Arrange my Apps menu** and drag a selected app onto another to swap their positions, including across pages. The emulator, USB installer and qFlipper download use your layout.
 
 | Apps tile | Source |
 | --- | --- |

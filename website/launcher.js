@@ -10,9 +10,9 @@ export const apps = catalog.map(({name,id})=>[name,id]);
 // The list stays dense for Left/Right. Its third field is the physical cell on the display.
 export function layoutApps(items, order = getAppOrder()) {
   const cells = [];
-  order.forEach((id,slot) => {
+  order.forEach(id => {
     const item = items.find(([,target]) => target === id);
-    if (item) cells.push([item[0],id,slot]);
+    if (item) cells.push([item[0],id,cells.length]);
   });
   let next = cells.length ? Math.max(8,cells.at(-1)[2]+1) : 0;
   for (const [name,id] of items) {

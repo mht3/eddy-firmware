@@ -1,6 +1,7 @@
-import {catalog, defaultAppOrder, getAppOrder, getSelectedApps, setAppOrder, setAppSelected, setSelectedApps} from '../app-catalog.js';
+import {catalog, getAppOrder, getSelectedApps, setAppOrder, setAppSelected, setSelectedApps} from '../app-catalog.js';
 import {drawLauncher, layoutApps, launcherArt} from '../launcher.js';
 import {drawBattery} from '../home-screen.js';
+import {appArranger} from './arrange.js';
 
 const form = document.getElementById('app-picker');
 const screen = document.getElementById('selected-screen');
@@ -8,80 +9,7 @@ const menuPreview = document.getElementById('try-app-menu');
 const count = document.getElementById('app-count');
 const cards = new Map();
 let lastAdded;
-let swapSource = null;
-const swapStatus = document.getElementById('arrange-status');
-const resetOrder = document.getElementById('reset-order');
-const slots = [];
-
-function slotAddress(i) {
-  return 'page ' + (Math.floor(i/8)+1) + ', position ' + (i%8+1);
-}
-
-function chooseSlot(i) {
-  if (form.disabled) return;
-  const order = getAppOrder();
-  const name = catalog.find(app => app.id === order[i]).name;
-  if (swapSource === null) {
-    swapSource = order[i];
-    swapStatus.textContent = 'Move ' + name + '. Choose its new position.';
-  } else if (swapSource === order[i]) {
-    swapSource = null;
-    swapStatus.textContent = 'Move canceled.';
-  } else {
-    const from = order.indexOf(swapSource);
-    const moved = catalog.find(app => app.id === swapSource);
-    [order[from], order[i]] = [order[i], order[from]];
-    lastAdded = moved.id;
-    swapSource = null;
-    swapStatus.textContent = moved.name + ' moved to ' + slotAddress(i) + '.';
-    setAppOrder(order);
-  }
-  renderOrder(getSelectedApps());
-}
-
-function renderOrder(selected) {
-  const order = getAppOrder();
-  order.forEach((id,i) => {
-    const {button,label} = slots[i];
-    const name = catalog.find(app => app.id === id).name;
-    button.dataset.id = id;
-    button.classList.toggle('included', selected.has(id));
-    button.setAttribute('aria-pressed',String(swapSource === id));
-    button.setAttribute('aria-label',name + ', ' + slotAddress(i) + (selected.has(id) ? '' : ', excluded'));
-    label.textContent = name;
-  });
-  resetOrder.disabled = order.every((id,i) => id === defaultAppOrder[i]);
-}
-
-function makeSlots() {
-  defaultAppOrder.forEach((_,i) => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'app-slot';
-    const glyph = document.createElement('span');
-    glyph.className = 'app-icon';
-    glyph.setAttribute('aria-hidden','true');
-    const label = document.createElement('span');
-    button.append(glyph,label);
-    button.addEventListener('click',() => chooseSlot(i));
-    slots.push({button,label});
-    document.getElementById(i<8 ? 'order-page-1' : 'order-page-2').append(button);
-  });
-  resetOrder.addEventListener('click', () => {
-    swapSource = null;
-    lastAdded = null;
-    setAppOrder(defaultAppOrder);
-    swapStatus.textContent = 'Default order restored.';
-  });
-  document.getElementById('arrange-apps').addEventListener('keydown', event => {
-    if (event.key === 'Escape' && swapSource !== null) {
-      swapSource = null;
-      swapStatus.textContent = 'Move canceled.';
-      renderOrder(getSelectedApps());
-    }
-  });
-}
-
+const renderOrder = appArranger(id => { lastAdded = id; });
 
 function makeCard(app) {
   const card = document.createElement('li');
@@ -194,7 +122,6 @@ new MutationObserver(() => {
   menuPreview.inert = form.disabled;
   if (!form.disabled) sync();
 }).observe(form,{attributes:true,attributeFilter:['disabled']});
-makeSlots();
 for (const app of catalog) {
   form.querySelector(app.core ? '#core-apps' : '#extra-apps').append(makeCard(app));
 }
