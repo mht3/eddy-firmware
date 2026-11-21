@@ -27,7 +27,7 @@ Keep the device connected through the restart. Open **Settings → About** to ch
 
 ## Website and main build
 
-The launch page, one-page wiki and Flipper Lab installer are in `website/`. To preview the site with the local package, run these commands after building in a clean distribution directory.
+The launch page, one-page wiki and Flipper Lab installer are in `website/`. To preview the site with the local package, run these commands after building the current revision.
 
 ```sh
 python3 scripts/eddy_site.py

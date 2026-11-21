@@ -134,11 +134,7 @@ void eddy_settings_app_scene_misc_dolphin_on_enter(void* context) {
     // uin8_t index too small for all levels, use 3 fake items to
     // show buttons and change values in callback
     item = variable_item_list_add(
-        var_item_list,
-        "Eddy XP",
-        3,
-        eddy_settings_app_scene_misc_dolphin_dolphin_xp_changed,
-        app);
+        var_item_list, "Eddy XP", 3, eddy_settings_app_scene_misc_dolphin_dolphin_xp_changed, app);
     variable_item_set_current_value_index(
         item,
         app->dolphin_xp == 0              ? 0 :

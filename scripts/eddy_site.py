@@ -3,6 +3,8 @@
 import hashlib
 import json
 import re
+import runpy
+import os
 import shutil
 import subprocess
 import tarfile
@@ -12,16 +14,16 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def stage(package=None):
-    packages = (
-        [package]
-        if package is not None
-        else list((ROOT / "dist").glob("f7-*/flipper-z-f7-update-eddy-*.tgz"))
-    )
-    if len(packages) != 1:
-        raise SystemExit(
-            "Expected one Eddy archive under dist/f7-*. Use a clean distribution directory."
+    if package is None:
+        suffix = (
+            os.environ.get("DIST_SUFFIX")
+            or runpy.run_path(str(ROOT / "fbt_options.py"))["DIST_SUFFIX"]
         )
-    package = packages[0]
+        package = ROOT / "dist/f7-C" / f"flipper-z-f7-update-{suffix}.tgz"
+        if not package.is_file():
+            raise SystemExit(
+                "Build the current F7 revision first, or specify an existing Eddy TGZ."
+            )
     version = package.stem.removeprefix("flipper-z-f7-update-")
     if not re.fullmatch(r"eddy-[A-Za-z0-9._-]+", version):
         raise SystemExit("Unsupported package name")
