@@ -1,0 +1,12 @@
+App(
+    appid="eddy_music",
+    name="Spotify",
+    apptype=FlipperAppType.MENUEXTERNAL,
+    entry_point="eddy_music_app",
+    requires=["bt"],
+    targets=["f7"],
+    icon="I_music_10px",
+    order=101,
+    stack_size=3072,
+    fap_category="assets",
+)

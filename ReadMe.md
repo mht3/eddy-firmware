@@ -10,7 +10,11 @@ Eddy is a new firmware for Flipper Zero! Eddy started from Next-Flip’s Momentu
 
 [Install the main build](https://mht3.github.io/eddy-firmware/update/) · [Try the home screen](https://mht3.github.io/eddy-firmware/#home-screen) · [Read the wiki](https://mht3.github.io/eddy-firmware/wiki/)
 
-Press **OK → Apps** for Sub-GHz, RFID, NFC, Infrared, GPIO, iButton, Pomodoro Timer, Metronome, Remote Builder, and Bluetooth Remote. In Infrared, choose **Learn a remote** to save your own buttons. Saved remotes appear under **My remotes**.
+**Apps → Spotify** shows a QR code on the Flipper that opens Spotify on your phone. Pair **Eddy Music** in the phone’s Bluetooth settings and start a song. On iPhone, the screen shows the current song, artist and playback time using Apple Media Service. **Left / Right** select the previous / next track. **OK** plays or pauses. Audio stays on the phone or its chosen speaker. Eddy remembers the pairing across power cycles. Press **Up** in the Flipper app to see the QR again. [Setup guide and screen captures](https://mht3.github.io/eddy-firmware/music/)
+
+Android supports the three playback buttons on phones that accept Bluetooth media controls. Track information on Android requires the optional browser connection and publisher access to the Spotify Web API. See the setup guide for its availability.
+
+Other apps include Sub-GHz, RFID, NFC, Infrared, GPIO, iButton, Pomodoro Timer, Metronome, Remote Builder, and Bluetooth Remote. In Infrared, choose **Learn a remote** to save your own buttons. Saved remotes appear under **My remotes**.
 
 **Infrared → TV presets** opens ready-to-use controls for Samsung TV, LG TV, TCL RC3000E02, and TCL Roku 32S327. Select your TV, point the Flipper at it, and try **Vol −** with **OK**. On Roku, select **D-pad** to use the arrows and OK directly. **Back** returns to the remote. Other TV models may use different codes.
 

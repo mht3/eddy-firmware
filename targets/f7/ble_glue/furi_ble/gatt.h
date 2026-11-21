@@ -105,6 +105,15 @@ bool ble_gatt_service_add(
 
 bool ble_gatt_service_delete(uint16_t svc_handle);
 
+/* Start a GATT client procedure on a connected peer. Responses are delivered
+ * through the BLE event dispatcher. Only one procedure can run at a time. */
+bool ble_gatt_client_discover_services(uint16_t connection);
+bool ble_gatt_client_discover_chars(uint16_t connection, uint16_t first, uint16_t last);
+bool ble_gatt_client_discover_descriptors(uint16_t connection, uint16_t first, uint16_t last);
+bool ble_gatt_client_write(uint16_t connection, uint16_t handle, uint8_t size, const uint8_t* data);
+bool ble_gatt_client_read_long(uint16_t connection, uint16_t handle);
+bool ble_gatt_client_confirm(uint16_t connection);
+
 #ifdef __cplusplus
 }
 #endif

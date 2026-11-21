@@ -86,6 +86,7 @@ typedef struct {
     uint8_t mac_address[GAP_MAC_ADDR_SIZE];
     char adv_name[FURI_HAL_VERSION_DEVICE_NAME_LENGTH];
     GapConnectionParamsRequest conn_param;
+    bool solicit_apple_media;
 } GapConfig;
 
 typedef struct {

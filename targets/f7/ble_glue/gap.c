@@ -376,6 +376,15 @@ static void gap_init_svc(Gap* gap, const GapRootSecurityKeys* root_keys) {
     aci_hal_set_tx_power_level(1, 0x19);
     // Initialize GATT interface
     aci_gatt_init();
+    if(gap->config->solicit_apple_media) {
+        // ST masks client procedure events by default. Keep local writes and
+        // MTU updates enabled alongside discovery, reads and subscriptions.
+        const uint32_t media_events = 0x00000001u | 0x00000002u | 0x00000004u | 0x00000008u |
+                                      0x00000020u | 0x00000040u | 0x00000080u | 0x00000200u |
+                                      0x00002000u | 0x00004000u | 0x00010000u;
+        status = aci_gatt_set_event_mask(media_events);
+        if(status) FURI_LOG_E(TAG, "Media GATT event mask failed %d", status);
+    }
     // Initialize GAP interface
     // Skip fist symbol AD_TYPE_COMPLETE_LOCAL_NAME
     char* name = gap->service.adv_name + 1;
@@ -471,7 +480,27 @@ static void gap_advertise_start(GapState new_state) {
         }
     }
 
-    if(gap->service.mfg_data_len > 0) {
+    size_t name_len = strlen(gap->service.adv_name);
+    uint8_t uuid_len = gap->service.adv_svc_uuid_len;
+    const uint8_t* advertised_uuid = gap->service.adv_svc_uuid;
+    const uint8_t media_hid[] = {AD_TYPE_16_BIT_SERV_UUID_CMPLT_LIST, 0x12, 0x18};
+    if(gap->config->solicit_apple_media) {
+        // iOS discovers the accessory via service solicitation. Android uses the
+        // advertised custom service UUID and local name in the scan response.
+        uint8_t scan_response[31];
+        uint8_t scan_len = 0;
+        furi_check(1 + uuid_len + 1 + name_len <= sizeof(scan_response));
+        scan_response[scan_len++] = uuid_len;
+        memcpy(scan_response + scan_len, gap->service.adv_svc_uuid, uuid_len);
+        scan_len += uuid_len;
+        scan_response[scan_len++] = name_len;
+        memcpy(scan_response + scan_len, gap->service.adv_name, name_len);
+        scan_len += name_len;
+        name_len = 0;
+        uuid_len = sizeof(media_hid);
+        advertised_uuid = media_hid;
+        hci_le_set_scan_response_data(scan_len, scan_response);
+    } else if(gap->service.mfg_data_len > 0) {
         hci_le_set_scan_response_data(gap->service.mfg_data_len, gap->service.mfg_data);
     }
 
@@ -482,14 +511,37 @@ static void gap_advertise_start(GapState new_state) {
         max_interval,
         CFG_IDENTITY_ADDRESS,
         0,
-        strlen(gap->service.adv_name),
+        name_len,
         (uint8_t*)gap->service.adv_name,
-        gap->service.adv_svc_uuid_len,
-        gap->service.adv_svc_uuid,
+        uuid_len,
+        advertised_uuid,
         0,
         0);
     if(status) {
         FURI_LOG_E(TAG, "set_discoverable failed %d", status);
+    }
+    if(!status && gap->config->solicit_apple_media) {
+        const uint8_t solicitation[] = {
+            17,
+            AD_TYPE_SERV_SOLICIT_128_BIT_UUID_LIST,
+            0xdc,
+            0xf8,
+            0x55,
+            0xad,
+            0x02,
+            0xc5,
+            0xf4,
+            0x8e,
+            0x3a,
+            0x43,
+            0x36,
+            0x0f,
+            0x2b,
+            0x50,
+            0xd3,
+            0x89};
+        status = aci_gap_update_adv_data(sizeof(solicitation), solicitation);
+        if(status) FURI_LOG_E(TAG, "Media service solicitation failed %d", status);
     }
     gap->state = new_state;
     GapEvent event = {.type = GapEventTypeStartAdvertising};

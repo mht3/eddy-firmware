@@ -120,6 +120,7 @@ static const LauncherItem apps[] = {
     {"Metronome", &I_music_10px},
     {"Remote Builder", &I_RemoteLayout_14x14},
     {"Bluetooth Remote", &I_Ble_connected_15x15},
+    {"Spotify", &I_music_10px},
 };
 
 static const LauncherItem sections[] = {

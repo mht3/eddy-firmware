@@ -183,6 +183,7 @@ FuriHalBleProfileBase* furi_hal_bt_start_app(
             break;
         }
 
+        current_config = (GapConfig){0};
         profile_template->get_gap_config(&current_config, params);
 
         if(!gap_init(&current_config, root_keys, event_cb, context)) {

@@ -58,10 +58,9 @@ COPRO_CUBE_VERSION = "1.20.0"
 
 COPRO_CUBE_DIR = "lib/stm32wb_copro"
 
-# Default radio stack
-COPRO_STACK_BIN = "stm32wb5x_BLE_Stack_light_fw.bin"
-# Firmware also supports "ble_full", but it might not fit into debug builds
-COPRO_STACK_TYPE = "ble_light"
+# Apple Media Service discovery needs the GATT client in the full radio stack.
+COPRO_STACK_BIN = "stm32wb5x_BLE_Stack_full_fw.bin"
+COPRO_STACK_TYPE = "ble_full"
 
 # Leave 0 to let scripts automatically calculate it
 COPRO_STACK_ADDR = "0x0"
@@ -105,6 +104,7 @@ FIRMWARE_APPS = {
         "eddy_metronome",
         "eddy_remote_builder",
         "eddy_bluetooth",
+        "eddy_music",
         "eddy_signal",
         "infrared",
         "gpio",

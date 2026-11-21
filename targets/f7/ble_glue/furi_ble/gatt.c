@@ -169,3 +169,27 @@ bool ble_gatt_service_delete(uint16_t svc_handle) {
 
     return result == BLE_STATUS_SUCCESS;
 }
+
+bool ble_gatt_client_discover_services(uint16_t connection) {
+    return aci_gatt_disc_all_primary_services(connection) == BLE_STATUS_SUCCESS;
+}
+
+bool ble_gatt_client_discover_chars(uint16_t connection, uint16_t first, uint16_t last) {
+    return aci_gatt_disc_all_char_of_service(connection, first, last) == BLE_STATUS_SUCCESS;
+}
+
+bool ble_gatt_client_discover_descriptors(uint16_t connection, uint16_t first, uint16_t last) {
+    return aci_gatt_disc_all_char_desc(connection, first, last) == BLE_STATUS_SUCCESS;
+}
+
+bool ble_gatt_client_write(uint16_t connection, uint16_t handle, uint8_t size, const uint8_t* data) {
+    return aci_gatt_write_char_value(connection, handle, size, data) == BLE_STATUS_SUCCESS;
+}
+
+bool ble_gatt_client_read_long(uint16_t connection, uint16_t handle) {
+    return aci_gatt_read_long_char_value(connection, handle, 0) == BLE_STATUS_SUCCESS;
+}
+
+bool ble_gatt_client_confirm(uint16_t connection) {
+    return aci_gatt_confirm_indication(connection) == BLE_STATUS_SUCCESS;
+}

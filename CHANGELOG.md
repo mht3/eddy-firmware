@@ -1,5 +1,7 @@
 # Eddy Firmware changes
 
+- Apps → Spotify adds a first-run QR, remembered Bluetooth pairing, playback buttons and an iPhone track display. The website includes handheld screen captures and a playable demo.
+
 - The home screen opens Apps, Settings, and Power off. Quick Settings controls brightness and volume.
 - Remote Builder saves six-button infrared layouts with custom labels and positions. Bluetooth Remote adds camera shutter, slide navigation, and media controls.
 - The other eight Apps tiles include Sub-GHz, RFID, NFC, Infrared, GPIO, iButton, Pomodoro Timer, and Metronome. Saved infrared remotes can be pinned to Apps.

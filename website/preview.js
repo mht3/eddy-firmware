@@ -1,3 +1,4 @@
+import {openMusicDemo, drawMusic, musicStatus, musicKey} from './music-preview.js';
 import {tvPresetRows, tvPadStatus, tvPadKey, drawTvPad, tvPadHit, tvNavigationHit} from './tv-presets.js';
 import {openBuilder, builderKey, builderStatus, drawBuilder} from './builder-preview.js';
 import {bluetoothKey, bluetoothStatus, drawBluetooth} from './bluetooth-preview.js';
@@ -16,7 +17,7 @@ const status = document.querySelector('#preview-state');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const ink = '#432a14';
 const titles = {
-  tvPresets:'Choose your TV', tvPad:'TV remote', builder:'Remote Builder', btRemote:'Bluetooth Remote', noteList:'Saved observations', noteDetail:'Saved observation',
+  music:'Spotify', tvPresets:'Choose your TV', tvPad:'TV remote', builder:'Remote Builder', btRemote:'Bluetooth Remote', noteList:'Saved observations', noteDetail:'Saved observation',
   home:'Home screen', menu:'Launcher', apps:'Apps', settings:'Settings', power:'Power',
   signal:'Sub-GHz', rfid:'RFID', nfc:'NFC', infrared:'Infrared', gpio:'GPIO', ibutton:'iButton',
   metronome:'Metronome', pomodoro:'Pomodoro Timer', battery:'Battery info', restart:'Restart?', shutdown:'Power off?',
@@ -240,6 +241,8 @@ function draw() {
     drawBuilder(ctx,current());
   } else if (page === 'btRemote') {
     drawBluetooth(ctx,current());
+  } else if (page === 'music') {
+    if(drawMusic(ctx,current())) timer=setTimeout(draw,500);
   } else if (page === 'metronome') {
     const delay=drawMetronome(ctx,current(),performance.now());
     if (delay) timer=setTimeout(draw,delay);
@@ -297,6 +300,7 @@ function announce() {
   if (page!=='off') text += '. Sample battery '+sampleCharge+'%, not charging.';
   if (page==='home') text += ' Press OK for the launcher or Up for quick settings.';
   if (page==='signal') text+='. Sample signal at 433.92 MHz. OK to save this reading, Right for saved readings.';
+  if (page==='music') text += '. '+musicStatus(current());
   if (page==='metronome') text += '. '+metronomeStatus(current());
   if (page==='pomodoro') text += '. '+Math.ceil(remaining()/1000)+' seconds. '+(focus.deadline?'Running. OK to pause.':'Paused. Left or Right to set minutes, OK to start.');
   status.textContent=text;
@@ -365,6 +369,8 @@ function press(key) {
       while(history.length>1 && !['remotes','apps','infrared'].includes(current().page)) history.pop();
       refreshHistory();
     }
+  } else if(page==='music') {
+    musicKey(state,key);
   } else if(page==='metronome') {
     metronomeInput(state,key,performance.now());
   } else if(page==='pomodoro') {
@@ -388,6 +394,7 @@ function press(key) {
       else {
         if(next==='remote') { remoteDemo.select(name); refreshRemotes(); }
         if(next==='layout' || next==='builder') history.push(openBuilder(next==='layout'?name:undefined));
+        else if(next==='music') history.push(openMusicDemo());
         else if(next==='tvPad') history.push({page:next,profile:state.row,row:2});
         else history.push({page:next,row:0});
       }
@@ -403,6 +410,12 @@ function press(key) {
   draw();
   announce();
 }
+
+document.querySelector('#try-music').addEventListener('click', () => {
+  history=[{page:'home',row:0},{page:'apps',row:apps.findIndex(([,id])=>id==='music')},openMusicDemo()];
+  draw(); announce();
+  document.querySelector('#playable [data-key=ok]').focus({preventScroll:true});
+});
 
 const nameDialog=document.getElementById('remote-name-dialog');
 const nameInput=document.getElementById('remote-name');

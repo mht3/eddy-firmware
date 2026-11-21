@@ -1,0 +1,44 @@
+.music {max-width:41rem; margin:0 auto; padding:clamp(2rem,6vh,5rem) 1.25rem 4rem}
+.music h1 {font-size:clamp(3rem,9vw,5rem); line-height:1; margin:0}
+.music .intro {color:var(--muted); margin:.8rem 0 1.75rem; font-size:1.15rem}
+.music [hidden] {display:none!important}
+.platforms {display:inline-flex; padding:.25rem; margin-bottom:.75rem; gap:.25rem; border:1px solid var(--line); border-radius:.8rem; background:#0c2038}
+.platforms button {font:inherit; font-weight:650; border:0; border-radius:.55rem; color:var(--muted); background:transparent; cursor:pointer; padding:.55rem 1.25rem}
+.platforms button[aria-pressed=true] {background:#a7d5ff; color:#09243d}
+.music button:focus-visible,.music summary:focus-visible {outline:3px solid var(--surf); outline-offset:3px}
+.music section {padding:clamp(1.25rem,4vw,2rem); margin-bottom:1rem; border:1px solid var(--line); border-radius:1rem; background:#10243c}
+.music h2 {font-size:1.65rem; line-height:1.2; letter-spacing:-.035em; margin:0}
+.music ol {padding-left:1.55rem; margin:1.2rem 0 0}
+.music li {padding-left:.3rem; margin-bottom:.85rem}
+.music li::marker {font-weight:700; color:var(--surf)}
+.music li:last-child {margin-bottom:0}
+.music section a {color:var(--surf); text-decoration:underline; text-underline-offset:.17em}
+.music .note,.music details {padding-top:1rem; border-top:1px solid var(--line); margin:1.25rem 0 0; color:var(--muted)}
+.music details summary {cursor:pointer; font-weight:600}
+.music details p {margin:.6rem 0 0}
+.music .controls {background:transparent}
+.music .controls h2 {font-size:1.2rem}
+.music dl {display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); margin:1rem 0 0; gap:.65rem}
+.music dt {font-weight:700}
+.music dd {margin:0; color:var(--muted)}
+.music .screens {display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; margin:1rem 0 1.25rem}
+.music figure {margin:0}
+.music figure img {width:100%; max-width:256px; height:auto; display:block; image-rendering:pixelated}
+.music figcaption {margin-top:.35rem; color:var(--muted); font-size:.9rem}
+@media (max-width:32rem) {
+  .music .screens {grid-template-columns:1fr}
+}
+
+.music section a.spotify-launch {color:var(--ink); text-decoration:none; margin-top:1.15rem}
+.music #bridge {border-top:1px solid var(--line); margin-top:1.2rem; padding-top:1.2rem}
+.music #bridge h3 {font-size:1.2rem; margin:0}
+.music #bridge p {margin:.65rem 0}
+.music .bridge-actions {display:flex; flex-wrap:wrap; gap:.5rem}
+.music .bridge-actions button {padding:.6rem .9rem; font:inherit; font-weight:600; cursor:pointer; border:1px solid var(--line); border-radius:.4rem}
+.music .bridge-actions button:disabled {opacity:.6; cursor:wait}
+.music #notice:empty {display:none}
+.music #track {padding:1rem; border-radius:.5rem; margin-top:.75rem; background:#191414}
+.music #song {display:block; overflow-wrap:anywhere; color:#fff}
+.music #song strong,.music #song span {display:block}
+.music #track img {margin-bottom:.7rem}
+.music #times {font-variant-numeric:tabular-nums; color:var(--muted)}

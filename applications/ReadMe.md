@@ -1,6 +1,6 @@
 # Eddy applications
 
-The main build has ten Apps tiles. Their implementations live in these directories.
+The main build includes the following Apps tiles.
 
 | Apps tile | Source |
 | --- | --- |
@@ -14,6 +14,7 @@ The main build has ten Apps tiles. Their implementations live in these directori
 | Metronome | [eddy_metronome](main/eddy_metronome/) |
 | Remote Builder | [eddy_remote_builder](main/eddy_remote_builder/) |
 | Bluetooth Remote | [eddy_bluetooth](main/eddy_bluetooth/) |
+| Spotify | [eddy_music](main/eddy_music/) |
 
 [The Eddy build profile](../fbt_options.py) selects the apps to package. [The launcher](services/loader/loader_menu.c) defines their order and displays pinned infrared remotes after the built-in tiles.
 
