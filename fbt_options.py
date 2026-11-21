@@ -102,6 +102,7 @@ FIRMWARE_APPS = {
         "eddy_nfc",
         "eddy_ibutton",
         "eddy_pomodoro",
+        "eddy_metronome",
         "eddy_signal",
         "infrared",
         "gpio",

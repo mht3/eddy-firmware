@@ -117,6 +117,7 @@ static const LauncherItem apps[] = {
     {"GPIO", &A_GPIO_14},
     {"iButton", &A_iButton_14},
     {"Pomodoro Timer", &I_Clock_18x18},
+    {"Metronome", &I_music_10px},
 };
 
 static const LauncherItem sections[] = {
