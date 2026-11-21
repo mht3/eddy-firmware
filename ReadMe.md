@@ -2,7 +2,7 @@
 
 # Eddy Firmware
 
-Eddy is a new firmware for Flipper Zero! Eddy started from Next-Flip’s Momentum Firmware and has grown to a standalone, sleek firmware, free for anyone to use! Thank you to those maintainers, artists, and contributors. The repository retains their history, copyright notices and license files. [Momentum source at the fork point](https://github.com/Next-Flip/Momentum-Firmware/tree/d3f89dfe2ef6b01839201598e9be1590cba80322) · [Firmware license](LICENSE)
+Eddy is a new firmware for Flipper Zero! Eddy started from Next-Flip’s Momentum Firmware and has grown to a standalone, sleek firmware, free for anyone to use! Thank you to those maintainers, artists, and contributors. The repository retains their history, copyright notices and license files.
 
 ![Eddy the dolphin surfacing in an ocean eddy](.github/assets/eddy-ocean.gif)
 
