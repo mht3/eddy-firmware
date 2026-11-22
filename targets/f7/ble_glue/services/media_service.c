@@ -190,11 +190,10 @@ bool ble_svc_media_library_request(
     if(volume && page > 100) return false;
     uint8_t percent = page;
     if(volume) page = 0;
-    bool first = op == 0x10 || op == 0x15 || op == 0x16 ||
-                 (op == 0x18 || op == 0x19 || op == 0x1c) || op == 0x1e ||
-                 (op >= 0x40 && op <= 0x43) || op == 0x45 || op == 0x46 ||
-                 (op >= 0x60 && op <= 0x64) || (op >= 0x68 && op <= 0x6b) ||
-                 (op >= 0x80 && op <= 0x87);
+    bool first =
+        op == 0x10 || op == 0x15 || op == 0x16 || (op == 0x18 || op == 0x19 || op == 0x1c) ||
+        op == 0x1e || (op >= 0x40 && op <= 0x43) || op == 0x45 || op == 0x46 ||
+        (op >= 0x60 && op <= 0x64) || (op >= 0x68 && op <= 0x6b) || (op >= 0x80 && op <= 0x87);
     bool row = ((op >= 0x20 && op <= 0x23) || (op >= 0x28 && op <= 0x2b)) ||
                (op >= 0x30 && op <= 0x3b) || (op >= 0x50 && op <= 0x5f) ||
                (op >= 0x70 && op <= 0x7f);
