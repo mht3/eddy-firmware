@@ -1,7 +1,7 @@
 import {catalog, getAppOrder, getSelectedApps, setAppOrder, setAppSelected, setSelectedApps} from '../app-catalog.js';
 import {drawLauncher, layoutApps, launcherArt} from '../launcher.js';
 import {drawBattery} from '../home-screen.js';
-import {communityApps, communityAvailable, getCommunitySelection, selectCommunity, labAlias,
+import {communityApps, communityAliases, communityAvailable, getCommunitySelection, selectCommunity, labAlias,
   catalogCompatibility, setImportBusy, importInProgress, rememberLabApp, communityLimit, previewId, drawLabIcon} from '../community-apps.js';
 import {fetchLabApp, LabFileRequired} from './flipper-lab.js';
 import {appArranger} from './arrange.js';
@@ -12,21 +12,9 @@ const menuPreview = document.getElementById('try-app-menu');
 const count = document.getElementById('app-count');
 const cards = new Map();
 let lastAdded;
-const renderOrder = appArranger(id => { lastAdded = id; });
+const renderOrder = appArranger(id => { lastAdded = id; }, makeIcon);
 
-function makeCard(app,community=false) {
-  const card = document.createElement('li');
-  card.className = 'app-card';
-  card.dataset.id = app.id;
-
-  const toggle = document.createElement('button');
-  toggle.type = 'button';
-  toggle.className = 'app-toggle';
-  toggle.setAttribute('aria-label', 'Include ' + app.name);
-  toggle.setAttribute('aria-describedby', 'desc-' + app.id);
-  const mark = document.createElement('span');
-  mark.className = 'toggle-mark';
-  mark.setAttribute('aria-hidden','true');
+function makeIcon(app,community) {
   const icon = document.createElement('span');
   icon.className = 'app-icon';
   icon.setAttribute('aria-hidden','true');
@@ -39,13 +27,31 @@ function makeCard(app,community=false) {
       icon.append(canvas);
     } else icon.textContent = app.glyph;
   }
+  return icon;
+}
+
+function makeCard(app,community=false) {
+  const card = document.createElement('li');
+  card.className = 'app-card';
+  card.dataset.id = app.id;
+
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'app-toggle';
+  toggle.setAttribute('aria-label', 'Include ' + app.name);
+  const descriptionId = 'desc-' + (community ? previewId(app) : app.id);
+  toggle.setAttribute('aria-describedby', descriptionId);
+  const mark = document.createElement('span');
+  mark.className = 'toggle-mark';
+  mark.setAttribute('aria-hidden','true');
+  const icon = makeIcon(app,community);
   const name = document.createElement('span');
   name.className = 'app-name';
   name.textContent = app.name;
   toggle.append(mark,icon,name);
 
   const description = document.createElement('p');
-  description.id = 'desc-' + app.id;
+  description.id = descriptionId;
   description.className = 'app-description';
   description.textContent = app.description;
   card.title = app.description;
@@ -74,10 +80,10 @@ function makeCard(app,community=false) {
     source.rel = 'noopener noreferrer';
     card.append(source);
   }
-  if (app.id === 'spotify') {
+  if (!community && app.id === 'spotify') {
     const setup = document.createElement('a');
     setup.className = 'app-preview';
-    setup.href = '../spotify/#developer-setup';
+    setup.href = '../spotify/';
     setup.textContent = 'Spotify setup';
     card.append(setup);
   }
@@ -114,9 +120,11 @@ function drawSelected() {
   if (!ctx) return;
   const selected = getSelectedApps();
   const communityIds = getCommunitySelection();
-  const items = [...catalog.filter(app => selected.has(app.id)),
-    ...communityApps.filter(app => communityIds.includes(app.id))];
-  const rows = layoutApps(items.map(app => [app.name, previewId(app)]));
+  const items = [
+    ...catalog.filter(app => selected.has(app.id)).map(app => [app.name, app.id]),
+    ...communityApps.filter(app => communityIds.includes(app.id)).map(app => [app.name, previewId(app)]),
+  ];
+  const rows = layoutApps(items);
   ctx.setTransform(screen.width / 128,0,0,screen.height / 64,0,0);
   ctx.clearRect(0,0,128,64);
   ctx.fillStyle = ctx.strokeStyle = '#432a14';
@@ -151,7 +159,7 @@ function sync() {
     } else if (included) preview.href = previewUrl(selected,id);
     else preview.removeAttribute('href');
   }
-  renderOrder(selected);
+  renderOrder(selected,communityIds);
   const total=selected.size+communityIds.length;
   count.textContent = total + (total === 1 ? ' app selected' : ' apps selected');
   menuPreview.href = previewUrl(selected);
@@ -160,8 +168,11 @@ function sync() {
 
 // The preview return link also carries the choices for browsers that block storage.
 const returnUrl = new URL(location.href);
+let missingCommunity = [];
 if(returnUrl.searchParams.has('community')) {
-  selectCommunity(returnUrl.searchParams.get('community').split(','));
+  const aliases = communityAliases(returnUrl.searchParams.get('community').split(','));
+  missingCommunity = aliases.filter(id => !communityApps.some(app => app.id === id));
+  selectCommunity(aliases);
   returnUrl.searchParams.delete('community');
 }
 if (returnUrl.searchParams.has('order')) {
@@ -189,6 +200,12 @@ const fileStep = document.querySelector('#lab-file-step');
 const fileInput = document.querySelector('#lab-file');
 const addButton = importer.querySelector('button');
 let awaitingFile;
+if (missingCommunity.length) {
+  appLink.value = 'https://lab.flipper.net/apps/' + missingCommunity[0];
+  importStatus.textContent = missingCommunity.length === 1 ?
+    'Add ' + missingCommunity[0] + ' from Flipper Lab to verify it for this build.' :
+    'Add the ' + missingCommunity.length + ' community apps from your shared layout to verify their packages in this browser.';
+}
 function clearFileStep() {
   awaitingFile = null;
   fileStep.hidden = true;

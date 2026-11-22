@@ -1,4 +1,4 @@
-import {catalog,defaultAppOrder,getAppOrder,getSelectedApps} from '../app-catalog.js';
+import {catalog,defaultAppOrder,getAppOrder,getSelectedApps,installedAppOrder} from '../app-catalog.js';
 import {prepareInstall,makeDownload} from './package.js';
 import {getCommunitySelection,importInProgress,setCommunityRelease} from '../community-apps.js';
 import {FlipperUpdater} from './flipper.js';
@@ -19,8 +19,9 @@ function updateControls() {
   picker.disabled = busy;
   action.disabled = busy || importInProgress() || !build || !isSecureContext || !navigator.serial;
   download.disabled = busy || importInProgress() || !build;
-  const stockLayout = getAppOrder().every((id,i)=>id===defaultAppOrder[i]);
-  lab.hidden = busy || importInProgress() || !lab.hasAttribute('href') || getSelectedApps().size !== catalog.length || !stockLayout || getCommunitySelection().length>0;
+  const layout = installedAppOrder(getAppOrder(),getSelectedApps(),getCommunitySelection());
+  const stockLayout = layout.length===defaultAppOrder.length && layout.every((id,i)=>id===defaultAppOrder[i]);
+  lab.hidden = busy || importInProgress() || !lab.hasAttribute('href') || !stockLayout;
 }
 window.addEventListener('eddy-apps-changed', updateControls);
 

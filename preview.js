@@ -1,5 +1,5 @@
 import {getAppOrder, getSelectedApps, restoreAppOrder, launcherColumns, launcherPageSize} from './app-catalog.js';
-import {communityApps,savedCommunity,previewId} from './community-apps.js';
+import {previewCommunity,savedCommunity,previewId} from './community-apps.js';
 import {openSpotifyDemo, openSpotifyPlayer, drawSpotify, spotifyStatus, spotifyKey, spotifyHit, spotifyVolumeAt} from './spotify-demo/spotify-preview.js';
 import {startSpotifyTour, spotifyTourSteps} from './spotify-demo/spotify-tour.js';
 import {openMusicDemo, drawMusic, musicStatus, musicKey} from './music-preview.js';
@@ -77,24 +77,26 @@ const lists = {
 };
 const previewParams = new URLSearchParams(location.search);
 const guideApp = ['music','spotify'].find(id=>id===previewParams.get('demo'));
-export const pickerPreview = Boolean(guideApp) || previewParams.has('apps') || previewParams.has('app');
+export const pickerPreview = Boolean(guideApp) || ['apps','app','community'].some(key => previewParams.has(key));
 const requestedApps = previewParams.has('apps') ? new Set(previewParams.get('apps').split(',')) : null;
 const orderParam = previewParams.get('order')?.split(',');
 const requestedOrder = restoreAppOrder(orderParam);
 function communitySelection() {
   const ids=previewParams.has('community')?previewParams.get('community').split(','):savedCommunity();
-  return communityApps.filter(app=>ids.includes(app.id));
-}
-for(const app of communityApps) {
-  titles[previewId(app)]=app.name;
-  samples[previewId(app)]=['Community app','Opens on your Flipper'];
+  return previewCommunity(ids);
 }
 let visibleShortcuts = [];
 function refreshRemotes() {
   const saved=remoteDemo.rows;
   const enabled = requestedApps ?? getSelectedApps();
   visibleShortcuts = remoteDemo.shortcuts.filter(([,type])=>enabled.has('builder') || (type==='remote' && enabled.has('infrared')));
-  lists.apps=layoutApps([...apps.filter(([,id])=>enabled.has(id)),...communitySelection().map(app=>[app.name,previewId(app)]),...visibleShortcuts],requestedOrder ?? getAppOrder());
+  const community = communitySelection().map(app => {
+    const id = previewId(app);
+    titles[id] = app.name;
+    samples[id] = ['Community app','Opens on your Flipper'];
+    return [app.name,id];
+  });
+  lists.apps=layoutApps([...apps.filter(([,id])=>enabled.has(id)),...community,...visibleShortcuts],requestedOrder ?? getAppOrder());
   lists.remotes=saved.length ? saved : [['Learn a remote','learn']];
   titles.remotes=saved.length?'My remotes':'No remotes yet';
   delete samples.remotes;
@@ -541,7 +543,9 @@ document.querySelector('#try-spotify').addEventListener('click', () => {
 });
 if(pickerPreview) {
   document.documentElement.classList.add('picker-preview');
-  const id=guideApp ?? previewParams.get('app');
+  const requestedApp = guideApp ?? previewParams.get('app');
+  // Older links used the bundled Calendar's bare alias.
+  const id = requestedApp === 'techart_calendar' ? 'lab:techart_calendar' : requestedApp;
   showAppPreview(id,Boolean(guideApp));
   if (guideApp === 'spotify' && previewParams.get('view') === 'now-playing') {
     openSpotifyPlayer(current());

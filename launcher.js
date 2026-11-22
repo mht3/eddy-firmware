@@ -62,6 +62,9 @@ export function drawLauncher(ctx, page, selected, gridItems = layoutApps(apps)) 
     const icon = grid && id.startsWith('lab:') && importedRecord(id.slice(4))?.iconHex;
     if (icon) {
       drawLabIcon(ctx,icon,x-5,y-5);
+    } else if (grid && id.startsWith('lab:')) {
+      if (id === 'lab:techart_calendar') ctx.fillText('31',x,y-3);
+      else for (let r=0;r<2;r++) for (let c=0;c<2;c++) ctx.fillRect(x-5+c*6,y-5+r*6,4,4);
     } else if (grid && appIndex<0) {
       let label='';
       for(const char of name) {
