@@ -1,7 +1,8 @@
 .music {max-width:52rem; margin:0 auto; padding:clamp(2rem,6vh,5rem) clamp(1.1rem,4vw,2rem) 4rem}
 .music h1 {font-size:clamp(3rem,9vw,5rem); line-height:1; margin:0}
 .music p {max-width:none}
-.music .intro {color:var(--muted); margin:.8rem 0 1.75rem; font-size:1.15rem}
+.setup-note {border-inline-start:3px solid var(--surf); padding-inline-start:1rem; margin:1.5rem 0 2rem; color:var(--muted)}
+.setup-note p + p {margin-top:.65rem}
 .music [hidden] {display:none!important}
 .music button:focus-visible,.music summary:focus-visible {outline:3px solid var(--surf); outline-offset:3px}
 .music section {padding:clamp(1.15rem,4vw,2rem); margin-bottom:1rem; border:1px solid var(--line); border-radius:1rem; background:#10243c}
@@ -19,8 +20,7 @@
 .music details summary {cursor:pointer; font-weight:600}
 .music figure {margin:1rem 0}
 .music .library-device {display:block; width:100%; max-width:36rem; height:auto; margin:.5rem auto}
-.music figure img {width:100%; max-width:256px; height:auto; display:block; image-rendering:pixelated}
+.setup-steps li + li {margin-top:1.25rem}
+.setup-steps code {overflow-wrap:anywhere}
+.setup-steps figure img {display:block; max-width:100%; height:auto; border-radius:.5rem}
 #developer-setup {scroll-margin-top:6rem}
-.controls-guide {margin:.9rem 0 0}
-.controls-guide dt {font-weight:700; margin-top:1rem}
-.controls-guide dd {margin:.25rem 0 0; color:var(--muted)}
