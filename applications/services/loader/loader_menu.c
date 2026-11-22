@@ -124,9 +124,8 @@ typedef struct {
     uint8_t section;
     size_t app_index;
     bool in_apps;
-    const FlipperExternalApplication** apps;
+    LoaderMenuApp* apps;
     size_t app_count;
-    size_t community_start;
     FuriString* pinned_labels[EDDY_REMOTE_PIN_MAX];
     size_t pin_count;
     bool remote_unavailable;
@@ -181,7 +180,7 @@ static void launcher_draw(Canvas* canvas, void* context) {
             elements_scrollable_text_line_centered(
                 canvas, x, y + 3, 21, model->pinned_labels[i - model->app_count], 0, false, true);
         } else {
-            const Icon* icon = grid ? model->apps[i]->icon : sections[i].icon;
+            const Icon* icon = grid ? model->apps[i].app->icon : sections[i].icon;
             if(!icon) icon = &A_Plugins_14;
             canvas_set_bitmap_mode(canvas, true);
             canvas_draw_icon(
@@ -210,7 +209,7 @@ static void launcher_draw(Canvas* canvas, void* context) {
                 true);
         } else {
             canvas_draw_str_aligned(
-                canvas, 64, 63, AlignCenter, AlignBottom, model->apps[selected]->name);
+                canvas, 64, 63, AlignCenter, AlignBottom, model->apps[selected].app->name);
         }
     }
 }
@@ -244,10 +243,8 @@ static bool launcher_input(InputEvent* event, void* context) {
             if(model->app_index >= model->app_count)
                 remote_path = furi_string_get_cstr(
                     launcher->pins.paths[model->app_index - model->app_count]);
-            else if(model->app_index >= model->community_start)
-                launch = model->apps[model->app_index]->path;
             else
-                launch = model->apps[model->app_index]->name;
+                launch = model->apps[model->app_index].launch_target;
         } else if(model->in_apps) {
             handled = false;
         } else if(model->section == 0)
@@ -328,8 +325,7 @@ static int32_t loader_menu_thread(void* context) {
         launcher.grid,
         LauncherModel * model,
         {
-            model->apps = loader_menu_apps_load(
-                launcher.storage, &model->app_count, &model->community_start);
+            model->apps = loader_menu_apps_load(launcher.storage, &model->app_count);
             model->section = menu->section;
             model->pin_count = launcher.pins.count;
             for(size_t i = 0; i < model->pin_count; ++i) {

@@ -30,4 +30,6 @@ To test your Spotify developer app, copy its Client ID and include **Spotify** u
 
 ## Acknowledgements
 
+Original Eddy code © 2026 mht3 and contributors. Keep the copyright and license notices when redistributing it. [GNU GPLv3](LICENSE)
+
 I built Eddy on Next-Flip’s Momentum Firmware and the original Flipper Zero firmware. Thank you to the maintainers, artists, and contributors of both projects. This repository retains their history, copyright notices, and licenses. [Momentum Firmware](https://github.com/Next-Flip/Momentum-Firmware) · [Flipper Zero firmware](https://github.com/flipperdevices/flipperzero-firmware)

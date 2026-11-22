@@ -36,8 +36,10 @@ final class FlipperConnection: NSObject, ObservableObject, @preconcurrency CBCen
     private static let advertised = ["3080", "3081", "3082", "3083"].map(CBUUID.init(string:)) + [media]
 
     private let defaults: UserDefaults
+    private let createCentral: (CBCentralManagerDelegate) -> CBCentralManager
     private var central: CBCentralManager?
     private var discovered: [UUID: CBPeripheral] = [:]
+    private var restored: [CBPeripheral] = []
     private var peripheral: CBPeripheral?
     // CoreBluetooth can return the same object for a new connection. Wait for
     // the old disconnect callback before issuing another connect for that ID.
@@ -67,8 +69,14 @@ final class FlipperConnection: NSObject, ObservableObject, @preconcurrency CBCen
     private var writes: [Write] = []
     private var currentWrite: Write?
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = .standard,
+         createCentral: @escaping (CBCentralManagerDelegate) -> CBCentralManager = { delegate in
+             CBCentralManager(delegate: delegate, queue: .main, options: [
+                 CBCentralManagerOptionRestoreIdentifierKey: "dev.eddyfirmware.spotify.central"
+             ])
+         }) {
         self.defaults = defaults
+        self.createCentral = createCentral
         self.selectedID = defaults.string(forKey: Self.selectionKey).flatMap(UUID.init(uuidString:))
         self.savedDevices = defaults.data(forKey: Self.savedKey)
             .flatMap { try? JSONDecoder().decode([Device].self, from: $0) } ?? []
@@ -95,6 +103,8 @@ final class FlipperConnection: NSObject, ObservableObject, @preconcurrency CBCen
 
     func refreshDevices() {
         guard let central else {
+            // The first Bluetooth permission request belongs to the Connect device action.
+            guard selectedID != nil || CBManager.authorization != .notDetermined else { return }
             drive()
             return
         }
@@ -120,7 +130,13 @@ final class FlipperConnection: NSObject, ObservableObject, @preconcurrency CBCen
     func select(_ id: UUID) {
         guard discovered[id] != nil || savedDevices.contains(where: { $0.id == id }) else { return }
         selectedID = id
+        defaults.set(id.uuidString, forKey: Self.selectionKey)
         reconnect()
+    }
+
+    func start(restoreBluetooth: Bool) {
+        if selectedID != nil { reconnect() }
+        else if restoreBluetooth { drive() }
     }
 
     func reconnect() {
@@ -143,6 +159,8 @@ final class FlipperConnection: NSObject, ObservableObject, @preconcurrency CBCen
     func disconnect() {
         wantsScan = false
         wantsConnection = false
+        selectedID = nil
+        defaults.removeObject(forKey: Self.selectionKey)
         stopScan()
         status = "Flipper disconnected."
         if ready {
@@ -156,7 +174,6 @@ final class FlipperConnection: NSObject, ObservableObject, @preconcurrency CBCen
     func forget(_ id: UUID) {
         if selectedID == id {
             disconnect()
-            selectedID = nil
         }
         if defaults.string(forKey: Self.selectionKey) == id.uuidString {
             defaults.removeObject(forKey: Self.selectionKey)
@@ -286,7 +303,7 @@ final class FlipperConnection: NSObject, ObservableObject, @preconcurrency CBCen
 
     private func drive() {
         if central == nil {
-            central = CBCentralManager(delegate: self, queue: .main)
+            central = createCentral(self)
             return
         }
         guard let central, central.state == .poweredOn else { return }
@@ -411,6 +428,19 @@ final class FlipperConnection: NSObject, ObservableObject, @preconcurrency CBCen
         bluetoothState = central.state
         if central.state == .poweredOn {
             if !ready && !wantsConnection { status = "Choose your Flipper." }
+            for item in restored {
+                if wantsConnection, item.identifier == selectedID,
+                   item.state == .connected || item.state == .connecting {
+                    peripheral = item
+                    item.delegate = self
+                    if item.state == .connected { verifyConnection(item) }
+                } else if item.state != .disconnected {
+                    closing[item.identifier] = item
+                    central.cancelPeripheralConnection(item)
+                }
+            }
+            restored.removeAll()
+            if !wantsScan && central.isScanning { stopScan() }
 #if os(iOS)
             central.registerForConnectionEvents(options: [.serviceUUIDs: Self.advertised + [Self.serial]])
 #endif
@@ -434,6 +464,13 @@ final class FlipperConnection: NSObject, ObservableObject, @preconcurrency CBCen
         }
     }
 
+    func centralManager(_ central: CBCentralManager, willRestoreState dict: [String: Any]) {
+        // The restoration callback precedes the powered-on callback. Recheck
+        // pairing and reestablish the library session before accepting commands.
+        restored = dict[CBCentralManagerRestoredStatePeripheralsKey] as? [CBPeripheral] ?? []
+        for item in restored where item.identifier == selectedID { item.delegate = self }
+    }
+
 #if os(iOS)
     func centralManager(_ central: CBCentralManager, connectionEventDidOccur event: CBConnectionEvent,
                         for peripheral: CBPeripheral) {
@@ -449,10 +486,16 @@ final class FlipperConnection: NSObject, ObservableObject, @preconcurrency CBCen
     }
 
     func centralManager(_ central: CBCentralManager, didConnect item: CBPeripheral) {
+        if restored.contains(where: { $0 === item }) { return }
         guard item === peripheral, wantsConnection else {
             central.cancelPeripheralConnection(item)
             return
         }
+        verifyConnection(item)
+    }
+
+    private func verifyConnection(_ item: CBPeripheral) {
+        guard !ready, watchdog == nil else { return }
         refreshDevices()
         item.discoverServices([Self.serial, Self.media])
         armTimeout(seconds: 20, message: "Flipper pairing timed out.")
@@ -470,6 +513,11 @@ final class FlipperConnection: NSObject, ObservableObject, @preconcurrency CBCen
         refreshDevices()
         if closing.removeValue(forKey: item.identifier) != nil {
             if retry == nil { drive() }
+        } else if item === peripheral, ready, wantsConnection {
+            // Leave the reconnect pending with Core Bluetooth before iOS suspends us.
+            stopSession(cancelLink: false)
+            status = "Flipper disconnected. Reconnecting…"
+            drive()
         } else if item === peripheral {
             failed("Flipper disconnected.", cancelLink: false)
         }
@@ -509,7 +557,11 @@ final class FlipperConnection: NSObject, ObservableObject, @preconcurrency CBCen
         }
         stateCharacteristic = state
         commandCharacteristic = commands
-        item.setNotifyValue(true, for: commands)
+        if commands.isNotifying {
+            mediaReady(item)
+        } else {
+            item.setNotifyValue(true, for: commands)
+        }
     }
 
     func peripheral(_ item: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
@@ -518,7 +570,11 @@ final class FlipperConnection: NSObject, ObservableObject, @preconcurrency CBCen
             failed("Flipper media notifications are unavailable.")
             return
         }
-        guard !ready, wantsConnection else { return }
+        mediaReady(item)
+    }
+
+    private func mediaReady(_ item: CBPeripheral) {
+        guard !ready, usingSelectedDevice else { return }
         ready = true
         let name = item.name ?? devices.first(where: { $0.id == item.identifier })?.name ?? "Flipper Zero"
         connectedID = item.identifier

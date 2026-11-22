@@ -1,3 +1,4 @@
+import {communityApps, communityLimit, communityOrderId, savedCommunity, validLabAlias} from './community-apps.js';
 
 // The id opens the same app in the web preview. appId identifies its packaged FAP.
 export const catalog = [
@@ -30,8 +31,10 @@ function normalize(ids) {
 }
 
 export function validAppOrder(ids) {
-  return Array.isArray(ids) && ids.length === defaultAppOrder.length &&
-    defaultAppOrder.every(id => ids.includes(id));
+  return Array.isArray(ids) && ids.length <= defaultAppOrder.length + communityLimit &&
+    new Set(ids).size === ids.length && defaultAppOrder.every(id => ids.includes(id)) &&
+    ids.every(id => defaultAppOrder.includes(id) ||
+      (typeof id === 'string' && id.startsWith('lab:') && validLabAlias(id.slice(4))));
 }
 
 // The separate Spotify library was added after the original eleven launcher slots.
@@ -65,8 +68,27 @@ export function getSelectedApps() {
   return new Set(selected ?? defaultIds);
 }
 
+// Community aliases are namespaced so an imported app called "music" can sit beside Music.
+export function installedAppOrder(order, selectedIds, communityIds) {
+  const included = new Set([...selectedIds, ...communityIds.map(communityOrderId)]);
+  const arranged = order.filter(id => included.delete(id));
+  return [...arranged, ...included];
+}
+
 export function getAppOrder() {
-  return [...(order ?? defaultAppOrder)];
+  const saved = order ?? defaultAppOrder;
+  const active = savedCommunity().map(communityOrderId);
+  const added = active.filter(id => !saved.includes(id));
+  if (saved.length + added.length <= defaultAppOrder.length + communityLimit) return [...saved,...added];
+  const kept = new Set(active);
+  // Records retain their import order. If the 32 alias slots fill up, evict the oldest
+  // hidden positions first so new selections always fit and recently added apps keep their place.
+  const byAge = [...saved.filter(id => id.startsWith('lab:')), ...communityApps.map(app => communityOrderId(app.id))];
+  for (const id of byAge.reverse()) {
+    if (kept.size >= communityLimit) break;
+    if (saved.includes(id)) kept.add(id);
+  }
+  return [...saved.filter(id => defaultAppOrder.includes(id) || kept.has(id)), ...added];
 }
 
 function persist(key, historyKey, value) {

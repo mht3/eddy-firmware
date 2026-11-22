@@ -259,6 +259,21 @@ def validate_radio_layout(components, manifest, options):
             )
 
 
+def configure_testflight(site, invite):
+    if not invite:
+        return
+    if not re.fullmatch(r"https://testflight\.apple\.com/join/[A-Za-z0-9]{8}", invite):
+        raise ValueError("Expected an Apple TestFlight public invitation")
+    link = f'<a class="small-cta" href="{invite}">Join the Eddy beta on TestFlight</a>'
+    for page in (site / "app/index.html", site / "spotify/index.html"):
+        html, count = re.subn(
+            r"<span data-testflight-invite>.*?</span>", link, page.read_text()
+        )
+        if count != 1:
+            raise ValueError(f"Expected one TestFlight invitation in {page}")
+        page.write_text(html)
+
+
 def stage(package=None):
     options = runpy.run_path(str(ROOT / "fbt_options.py"))
     if package is None:
@@ -336,19 +351,7 @@ def stage(package=None):
         site / "spotify-demo/preview-playlists.webp",
         site / "spotify/preview-playlists.webp",
     )
-    invite = os.environ.get("EDDY_TESTFLIGHT_URL", "").strip()
-    if invite:
-        if not re.fullmatch(
-            r"https://testflight\.apple\.com/join/[A-Za-z0-9]{8}", invite
-        ):
-            raise ValueError("Expected an Apple TestFlight public invitation")
-        app_page = site / "app/index.html"
-        app_page.write_text(
-            app_page.read_text().replace(
-                '<p id="beta-availability">TestFlight invitations aren’t open yet.</p>',
-                f'<p id="beta-availability"><a class="small-cta" href="{invite}">Join the TestFlight beta</a></p>',
-            )
-        )
+    configure_testflight(site, os.environ.get("EDDY_TESTFLIGHT_URL", "").strip())
     shutil.copy2(package, site / "firmware" / package.name)
     parts_dir = site / "firmware" / version
     parts_dir.mkdir()

@@ -33,7 +33,10 @@ with tarfile.open(fileobj=io.BytesIO(out.getvalue())) as tar:
 `,stock);
 const [base64,offsets,archiveEnd] = fixture;
 const resources = Buffer.from(base64,'base64');
-const extra = {techart_calendar:Buffer.from('calendar fixture'),sample_app:Buffer.from('sample app fixture')};
+const extra = {
+  techart_calendar:Buffer.from('calendar fixture'),
+  sample_app:Buffer.from('sample app fixture'),
+};
 const build = {
   version:'eddy-test',
   parts:[{name:'resources.tar.gz',size:resources.length,sha256:digest('sha256',resources)}],
@@ -71,7 +74,7 @@ test('selected community apps reach USB and qFlipper with an accurate resource m
     assert.equal(digest('sha256',image),files[0].part.sha256);
     const sd = unpack(image);
     assert.equal(sd[communityList].toString(),ids.join('\n')+'\n');
-    assert.equal(sd[launcher].toString(),'music\n');
+    assert.deepEqual(sd[launcher].toString().trimEnd().split('\n'),['music',...ids.map(id=>'lab:'+id)]);
     assert.deepEqual(Object.keys(sd).filter(path=>/^apps\/Community\/.*\.fap$/.test(path)),
       ids.map(id=>'apps/Community/'+id+'.fap'));
     const manifest = sd.Manifest.toString().split('\n');
@@ -103,7 +106,10 @@ test('a verified Flipper Lab app reaches the SD launcher and survives preparing 
   const {rememberLabApp, setCommunityRelease, selectCommunity, getCommunitySelection, labAlias} =
     await import('../../website/community-apps.js');
   const {verifyCatalogFap} = await import('../../website/update/fap.js');
-  t.mock.method(globalThis,'fetch',async () => new Response(resources));
+  t.mock.method(globalThis,'fetch',async url => {
+    const name = url.pathname.split('/').pop();
+    return new Response(name === 'techart_calendar.fap' ? extra.techart_calendar : resources);
+  });
   const previousWindow = globalThis.window;
   globalThis.window = new EventTarget();
   t.after(() => { globalThis.window = previousWindow; });
@@ -121,10 +127,28 @@ test('a verified Flipper Lab app reaches the SD launcher and survives preparing 
   const selected = getCommunitySelection();
   assert.deepEqual(selected,[alias]);
   const release = {...build,catalogCompatibility:compatibility};
+  // A community alias can match a built-in. The imported FAP and its named
+  // registry row must survive the same download path a user would flash.
+  await rememberLabApp({id:'music',name:'Music',sha256:digest('sha256',data),iconHex:icon,data});
+  const mixedOrder = ['lab:techart_calendar',...defaultAppOrder,'lab:music','lab:'+alias];
+  const mixed = await prepareInstall(release,all,null,mixedOrder,['music','techart_calendar']);
+  const bundle = unpack(await (await makeDownload(build,mixed)).arrayBuffer());
+  const image = Object.entries(bundle).find(([path])=>path.endsWith('/resources.tar.gz'))[1];
+  assert.deepEqual(image,Buffer.from(mixed[0].bytes));
+  const mixedSD = unpack(image);
+  const arranged = mixedSD[launcher].toString().trimEnd().split('\n');
+  assert.deepEqual(arranged,['lab:techart_calendar',...defaultAppOrder,'lab:music']);
+  assert.deepEqual(arranged.slice(12),['metronome','lab:music']);
+  assert.equal(mixedSD[communityList].toString(),'music\tMusic\t'+icon+'\ntechart_calendar\n');
+  assert.deepEqual(mixedSD['apps/Community/music.fap'],Buffer.from(data));
+  assert(mixedSD['apps/assets/eddy_music.fap']);
+  assert(!mixedSD['apps/Community/'+alias+'.fap']);
+
   const entries = await prepareInstall(release,all,null,defaultAppOrder,selected);
   const sd = unpack(entries[0].bytes);
   assert.deepEqual(sd['apps/Community/4new_app.fap'],Buffer.from(data));
   assert.equal(sd[communityList].toString(),alias+'\tNew App\t'+icon+'\n');
+  assert.deepEqual(sd[launcher].toString().trimEnd().split('\n'),[...defaultAppOrder,'lab:'+alias]);
   assert(sd.Manifest.toString().includes('F:'+digest('md5',data)+':'+data.length+':apps/Community/'+alias+'.fap'));
   await assert.rejects(prepareInstall(build,all,null,defaultAppOrder,selected),/unavailable/);
   await assert.rejects(prepareInstall({...release,catalogCompatibility:{...compatibility,api:'1.0'}},

@@ -1,4 +1,4 @@
-import {catalog,defaultAppOrder,getAppOrder,validAppOrder} from '../app-catalog.js';
+import {catalog,defaultAppOrder,getAppOrder,installedAppOrder,validAppOrder} from '../app-catalog.js';
 import {md5} from './md5.js';
 import {communityLimit, importedRecord, readLabFile, validLabAlias} from '../community-apps.js';
 import {verifyCatalogFap} from './fap.js';
@@ -201,10 +201,10 @@ export async function prepareInstall(build,selectedIds,onPart,order=getAppOrder(
     const data = await verifiedDownload(build.version+'/community/'+id+'.fap',app);
     community.push({id,data,license:app.license});
   }
-  if (community.length || excluded.length || order.some((id,i)=>id!==defaultAppOrder[i])) {
+  const layout = installedAppOrder(order,selected,ids);
+  if (community.length || excluded.length || layout.some((id,i)=>id!==defaultAppOrder[i])) {
     const resources = files.find(({part})=>part.name==='resources.tar.gz');
-    const bytes = await filterResources(resources.bytes,build.resourceIndex,excluded,
-      order.filter(id => selected.has(id)),community);
+    const bytes = await filterResources(resources.bytes,build.resourceIndex,excluded,layout,community);
     resources.bytes=bytes;
     resources.part={...resources.part,size:bytes.length,sha256:await sha256(bytes),md5:md5(bytes)};
   }

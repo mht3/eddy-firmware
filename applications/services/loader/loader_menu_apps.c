@@ -47,7 +47,8 @@ enum {
                                               2 * CommunityBitmapSize + 2),
 };
 
-#define COMMUNITY_APP_DIR EXT_PATH("apps/Community/")
+#define COMMUNITY_APP_DIR      EXT_PATH("apps/Community/")
+#define COMMUNITY_ORDER_PREFIX "lab:"
 
 typedef struct {
     FlipperExternalApplication app;
@@ -66,7 +67,7 @@ static char* launcher_read_list(Storage* storage, const char* path, size_t limit
         uint64_t size = storage_file_size(file);
         if(size && size <= limit) {
             text = malloc(size + 1);
-            if(storage_file_read(file, text, size) == size && !memchr(text, 0, size)) {
+            if(text && storage_file_read(file, text, size) == size && !memchr(text, 0, size)) {
                 text[size] = 0;
             } else {
                 free(text);
@@ -78,27 +79,42 @@ static char* launcher_read_list(Storage* storage, const char* path, size_t limit
     return text;
 }
 
-static void launcher_read_order(Storage* storage, uint8_t* order) {
-    bool seen[COUNT_OF(launcher_catalog)] = {false};
-    size_t count = 0;
-    char* text = launcher_read_list(storage, EXT_PATH("eddy/launcher_order.txt"), 256);
-    if(text) {
-        char* rest;
-        for(char* id = strtok_r(text, "\r\n", &rest); id; id = strtok_r(NULL, "\r\n", &rest)) {
+// Move each requested item into its slot. Installed apps missing from older layouts
+// keep their original relative order. Only entries already discovered on the card can move.
+static void launcher_apply_order(Storage* storage, LoaderMenuApp* apps, size_t count) {
+    const size_t limit = (COUNT_OF(launcher_catalog) + CommunityAppMax) *
+                         (sizeof(COMMUNITY_ORDER_PREFIX) - 1 + CommunityIdMax + 2);
+    char* order = launcher_read_list(storage, EXT_PATH("eddy/launcher_order.txt"), limit);
+    if(!order) return;
+    size_t slot = 0;
+    char* rest;
+    for(char* id = strtok_r(order, "\r\n", &rest); id && slot < count;
+        id = strtok_r(NULL, "\r\n", &rest)) {
+        const char* target = NULL;
+        char path[sizeof(COMMUNITY_APP_DIR ".fap") + CommunityIdMax];
+        if(!strncmp(id, COMMUNITY_ORDER_PREFIX, sizeof(COMMUNITY_ORDER_PREFIX) - 1)) {
+            const char* alias = id + sizeof(COMMUNITY_ORDER_PREFIX) - 1;
+            if(strlen(alias) > CommunityIdMax) continue;
+            snprintf(path, sizeof(path), COMMUNITY_APP_DIR "%s.fap", alias);
+            target = path;
+        } else {
             for(size_t i = 0; i < COUNT_OF(launcher_catalog); ++i) {
-                if(!seen[i] && !strcmp(id, launcher_catalog[i].id)) {
-                    seen[i] = true;
-                    order[count++] = i;
+                if(!strcmp(id, launcher_catalog[i].id)) {
+                    target = launcher_catalog[i].name;
                     break;
                 }
             }
         }
+        if(!target) continue;
+        for(size_t i = slot; i < count; ++i) {
+            if(strcmp(target, apps[i].launch_target)) continue;
+            const LoaderMenuApp selected = apps[i];
+            memmove(apps + slot + 1, apps + slot, (i - slot) * sizeof(*apps));
+            apps[slot++] = selected;
+            break;
+        }
     }
-    free(text);
-    // Older installations may omit later apps. Append each missing ID once.
-    for(size_t i = 0; i < COUNT_OF(launcher_catalog); ++i) {
-        if(!seen[i]) order[count++] = i;
-    }
+    free(order);
 }
 
 static const FlipperExternalApplication* launcher_community_entry(CommunityApp* entry, char* row) {
@@ -146,10 +162,7 @@ static const FlipperExternalApplication* launcher_community_entry(CommunityApp* 
     return &entry->app;
 }
 
-const FlipperExternalApplication**
-    loader_menu_apps_load(Storage* storage, size_t* count, size_t* community_start) {
-    uint8_t order[COUNT_OF(launcher_catalog)];
-    launcher_read_order(storage, order);
+LoaderMenuApp* loader_menu_apps_load(Storage* storage, size_t* count) {
     const FlipperExternalApplication* installed[COUNT_OF(launcher_catalog)] = {0};
     char* community =
         launcher_read_list(storage, EXT_PATH("eddy/community_apps.txt"), CommunityManifestMax);
@@ -161,10 +174,9 @@ const FlipperExternalApplication**
         }
     }
     // The grid and all dynamic entries share one allocation lasting until menu teardown.
-    size_t pointers = FLIPPER_EXTERNAL_APPS_COUNT + capacity;
-    const FlipperExternalApplication** apps =
-        malloc(pointers * sizeof(*apps) + capacity * sizeof(CommunityApp));
-    CommunityApp* entries = (void*)(apps + pointers);
+    size_t slots = FLIPPER_EXTERNAL_APPS_COUNT + capacity;
+    LoaderMenuApp* apps = malloc(slots * sizeof(*apps) + capacity * sizeof(CommunityApp));
+    CommunityApp* entries = (void*)(apps + slots);
     *count = 0;
     for(size_t i = 0; i < FLIPPER_EXTERNAL_APPS_COUNT; ++i) {
         const FlipperExternalApplication* app = &FLIPPER_EXTERNAL_APPS[i];
@@ -173,34 +185,35 @@ const FlipperExternalApplication**
             installed[index] = app;
     }
     for(size_t i = 0; i < COUNT_OF(installed); ++i) {
-        const FlipperExternalApplication* app = installed[order[i]];
+        const FlipperExternalApplication* app = installed[i];
         if(!app) continue;
-        apps[(*count)++] = app;
+        apps[(*count)++] = (LoaderMenuApp){app, app->name};
     }
     // Keep additional menu apps supplied by other builds discoverable as well.
     for(size_t i = 0; i < FLIPPER_EXTERNAL_APPS_COUNT; ++i) {
         const FlipperExternalApplication* app = &FLIPPER_EXTERNAL_APPS[i];
         if(launcher_catalog_index(app->name) == COUNT_OF(installed) &&
            storage_file_exists(storage, app->path))
-            apps[(*count)++] = app;
+            apps[(*count)++] = (LoaderMenuApp){app, app->name};
     }
-    *community_start = *count;
+    size_t community_start = *count;
     if(community) {
         char* rest;
         for(char* row = strtok_r(community, "\n", &rest);
-            row && *count - *community_start < capacity;
+            row && *count - community_start < capacity;
             row = strtok_r(NULL, "\n", &rest)) {
             size_t end = strlen(row);
             if(end && row[end - 1] == '\r') row[end - 1] = 0;
             const FlipperExternalApplication* app =
-                launcher_community_entry(&entries[*count - *community_start], row);
+                launcher_community_entry(&entries[*count - community_start], row);
             if(!app || !storage_file_exists(storage, app->path)) continue;
             size_t i = 0;
-            while(i < *count && strcmp(apps[i]->path, app->path))
+            while(i < *count && strcmp(apps[i].app->path, app->path))
                 ++i;
-            if(i == *count) apps[(*count)++] = app;
+            if(i == *count) apps[(*count)++] = (LoaderMenuApp){app, app->path};
         }
         free(community);
     }
+    launcher_apply_order(storage, apps, *count);
     return apps;
 }

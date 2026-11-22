@@ -62,19 +62,21 @@ const FlipperExternalApplication FLIPPER_EXTERNAL_APPS[] = {
 const size_t FLIPPER_EXTERNAL_APPS_COUNT = COUNT_OF(FLIPPER_EXTERNAL_APPS);
 int main(int argc, char** argv) {
     Storage storage;
-    size_t count, community_start;
-    const FlipperExternalApplication** apps = loader_menu_apps_load(&storage, &count, &community_start);
+    size_t count;
+    LoaderMenuApp* apps = loader_menu_apps_load(&storage, &count);
     for(size_t i=0; i<count; ++i) {
-        if(i >= community_start && !apps[i]->icon) return 1;
-        if(argc > 1 && i >= community_start) {
-            const Icon* icon = apps[i]->icon;
+        const FlipperExternalApplication* app = apps[i].app;
+        bool community = apps[i].launch_target == app->path;
+        if(community && !app->icon) return 1;
+        if(argc > 1 && community) {
+            const Icon* icon = app->icon;
             if(icon->width == 10) {
                 if(icon->height != 10 || icon->frame_count != 1 || icon->frames[0][0]) return 1;
                 for(size_t j=1; j<=20; ++j) printf("%02x", icon->frames[0][j]);
             } else printf("%d", icon->width);
-            printf(" %s %s\\n", apps[i]->name, apps[i]->path);
+            printf(" %s %s\\n", app->name, apps[i].launch_target);
         }
-        else puts(i < community_start ? apps[i]->name : apps[i]->path);
+        else puts(apps[i].launch_target);
     }
     free(apps);
 }
@@ -197,6 +199,39 @@ class CommunityLauncherTest(unittest.TestCase):
                 loaded(),
                 [*stock, *["apps/Community/" + name + ".fap" for name in names[:32]]],
             )
+            # Interleave all valid community rows and put built-ins on pages two and three.
+            # The filename could match a built-in ID without changing what OK launches.
+            aliases = [f"app_{i}_" + "z" * 36 for i in range(30)] + [
+                "nfc",
+                "techart_calendar",
+            ]
+            targets = {name: f"apps/Community/{name}.fap" for name in aliases}
+            for path in targets.values():
+                (root / path).touch()
+            manifest.write_text("".join(f"{name}\tNFC\n" for name in aliases))
+            mixed = [f"lab:{name}" for name in reversed(aliases)]
+            mixed.insert(8, "nfc")
+            mixed.insert(14, "signal")
+            layout = root / "eddy/launcher_order.txt"
+            layout.write_text(
+                "\r\n".join([*mixed, "lab:rogue", "lab:../extra", "signal", "lab:nfc"])
+            )
+            expected = [
+                (
+                    targets[id[4:]]
+                    if id.startswith("lab:")
+                    else {"signal": "Sub-GHz", "nfc": "NFC"}[id]
+                )
+                for id in mixed
+            ]
+            self.assertEqual(loaded(), [*expected, "Extra"])
+            (root / targets[aliases[0]]).unlink()
+            expected.remove(targets[aliases[0]])
+            self.assertEqual(loaded(), [*expected, "Extra"])
+            # Missing or invalid order retains the original native/manifest order.
+            layout.write_bytes(b"nfc\x00lab:techart_calendar")
+            self.assertEqual(loaded()[:3], ["Sub-GHz", "NFC", "Extra"])
+            layout.write_text("nfc\n")
             manifest.write_bytes(b"resistors\ntechart_calendar")
             (root / resistor).unlink()
             self.assertEqual(loaded(), [*stock, calendar])

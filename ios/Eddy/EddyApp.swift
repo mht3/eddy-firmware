@@ -1,4 +1,6 @@
+import Combine
 import SwiftUI
+import UIKit
 
 @MainActor
 final class EddyPhone: ObservableObject {
@@ -7,6 +9,7 @@ final class EddyPhone: ObservableObject {
     @Published var clientID = ""
     private var bridge: LibraryBridge?
     private var activeAccount: String?
+    private var accountObservation: AnyCancellable?
 
     init() {
         clientID = account.clientID
@@ -14,6 +17,7 @@ final class EddyPhone: ObservableObject {
         flipper.onConnect = { [weak self] in self?.attachLibrary() }
         flipper.onCommand = { [weak self] packet in self?.bridge?.receive(packet) }
         flipper.onDisconnect = { [weak self] in self?.clearLibrary() }
+        accountObservation = account.$accountKey.sink { [weak self] key in self?.accountChanged(key) }
     }
 
     private func clearLibrary() {
@@ -35,22 +39,33 @@ final class EddyPhone: ObservableObject {
         bridge = next
     }
 
-    func accountChanged() {
-        guard activeAccount != account.accountKey else { return }
+    private func accountChanged(_ key: String?) {
+        guard activeAccount != key else { return }
         if activeAccount != nil { flipper.setLibraryEnabled(false) }
-        activeAccount = account.accountKey
+        activeAccount = key
         clearLibrary()
         flipper.setLibraryEnabled(activeAccount != nil)
+    }
+}
+
+@MainActor
+private final class EddyAppDelegate: NSObject, UIApplicationDelegate {
+    let phone = EddyPhone()
+
+    func application(_ application: UIApplication,
+                     didFinishLaunchingWithOptions options: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        phone.flipper.start(restoreBluetooth: options?[.bluetoothCentrals] != nil)
+        return true
     }
 }
 
 @main
 @MainActor
 struct EddyApp: App {
-    @StateObject private var phone = EddyPhone()
+    @UIApplicationDelegateAdaptor(EddyAppDelegate.self) private var appDelegate
     var body: some Scene {
         WindowGroup {
-            ConnectionView(phone: phone, account: phone.account, flipper: phone.flipper)
+            ConnectionView(phone: appDelegate.phone, account: appDelegate.phone.account, flipper: appDelegate.phone.flipper)
         }
     }
 }
@@ -109,8 +124,6 @@ private struct ConnectionView: View {
         .onAppear {
             guard !didLaunch else { return }
             didLaunch = true
-            phone.accountChanged()
-            if flipper.selectedID != nil { flipper.reconnect() }
             if onboarded { flipper.refreshDevices() }
         }
         .onChange(of: step) { _, _ in editingClientID = false }
@@ -118,7 +131,6 @@ private struct ConnectionView: View {
             if value == .active && (onboarded || step == 1) { flipper.refreshDevices() }
         }
         .onChange(of: account.accountKey) { _, _ in
-            phone.accountChanged()
             if account.isSignedIn && step == 2 { withAnimation { step = 3 } }
         }
         .onChange(of: flipper.connectedID) { _, device in
@@ -253,9 +265,14 @@ private struct ConnectionView: View {
             List {
                 Text(flipper.status).foregroundStyle(.secondary)
                 ForEach(flipper.devices) { device in
-                    Button { flipper.select(device.id) } label: {
-                        Label(device.name, systemImage: "dot.radiowaves.left.and.right")
+                    let connected = flipper.connectedID == device.id
+                    Button {
+                        if connected { chooser = false }
+                        else { flipper.select(device.id) }
+                    } label: {
+                        Label(device.name, systemImage: connected ? "checkmark.circle" : "dot.radiowaves.left.and.right")
                     }
+                    .accessibilityValue(connected ? "Connected" : "")
                 }
             }
             .navigationTitle("Connect device")

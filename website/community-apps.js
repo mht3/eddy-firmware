@@ -53,10 +53,14 @@ function restoreRecords() {
 }
 restoreRecords();
 
-function readSelection() {
-  const saved = load(selectionKey,[]);
-  return Array.isArray(saved) ? [...new Set(saved.filter(validLabAlias))] : [];
+export function communityAliases(ids) {
+  return Array.isArray(ids) ? [...new Set(ids.filter(validLabAlias))].slice(0, communityLimit) : [];
 }
+// Shared previews may have valid aliases whose verified files live only in another browser.
+export function previewCommunity(ids) {
+  return communityAliases(ids).map(id => communityApps.find(app => app.id === id) ?? {id,name:id});
+}
+function readSelection() { return communityAliases(load(selectionKey,[])); }
 let selected = readSelection();
 let available = new Set();
 let compatibility;
@@ -75,7 +79,7 @@ export const getCommunitySelection = () => selected.filter(communityAvailable);
 export const savedCommunity = () => [...selected];
 export const importedRecord = id => communityApps.find(app => app.imported && app.id === id);
 export function selectCommunity(ids) {
-  selected = [...new Set(ids.filter(id => communityApps.some(app => app.id === id)))];
+  selected = communityAliases(ids.filter(id => communityApps.some(app => app.id === id)));
   save(selectionKey,selected);
   signal();
 }
@@ -134,7 +138,8 @@ globalThis.addEventListener?.('storage', event => {
   signal();
 });
 
-export const previewId = app => app.imported ? 'lab:'+app.id : app.id;
+export const communityOrderId = alias => 'lab:' + alias;
+export const previewId = app => communityOrderId(app.id);
 export function drawLabIcon(ctx,hex,x,y) {
   for (let row=0;row<10;row++) {
     for (let col=0;col<10;col++) {
