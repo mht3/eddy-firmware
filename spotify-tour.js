@@ -1,9 +1,13 @@
 import {openSpotifyDemo,spotifyKey} from './spotify-preview.js';
+import {songs} from './spotify-demo-library.js';
+
+const seaGlass=songs.findIndex(song=>song.title==='Sea Glass');
 
 function snapshot(s) {
   const v=s.views.at(-1);
   return {
-    kind:v.kind, row:v.row, toolbar:!!v.toolbar, action:s.action, track:s.track,
+    kind:v.kind, row:v.row, track:s.track, elapsed:s.elapsed, started:s.started,
+    song:v.kind==='playlist'?s.playlists[v.value].tracks[v.row]:v.kind==='song'?v.value:null,
     queue:s.queue.map(item=>item.id), playing:s.playing, left:s.presets.left,
     leftTracks:s.playlists.find(p=>p.id===s.presets.left)?.tracks.slice() ?? [],
     playlist:v.kind==='playlists'?s.playlists[v.row]?.id:v.kind==='playlist'?s.playlists[v.value]?.id:null,
@@ -22,24 +26,25 @@ export const spotifyTourSteps=[
     (a,b)=>a.kind==='playlists' && a.row===0 && b.kind==='playlists' && b.playlist===coast),
   lesson('open','Look inside the playlist','Press OK to see its tracks.','ok',
     (a,b)=>a.kind==='playlists' && a.playlist===coast && b.kind==='playlist' && b.playlist===coast),
-  lesson('player','Open Now playing','Press Right from the track list.','right',
-    (a,b)=>a.kind==='playlist' && b.kind==='player'),
-  lesson('actions','Find the player actions','Press Down to focus the buttons below playback.','down',
-    (a,b)=>a.kind==='player' && !a.toolbar && b.kind==='player' && b.toolbar),
-  lesson('choose-queue','Choose the queue button','Press Right from Volume to highlight + Queue.','right',
-    (a,b)=>a.kind==='player' && a.toolbar && a.action===2 && b.toolbar && b.action===0),
-  lesson('enqueue','Queue the current song','Press OK to add this song to the end of the queue.','ok',
-    (a,b)=>a.kind==='player' && a.toolbar && a.action===0 && b.queue.length===a.queue.length+1 &&
-      b.queue.at(-1)===a.track),
-  lesson('transport','Return to playback','Press Up to leave the action buttons.','up',
-    (a,b)=>a.kind==='player' && a.toolbar && b.kind==='player' && !b.toolbar),
-  lesson('skip','Skip to the next song','Tap Right to play the next track in your queue.','right',
-    (a,b)=>a.kind==='player' && !a.toolbar && b.playing && a.queue.length===b.queue.length+1 &&
-      b.track===a.queue[0]),
-  lesson('lyrics','Follow the lyrics','Press Up to see the words follow the song.','up',
-    (a,b)=>a.kind==='player' && !a.toolbar && b.kind==='lyrics'),
-  lesson('return','Leave the lyrics','Press Back to return to the player. Next, you’ll save a playlist shortcut.','back',
-    (a,b)=>a.kind==='lyrics' && b.kind==='player'),
+  lesson('choose-song','Find Sea Glass','Press Down to highlight Sea Glass. Dolphin Days is still playing.','down',
+    (a,b)=>a.kind==='playlist' && a.playlist===coast && a.song!==seaGlass && b.song===seaGlass),
+  lesson('song','Open the song actions','Press OK on Sea Glass.','ok',
+    (a,b)=>a.kind==='playlist' && a.song===seaGlass && b.kind==='song' && b.song===seaGlass),
+  lesson('choose-queue','Choose Add to queue','Press Down to highlight Add to queue.','down',
+    (a,b)=>a.kind==='song' && a.song===seaGlass && a.row===0 && b.kind==='song' && b.row===1),
+  lesson('enqueue','Play Sea Glass next','Press OK to queue Sea Glass while Dolphin Days keeps playing.','ok',
+    (a,b)=>a.kind==='song' && a.song===seaGlass && a.row===1 && a.track!==seaGlass && a.queue.length===0 &&
+      b.queue.length===1 && b.queue[0]===seaGlass && a.track===b.track && a.playing && b.playing &&
+      a.started===b.started && a.elapsed===b.elapsed),
+  lesson('player','Open Now playing','Press Right to see the current track, Dolphin Days.','right',
+    (a,b)=>a.kind==='song' && b.kind==='player' && a.track===b.track && a.queue[0]===seaGlass),
+  lesson('lyrics','Follow the words','Press Up. The highlighted line follows Dolphin Days automatically.','up',
+    (a,b)=>a.kind==='player' && b.kind==='lyrics' && a.track===b.track),
+  lesson('skip','Skip from Lyrics','Tap Right here in Lyrics. Sea Glass starts, and its words appear.','right',
+    (a,b)=>a.kind==='lyrics' && b.kind==='lyrics' && a.track!==seaGlass && a.queue[0]===seaGlass &&
+      b.track===seaGlass && b.playing && b.queue.length===a.queue.length-1),
+  {...lesson('return','Return to the player','Press Down to see Sea Glass in Now playing. Back also closes Lyrics.','down',
+    (a,b)=>a.kind==='lyrics' && b.kind==='player' && b.track===seaGlass),alternateKey:'back'},
   lesson('assign','Save a playlist shortcut','On the Coast is highlighted again. Hold Left to save it to that arrow.','holdLeft',
     (a,b)=>a.kind==='playlists' && a.playlist===coast && !a.left && b.kind==='playlists' && b.left===coast,
     s=>{openSpotifyDemo(s); spotifyKey(s,'ok'); spotifyKey(s,'down');}),
@@ -50,7 +55,11 @@ export const spotifyTourSteps=[
 ];
 
 export function startSpotifyTour() {
-  const fresh=()=>openSpotifyDemo(null,{persistPresets:false});
+  function fresh() {
+    const s=openSpotifyDemo(null,{persistPresets:false});
+    s.queue=[];
+    return s;
+  }
   const state=fresh();
   let index=0, exited=false, before=snapshot(state);
 
@@ -75,7 +84,8 @@ export function startSpotifyTour() {
       const step=spotifyTourSteps[index];
       if(exited || !step) return false;
       const after=snapshot(state);
-      const passed=key===step.key && step.changed(before,after);
+      const matches=key===step.key || (step.alternateKey!==undefined && key===step.alternateKey);
+      const passed=matches && step.changed(before,after);
       if(passed) {
         index++;
         spotifyTourSteps[index]?.prepare?.(state);

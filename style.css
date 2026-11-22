@@ -505,7 +505,7 @@ nav [aria-current=page] {color:var(--surf)}
 #lesson-hint {margin:.25rem 0; font-size:.88rem}
 #lesson-hint:empty {display:none}
 .lesson-actions {display:flex; flex-wrap:wrap; gap:1rem; margin-top:.75rem}
-.lesson-actions button {background:transparent; border:0; color:var(--surf); padding:.3rem 0; text-decoration:underline; text-underline-offset:.22em}
+.lesson-actions button {min-height:44px; background:transparent; border:0; color:var(--surf); padding:.3rem 0; text-decoration:underline; text-underline-offset:.22em}
 #playable button.tour-cue {outline:3px solid #07599b; outline-offset:-3px; box-shadow:0 0 0 2px #ecf8ff; background:#1c89d83d}
 #playable button.tour-cue:active {background:#1079b184}
 .guided-preview .chapters #home-screen h2 {font-size:clamp(2.5rem,6vw,5em)}
@@ -517,5 +517,4 @@ nav [aria-current=page] {color:var(--surf)}
   .guided-preview #home-screen h2 {font-size:2rem; margin:0}
   .guided-preview #spotify-lesson {margin:.55rem 0}
   .guided-preview .lesson-actions {margin-top:.2rem}
-  .guided-preview .lesson-actions button {min-height:44px}
 }

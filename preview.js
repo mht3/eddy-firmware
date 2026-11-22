@@ -337,7 +337,7 @@ function press(key) {
   const state=current(), page=state.page, rows=lists[page];
   if(page==='gpio' && gpioKey(state,key)) { draw(); announce(); return; }
   if (guidedDemo && state === guidedDemo.state) {
-    if (guidedDemo.complete || key !== guidedDemo.step.key) {
+    if (guidedDemo.complete || (key !== guidedDemo.step.key && key !== guidedDemo.step.alternateKey)) {
       lessonHint.textContent = guidedDemo.complete ? 'Choose Explore freely to keep playing.' :
         guidedDemo.step.hold ? 'Keep the highlighted button pressed for a moment.' : 'Tap the highlighted Flipper button.';
       return;
@@ -550,7 +550,7 @@ if(pickerPreview) {
   document.querySelector('#home-screen h2').textContent=title;
   const guideIntro = {
     spotify:previewParams.get('view') === 'now-playing'
-      ? 'Dolphin Days is playing. Try the queue, save it to a playlist, or adjust its volume.'
+      ? 'Dolphin Days is playing. Follow its lyrics, save it to a playlist, or adjust its volume.'
       : 'Browse your playlists and saved music. Press Right to open the current song.',
     music:'Try a sample track. Press OK to pause or play, Right to skip, and Up or Down for volume.',
   };
