@@ -22,5 +22,8 @@
 .music .library-device {display:block; width:100%; max-width:36rem; height:auto; margin:.5rem auto}
 .setup-steps li + li {margin-top:1.25rem}
 .setup-steps code {overflow-wrap:anywhere}
+.registration-fields {margin:1rem 0}
+.registration-fields dt {color:var(--muted); font-size:.9rem}
+.registration-fields dd {margin:0 0 .5rem}
 .setup-steps figure img {display:block; max-width:100%; height:auto; border-radius:.5rem}
 #developer-setup {scroll-margin-top:6rem}
