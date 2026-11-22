@@ -85,7 +85,7 @@ async function drain() { for (let i = 0; i < 3; i++) await tick(); }
 
 test('signed-in Flipper browses real response rows and plays only the displayed page', async () => {
   await signIn();
-  const dom = Object.fromEntries(['bridge','notice','link','pair','disconnect','unlink','account-state','device-state','library-hint'].map(key => [key, {}]));
+  const dom = Object.fromEntries(['bridge','notice','link','pair','disconnect','unlink','account-state','device-state','library-hint','open-native'].map(key => [key, {}]));
   const list = dom['library-links'] = {replaceChildren(...children) { this.children = children; }};
   globalThis.document = {getElementById: key => dom[key], createElement: tag =>
     ({tag, append(child) { this.child = child; }})};

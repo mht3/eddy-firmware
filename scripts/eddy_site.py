@@ -311,6 +311,15 @@ def stage(package=None):
     if site.exists():
         shutil.rmtree(site)
     shutil.copytree(ROOT / "website", site, ignore=shutil.ignore_patterns("*.fap"))
+    invite = os.environ.get("EDDY_TESTFLIGHT_URL", "").strip()
+    if invite:
+        if not re.fullmatch(r"https://testflight\.apple\.com/join/[A-Za-z0-9]{8}", invite):
+            raise ValueError("Expected an Apple TestFlight public invitation")
+        app_page = site / "app/index.html"
+        app_page.write_text(app_page.read_text().replace(
+            '<p id="beta-availability">TestFlight invitations aren’t open yet.</p>',
+            f'<p id="beta-availability"><a class="small-cta" href="{invite}">Join the TestFlight beta</a></p>',
+        ))
     shutil.copy2(package, site / "firmware" / package.name)
     parts_dir = site / "firmware" / version
     parts_dir.mkdir()

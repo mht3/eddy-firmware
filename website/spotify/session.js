@@ -25,6 +25,19 @@ export async function finishScan() {
   const query = new URLSearchParams(location.search);
   if (!query.has('code') && !query.has('error') && !query.has('state')) return;
   history.replaceState(null, '', location.pathname);
+  // The native app owns its PKCE verifier and validates the state before exchanging this one-use code.
+  const state = query.get('state') ?? '';
+  if (query.getAll('state').length === 1 && /^eddy-ios-[A-Za-z0-9_-]{32,128}$/.test(state)) {
+    const codes = query.getAll('code'), errors = query.getAll('error');
+    if (codes.length + errors.length !== 1 || !(codes[0] || errors[0])) {
+      throw new Error('Incomplete iPhone sign-in. Return to Eddy and try again.');
+    }
+    const callback = new URL('eddyspotify://callback');
+    callback.searchParams.set('state', state);
+    callback.searchParams.set(codes.length ? 'code' : 'error', (codes[0] || errors[0]));
+    location.replace(callback.href);
+    return;
+  }
   const session = scanSession();
   if (!session) throw new Error('This tab has no pending Spotify sign-in. Scan the QR on your Flipper again and finish in the same browser.');
   let message;

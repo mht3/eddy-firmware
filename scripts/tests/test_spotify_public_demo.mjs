@@ -96,3 +96,19 @@ test('scanning starts PKCE, callback consumes the grant once, and guide visits p
   assert.equal(exchanges, 1);
   assert.equal(linked(id), false);
 });
+
+test('a native PKCE grant returns only its one-time result to the Eddy app', async () => {
+  const state = 'eddy-ios-'+'A'.repeat(43);
+  let target;
+  globalThis.location = {pathname:'/eddy-firmware/spotify/',search:'?state='+state+'&code=once&ignore=x',
+    replace(value) { target = new URL(value); }};
+  globalThis.history = {replaceState:()=>{}};
+  await finishScan();
+  assert.equal(target.protocol,'eddyspotify:');
+  assert.equal(target.hostname,'callback');
+  assert.deepEqual([...target.searchParams],[['state',state],['code','once']]);
+  target = null;
+  location.search = '?state='+state+'&code=one&code=two';
+  await assert.rejects(finishScan(), /Incomplete iPhone/);
+  assert.equal(target,null);
+});

@@ -136,11 +136,17 @@ export async function startBridge(id, initialMessage) {
   function render() {
     const ready = linked(id);
     const canPair = Boolean(navigator.bluetooth?.requestDevice);
+    const native = get('open-native');
+    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    native.hidden = canPair || !ios;
+    if (!native.hidden) native.href = 'eddyspotify://setup?client_id='+encodeURIComponent(id);
     get('account-state').textContent = ready ? 'Signed in' : 'Sign-in required';
     get('device-state').textContent = session ? 'Connected to '+session.device.name :
       !canPair ? 'Bluetooth unavailable in this browser' : 'Flipper disconnected';
     get('library-hint').textContent = !canPair ?
-      'For the Spotify library, use Chrome on Android or desktop Chrome or Edge.' :
+      (ios ? 'Open the installed Eddy iPhone prototype to connect over Bluetooth.' :
+        'For the Spotify library, use Chrome on Android or desktop Chrome or Edge.') :
       session ? 'Start a song in Spotify. Keep this tab open while you browse on your Flipper.' :
       'Open Apps → Spotify on your Flipper, then choose the device here.';
     get('link').hidden = ready;

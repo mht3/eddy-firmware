@@ -1,0 +1,29 @@
+name: Check Eddy for iPhone
+on:
+  push:
+    branches: [dev, main]
+    paths: ['ios/**', '.github/workflows/iphone.yml']
+  pull_request:
+    paths: ['ios/**', '.github/workflows/iphone.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  iphone:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build the iPhone app without a signing identity
+        run: xcodebuild -project ios/EddySpotify.xcodeproj -scheme EddySpotify -configuration Release -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+      - name: Test Spotify authorization, requests and Flipper messages
+        run: |
+          swiftc ios/EddySpotify/SpotifyAccount.swift ios/Tests/SpotifyAccountTests.swift -o "$RUNNER_TEMP/eddy-account-tests"
+          "$RUNNER_TEMP/eddy-account-tests"
+          swiftc ios/EddySpotify/LibraryBridge.swift ios/Tests/LibraryBridgeTests.swift -o "$RUNNER_TEMP/eddy-bridge-tests"
+          "$RUNNER_TEMP/eddy-bridge-tests"
+          swiftc ios/EddySpotify/LibraryBridge.swift ios/EddySpotify/SpotifyLibrary.swift ios/Tests/SpotifyLibraryTests.swift -o "$RUNNER_TEMP/eddy-library-tests"
+          "$RUNNER_TEMP/eddy-library-tests"
