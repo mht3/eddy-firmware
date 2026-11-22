@@ -2,9 +2,9 @@
   "parts": [
     {
       "name": "firmware.dfu",
-      "size": 801417,
-      "sha256": "cd69ccc54137f426df6f38cc511598c37a7882d472582cf06a044fc4f8b8cae3",
-      "md5": "df7b1363941bb45afa046cabe166b358"
+      "size": 801413,
+      "sha256": "e17c560aa34819896785ff36e21bd4600cb4cd573473f2b2deb017fabd17a555",
+      "md5": "9eac6cc1b7d2f74555861924858f3c81"
     },
     {
       "name": "firstboot.bin",
@@ -20,9 +20,9 @@
     },
     {
       "name": "resources.tar.gz",
-      "size": 218618,
-      "sha256": "ac2614c2a37bff0c52a7df9b42be92ea0a57d1fda0f2804c6536abc2d5ae2cc1",
-      "md5": "04d80107910be9723715b310e6dac6b2"
+      "size": 218632,
+      "sha256": "18f3c8380d63a5e77e7c9b1d5db47bbd74219dc07313c31307ee1418bdf847f0",
+      "md5": "28d10a537cd7dd7f2c18b92c74fd8a59"
     },
     {
       "name": "splash.bin",
@@ -33,14 +33,14 @@
     {
       "name": "update.fuf",
       "size": 1589,
-      "sha256": "5e50a076e250de22868a10b1fc0c8c3461100cfe64791f2faa0499cc5f18fefd",
-      "md5": "a7750789587cf0d03a87021b256d9fe6"
+      "sha256": "83b8bec982c44a19ccf21e1ea10c1bd7f750eacd14572b0d9e98a01652fd30aa",
+      "md5": "98f155ab2e089dcb589c1f42fee99105"
     },
     {
       "name": "updater.bin",
       "size": 120833,
-      "sha256": "4b291635cc1641a678ec77d64afd2bcbf49ccd88beed114a6249b1f39cf4dfcd",
-      "md5": "1ded963ea0b95c883974b4609b981be2"
+      "sha256": "4553605836330564092962b177e401047da6bb62d738f0d4f605023533602fdf",
+      "md5": "931cf884b94d8ce56b687481614fa91d"
     }
   ],
   "resourceIndex": {
@@ -148,7 +148,7 @@
       "name": "Calendar",
       "alias": "techart_calendar",
       "size": 4188,
-      "sha256": "a577ba1d0b80e9dd31cc41e356da3927c270ffbd06e4bb49029ff627853aca00",
+      "sha256": "f34a7a9d710275e115593d4fc4b98806361b06e2a4d13d52a51cb1cda071362c",
       "license": "MIT License\n\nCopyright (c) 2024 TechArtDev\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n"
     }
   },
@@ -3342,11 +3342,12 @@
       4291153410,
       4294433683
     ],
-    "catalog": "eddy-dev-d6760d4f/lab/index.json"
+    "catalog": "eddy-dev-7f65fbe0/lab/index.json"
   },
   "target": "f7",
-  "version": "eddy-dev-d6760d4f",
-  "file": "flipper-z-f7-update-eddy-dev-d6760d4f.tgz",
-  "commit": "d6760d4f1cf1d028e8adde54f9a18be63be22b51",
-  "sha256": "69ca9d1250b44af47c818c5bc2f68ae88782e2683d7b0db4b81e59c3330fef61"
+  "version": "eddy-dev-7f65fbe0",
+  "file": "flipper-z-f7-update-eddy-dev-7f65fbe0.tgz",
+  "commit": "7f65fbe0da3d7782c98f538f0351a14c67ae5b77",
+  "spotifyCommit": "4e894ae332672f39ca2186c52b074eefb7f768b2",
+  "sha256": "94c23b0f37045ad263792ee90635468f0c6207b295bbd024fdc0abfb6115e1cc"
 }

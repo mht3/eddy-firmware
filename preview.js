@@ -1,7 +1,7 @@
 import {getAppOrder, getSelectedApps, restoreAppOrder, launcherColumns, launcherPageSize} from './app-catalog.js';
 import {communityApps,savedCommunity,previewId} from './community-apps.js';
-import {openSpotifyDemo, openSpotifyPlayer, drawSpotify, spotifyStatus, spotifyKey, spotifyHit, spotifyVolumeAt} from './spotify-preview.js';
-import {startSpotifyTour, spotifyTourSteps} from './spotify-tour.js';
+import {openSpotifyDemo, openSpotifyPlayer, drawSpotify, spotifyStatus, spotifyKey, spotifyHit, spotifyVolumeAt} from './spotify-demo/spotify-preview.js';
+import {startSpotifyTour, spotifyTourSteps} from './spotify-demo/spotify-tour.js';
 import {openMusicDemo, drawMusic, musicStatus, musicKey} from './music-preview.js';
 import {presetButtons, tvPresetRows, tvPadStatus, tvPadKey, drawTvPad, tvPadHit, tvNavigationHit} from './tv-presets.js';
 import {openBuilder, builderKey, builderStatus, drawBuilder} from './builder-preview.js';
