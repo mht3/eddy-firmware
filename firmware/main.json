@@ -3,8 +3,8 @@
     {
       "name": "firmware.dfu",
       "size": 801485,
-      "sha256": "abd0d139ba930fc8b507a3f4cbf190cb43e261f438499ca7e9c64ae997726a59",
-      "md5": "71353d5441c7ce7ec7d4758eab10fa94"
+      "sha256": "0012ddd0bde7f7d98abe44dd45ee3072850e4b3c390c38ed18518e0ac31d2c0a",
+      "md5": "454a3781a444657f45383ee44cdcd525"
     },
     {
       "name": "firstboot.bin",
@@ -20,9 +20,9 @@
     },
     {
       "name": "resources.tar.gz",
-      "size": 218632,
-      "sha256": "7c1e19875a6c1f572d0a32b11b6ab72c63183cd2eaad7ed72766081af05625f7",
-      "md5": "6f0c016305d3a081035d0d0980988eec"
+      "size": 218631,
+      "sha256": "2486fda5179439005b00bb83a07d2963d7401756e10fa45d65db262eb1b72fea",
+      "md5": "f7c758b519f8ba56efe8d8e2f0a5ce8f"
     },
     {
       "name": "splash.bin",
@@ -33,14 +33,14 @@
     {
       "name": "update.fuf",
       "size": 1589,
-      "sha256": "e623215b68a244d83d969618afd1ee71a4ba449d5523e1a914a2e7a90fe32ba0",
-      "md5": "f20a3bdf1d8ef924f5477de7cf3ff8e9"
+      "sha256": "c8f75998399aea5a6af0ea0f1fef44d3a9b31921faa8798bb9c920061f8cfc92",
+      "md5": "6d7527fa6f6433a7508a23429605246f"
     },
     {
       "name": "updater.bin",
       "size": 120833,
-      "sha256": "1bc67007c132e2954991f62eba3c81ab462edc7a8771792322d479e2b1042bea",
-      "md5": "ee5238b4de52cfd71f74cebc45b4cc59"
+      "sha256": "9154f9abcf35da2cc38b4458c9e9ef7105304d0d474fcb5bf13977084e397ac9",
+      "md5": "0dd28f146b3f2355bb22570b69e16607"
     }
   ],
   "resourceIndex": {
@@ -3342,12 +3342,12 @@
       4291153410,
       4294433683
     ],
-    "catalog": "eddy-dev-dd9e2719/lab/index.json"
+    "catalog": "eddy-dev-ca3af361/lab/index.json"
   },
   "target": "f7",
-  "version": "eddy-dev-dd9e2719",
-  "file": "flipper-z-f7-update-eddy-dev-dd9e2719.tgz",
-  "commit": "dd9e271956a23caed35fe182d91fad2c9f4945db",
-  "spotifyCommit": "a59cb0968c17508b19b5c7b342e6babb6319db9a",
-  "sha256": "099d7bb13d8f7a44f6fd914d28662dc64aa79bb101698cab75b7c0465df69c1e"
+  "version": "eddy-dev-ca3af361",
+  "file": "flipper-z-f7-update-eddy-dev-ca3af361.tgz",
+  "commit": "ca3af36191ac177dc202cb605595c80754e5fffc",
+  "spotifyCommit": "c64c988930d3fa029894e92216548c98515c9169",
+  "sha256": "4dafa827caed841d26e4070e57af68539a0a8b182865a270ad604018f17504e7"
 }
