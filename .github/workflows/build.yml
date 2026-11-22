@@ -31,7 +31,9 @@ jobs:
       - name: Build optional community apps with the matching Eddy SDK
         run: python3 scripts/build_community_apps.py
       - name: Prepare website with matching firmware
-        run: python3 scripts/eddy_site.py
+        run: |
+          python3 scripts/eddy_site.py
+          python3 scripts/stage_flipper_lab.py dist/eddy-site/firmware/main.json
       - uses: actions/upload-artifact@v4
         with:
           name: eddy-f7-update

@@ -1,5 +1,7 @@
 import {catalog,defaultAppOrder,getAppOrder,validAppOrder} from '../app-catalog.js';
 import {md5} from './md5.js';
+import {communityLimit, importedRecord, readLabFile, validLabAlias} from '../community-apps.js';
+import {verifyCatalogFap} from './fap.js';
 
 const firmwareRoot = new URL('../firmware/',import.meta.url);
 const encoder = new TextEncoder();
@@ -85,13 +87,18 @@ async function filterResources(bytes,index,excluded,order,community,spotifyClien
   if (community.length) {
     const list = locateEntry(tar,index.communityList,communityList);
     if (list.data.length) throw Error('Unexpected community apps in the base release.');
-    const listData = encoder.encode(community.map(({id})=>id+'\n').join(''));
+    const listData = encoder.encode(community.map(({id,displayName,iconHex}) => {
+      if (!displayName) return id+'\n';
+      return id+'\t'+displayName+(iconHex?'\t'+iconHex:'')+'\n';
+    }).join(''));
     edits.push(replaceEntry(list,listData));
     listRow = manifestFile(communityList,listData);
     communityRows.push('D:'+communityDir);
     additions.push(packageHeader(communityDir+'/',0,true));
     for (const {id,data,license} of community) {
-      for (const [suffix,bytes] of [['.fap',data],['.LICENSE.txt',encoder.encode(license)]]) {
+      const entries = [['.fap',data]];
+      if (license) entries.push(['.LICENSE.txt',encoder.encode(license)]);
+      for (const [suffix,bytes] of entries) {
         const path = communityDir+'/'+id+suffix;
         communityRows.push(manifestFile(path,bytes));
         additions.push(packageHeader(path,bytes.length),bytes,padding(bytes.length));
@@ -169,8 +176,9 @@ export async function prepareInstall(build,selectedIds,onPart,order=getAppOrder(
   if ([...selected].some(id=>!catalog.some(app=>app.id===id))) throw Error('Unknown app selection.');
   if (!validAppOrder(order)) throw Error('Invalid app order. Reload the installer to try again.');
   const ids = [...communityIds];
-  if (new Set(ids).size!==ids.length || ids.some(id=>typeof id!=='string' ||
-      !/^[a-z][a-z0-9_-]{0,47}$/.test(id) || !Object.hasOwn(build.communityApps ?? {},id))) {
+  if (ids.length > communityLimit || new Set(ids).size !== ids.length || ids.some(id =>
+      !validLabAlias(id) || !(Object.hasOwn(build.communityApps ?? {},id) ||
+        (build.catalogCompatibility && importedRecord(id))))) {
     throw Error('A selected community app is unavailable in this release. Refresh the installer.');
   }
   const excluded = catalog.filter(app=>!selected.has(app.id));
@@ -182,6 +190,20 @@ export async function prepareInstall(build,selectedIds,onPart,order=getAppOrder(
   }
   const community = [];
   for (const id of ids) {
+    if (!Object.hasOwn(build.communityApps ?? {},id)) {
+      const record = importedRecord(id);
+      onPart?.(record.name);
+      const file = await readLabFile(record);
+      if (!(file?.data instanceof Uint8Array) || await sha256(file.data) !== record.sha256) {
+        throw Error('Paste the Flipper Lab link again to download a fresh copy of '+record.name+'.');
+      }
+      const {iconHex} = verifyCatalogFap(file.data,build.catalogCompatibility);
+      // The stock system font supports printable ASCII. Never write separators into the manifest.
+      const displayName = record.name.normalize('NFKD').replace(/[\u0300-\u036f]/g,'')
+        .replace(/[^ -~]/g,' ').replace(/\s+/g,' ').trim().slice(0,32).trim() || id.slice(0,32);
+      community.push({id,displayName,iconHex,license:file.license,data:file.data});
+      continue;
+    }
     const app = build.communityApps[id];
     if (!Number.isSafeInteger(app.size) || app.size<=0 || !/^[a-f0-9]{64}$/.test(app.sha256) ||
         typeof app.license!=='string' || !app.license.trim()) {

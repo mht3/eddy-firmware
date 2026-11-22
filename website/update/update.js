@@ -1,6 +1,6 @@
 import {catalog,defaultAppOrder,getAppOrder,getSelectedApps} from '../app-catalog.js';
 import {prepareInstall,makeDownload} from './package.js';
-import {getCommunitySelection,setCommunityRelease} from '../community-apps.js';
+import {getCommunitySelection,importInProgress,setCommunityRelease} from '../community-apps.js';
 import {FlipperUpdater} from './flipper.js';
 
 const root = new URL('../firmware/',import.meta.url);
@@ -21,10 +21,10 @@ function updateControls() {
   spotifySettings.hidden = !getSelectedApps().has('spotify');
   spotifyClientId.disabled = busy || spotifySettings.hidden;
   picker.disabled = busy;
-  action.disabled = busy || !build || !isSecureContext || !navigator.serial;
-  download.disabled = busy || !build;
+  action.disabled = busy || importInProgress() || !build || !isSecureContext || !navigator.serial;
+  download.disabled = busy || importInProgress() || !build;
   const stockLayout = getAppOrder().every((id,i)=>id===defaultAppOrder[i]);
-  lab.hidden = busy || !lab.hasAttribute('href') || getSelectedApps().size !== catalog.length || !stockLayout || getCommunitySelection().length>0 || Boolean(spotifyClientId.value.trim());
+  lab.hidden = busy || importInProgress() || !lab.hasAttribute('href') || getSelectedApps().size !== catalog.length || !stockLayout || getCommunitySelection().length>0 || Boolean(spotifyClientId.value.trim());
 }
 window.addEventListener('eddy-apps-changed', updateControls);
 spotifyClientId.addEventListener('input', updateControls);
@@ -80,7 +80,7 @@ async function loadBuild() {
       lab.href = labUrl;
     }
     build = data;
-    setCommunityRelease(data.communityApps);
+    setCommunityRelease(data.communityApps,data.catalogCompatibility);
     download.hidden = false;
     connection.textContent = navigator.serial && isSecureContext ? 'No device connected.' :
       'For USB installation, open this page in desktop Chrome or Edge. You can also download your selection for qFlipper.';

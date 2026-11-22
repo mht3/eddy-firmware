@@ -119,3 +119,38 @@ test('personal Spotify setup adds the ID only to the local package on either ins
   assert.equal(requested.length, 2);
   assert(requested.every(url => url.endsWith('/resources.tar.gz') && !url.includes(id)));
 });
+
+test('a verified Flipper Lab app reaches the SD launcher and survives preparing another update', async t => {
+  const {readFile} = await import('node:fs/promises');
+  const {rememberLabApp, setCommunityRelease, selectCommunity, getCommunitySelection, labAlias} =
+    await import('../../website/community-apps.js');
+  const {verifyCatalogFap} = await import('../../website/update/fap.js');
+  t.mock.method(globalThis,'fetch',async () => new Response(resources));
+  const previousWindow = globalThis.window;
+  globalThis.window = new EventTarget();
+  t.after(() => { globalThis.window = previousWindow; });
+  const data = new Uint8Array(await readFile(new URL('../../website/community/resistors.fap',import.meta.url)));
+  const csv = await readFile(new URL('../../targets/f7/api_symbols.csv',import.meta.url),'utf8');
+  const symbols = csv.split(/\r?\n/).filter(row => /^(?:Variable|Function),\+,/.test(row))
+    .map(row => [...row.split(',')[2]].reduce((h,ch) => (Math.imul(h,33)+ch.charCodeAt(0))>>>0,5381));
+  const compatibility = {api:csv.match(/Version,\+,([\d.]+)/)[1],target:'f7',symbols};
+  const alias = labAlias('https://lab.flipper.net/apps/4new_app');
+  assert.equal(alias,'4new_app');
+  const icon = verifyCatalogFap(data,compatibility).iconHex;
+  await rememberLabApp({id:alias,name:'New App',sha256:digest('sha256',data),iconHex:icon,data});
+  setCommunityRelease(build.communityApps,compatibility);
+  selectCommunity([alias]);
+  const selected = getCommunitySelection();
+  assert.deepEqual(selected,[alias]);
+  const release = {...build,catalogCompatibility:compatibility};
+  const entries = await prepareInstall(release,all,null,defaultAppOrder,selected);
+  const sd = unpack(entries[0].bytes);
+  assert.deepEqual(sd['apps/Community/4new_app.fap'],Buffer.from(data));
+  assert.equal(sd[communityList].toString(),alias+'\tNew App\t'+icon+'\n');
+  assert(sd.Manifest.toString().includes('F:'+digest('md5',data)+':'+data.length+':apps/Community/'+alias+'.fap'));
+  await assert.rejects(prepareInstall(build,all,null,defaultAppOrder,selected),/unavailable/);
+  await assert.rejects(prepareInstall({...release,catalogCompatibility:{...compatibility,api:'1.0'}},
+    all,null,defaultAppOrder,selected),/requires firmware API/);
+  selectCommunity([]);
+  assert.deepEqual(getCommunitySelection(),[]);
+});

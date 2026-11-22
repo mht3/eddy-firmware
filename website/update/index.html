@@ -51,12 +51,16 @@
             <h2 id="extras-heading">Extras</h2>
             <ul id="extra-apps" class="app-grid" aria-labelledby="extras-heading"></ul>
             <h2 id="community-heading">Community apps</h2>
-            <p class="community-intro"><a href="https://lab.flipper.net/apps" target="_blank" rel="noopener noreferrer">Browse Flipper Lab ↗</a> and paste an app’s page link here, or choose an Eddy-compatible app below.</p>
+            <p class="community-intro"><a href="https://lab.flipper.net/apps" target="_blank" rel="noopener noreferrer">Browse Flipper Lab ↗</a> and paste an app link to check it against this Eddy build.</p>
             <form class="community-import" id="community-import">
               <label for="lab-app-link">Flipper Lab app link</label>
               <div><input id="lab-app-link" type="url" placeholder="https://lab.flipper.net/apps/…" required><button type="submit">Add app</button></div>
             </form>
             <p id="community-status" role="status"></p>
+            <div id="lab-file-step" hidden>
+              <a id="lab-download" target="_blank" rel="noopener noreferrer">Download the official app file ↗</a>
+              <label>Select the downloaded .fap <input id="lab-file" type="file" accept=".fap"></label>
+            </div>
             <ul id="community-apps" class="app-grid" aria-labelledby="community-heading"></ul>
           </fieldset>
           <p class="app-idea">Another app idea? <a href="https://github.com/mht3/eddy-firmware/issues/new?template=02_enhancements.yml">Make a feature request!</a></p>

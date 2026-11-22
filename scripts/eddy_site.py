@@ -1,5 +1,6 @@
 """Stage the website and its single matching F7 update for static hosting."""
 
+import csv
 import hashlib
 import io
 import json
@@ -65,6 +66,30 @@ def fap_target(data):
             if magic == 0x52474448 and version == 1 and target == 7:
                 return api, target
     raise ValueError("Missing or incompatible Flipper app metadata")
+
+
+def catalog_compatibility(sdk_path, target, version):
+    """Use the SDK shipped alongside this exact firmware, including its actual exports."""
+    import zipfile
+
+    with zipfile.ZipFile(sdk_path) as sdk:
+        (api_table,) = [name for name in sdk.namelist() if name.endswith("/api_symbols.csv")]
+        rows = list(csv.DictReader(io.StringIO(sdk.read(api_table).decode())))
+    api, device = target
+    api_version = f"{api >> 16}.{api & 0xFFFF}"
+    if device != 7 or not any(r["entry"] == "Version" and r["name"] == api_version for r in rows):
+        raise ValueError("The catalog SDK and release target must match")
+    symbols = []
+    for row in rows:
+        if row["status"] != "+" or row["entry"] not in {"Function", "Variable"}:
+            continue
+        value = 5381
+        for byte in row["name"].encode("ascii"):
+            value = (33 * value + byte) & 0xFFFFFFFF
+        symbols.append(value)
+    if not symbols or len(symbols) != len(set(symbols)):
+        raise ValueError("Invalid symbol table for catalog apps")
+    return dict(api=api_version, target="f7", symbols=sorted(symbols), catalog=f"{version}/lab/index.json")
 
 
 def community_artifacts(directory, target):
@@ -308,6 +333,9 @@ def stage(package=None):
         parts=parts,
         resourceIndex=indexed_apps,
         communityApps={app_id: meta for app_id, (meta, _) in community.items()},
+        catalogCompatibility=catalog_compatibility(
+            package.with_name(f"flipper-z-f7-sdk-{version}.zip"), target, version
+        ),
         target="f7",
         version=version,
         file=package.name,
