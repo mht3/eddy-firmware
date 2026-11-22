@@ -51,6 +51,9 @@ private final class DemoResources: NSObject, WKURLSchemeHandler {
 }
 
 struct SpotifyDemoView: UIViewRepresentable {
+    // Match the bundled demo's ocean canvas (#061525), including the safe areas and scroll bounce.
+    static let canvasColor = Color(.sRGB, red: 6.0 / 255, green: 21.0 / 255, blue: 37.0 / 255)
+
     final class Coordinator: NSObject, WKNavigationDelegate {
         func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction,
                      decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
@@ -72,7 +75,10 @@ struct SpotifyDemoView: UIViewRepresentable {
         let web = WKWebView(frame: .zero, configuration: configuration)
         web.navigationDelegate = context.coordinator
         web.isOpaque = false
-        web.backgroundColor = .clear
+        let canvas = UIColor(Self.canvasColor)
+        web.backgroundColor = canvas
+        web.scrollView.backgroundColor = canvas
+        web.underPageBackgroundColor = canvas
         web.load(URLRequest(url: DemoResources.start))
         return web
     }

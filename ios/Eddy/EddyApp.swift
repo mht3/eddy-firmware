@@ -92,8 +92,10 @@ private struct ConnectionView: View {
                         .tag(Tab.devices)
                     NavigationStack {
                         SpotifyDemoView()
+                            .background(SpotifyDemoView.canvasColor.ignoresSafeArea())
                             .navigationTitle("Spotify demo")
                             .navigationBarTitleDisplayMode(.inline)
+                            .toolbarBackground(.hidden, for: .navigationBar, .tabBar)
                     }
                     .tabItem {
                         Label { Text("Demo") } icon: { Image("EddyMark").renderingMode(.template) }
