@@ -4,6 +4,7 @@ import {test} from 'node:test';
 globalThis.Image=class {};
 const {startSpotifyTour,spotifyTourSteps}=await import('../../website/spotify-tour.js');
 const {openSpotifyDemo,spotifyKey,spotifyStatus}=await import('../../website/spotify-preview.js');
+const {songs}=await import('../../website/spotify-demo-library.js');
 const perform=(tour,key)=>{spotifyKey(tour.state,key);return tour.observe(key);};
 const reach=(tour,id)=>{
   while(tour.step && tour.step.id!==id) assert(perform(tour,tour.step.key));
@@ -51,6 +52,38 @@ test('a wrong action, Back, exit, and stale key events cannot earn a lesson',()=
   assert.equal(tour.state.views.at(-1).kind,'home');
 });
 
+test('a browsed song queues next, then lyrics switch to it without leaving Lyrics',t=>{
+  let seconds=0; t.mock.method(performance,'now',()=>seconds*1000);
+  const tour=startSpotifyTour(),s=tour.state;
+  const dolphin=songs.findIndex(song=>song.title==='Dolphin Days');
+  const glass=songs.findIndex(song=>song.title==='Sea Glass');
+  assert.equal(s.track,dolphin); assert.deepEqual(s.queue,[]);
+  reach(tour,'enqueue');
+  assert.equal(s.views.at(-1).kind,'song'); assert.equal(s.views.at(-1).value,glass);
+  const clock=[s.started,s.elapsed,s.playing];
+  seconds+=4;
+  assert(perform(tour,'ok')); assert.equal(s.track,dolphin);
+  assert.deepEqual([s.started,s.elapsed,s.playing],clock);
+  assert.deepEqual(s.queue.map(row=>row.id),[glass]);
+  reach(tour,'skip');
+  const depth=s.views.length;
+  assert.equal(s.views.at(-1).kind,'lyrics'); assert.match(spotifyStatus(s),/Dolphin Days/);
+  assert(perform(tour,'right')); assert.equal(s.track,glass); assert.deepEqual(s.queue,[]);
+  assert.equal(s.views.length,depth); assert.equal(s.views.at(-1).kind,'lyrics');
+  assert.match(spotifyStatus(s),/Green glass in the sand/);
+  seconds+=8; assert.match(spotifyStatus(s),/Edges softened by the sea/);
+  assert(perform(tour,'down')); assert.equal(tour.step.id,'assign');
+});
+
+test('Back completes the return lesson only when it actually closes Lyrics',()=>{
+  const tour=startSpotifyTour();
+  reach(tour,'return');
+  assert.equal(tour.step.alternateKey,'back');
+  assert.equal(tour.observe('back'),false);
+  assert.equal(perform(tour,'back'),true);
+  assert.equal(tour.step.id,'assign');
+});
+
 test('retry reconstructs a fresh queue and clock after the tutorial is left idle',t=>{
   let seconds=0; t.mock.method(performance,'now',()=>seconds*1000);
   const tour=startSpotifyTour();reach(tour,'skip');
@@ -59,5 +92,5 @@ test('retry reconstructs a fresh queue and clock after the tutorial is left idle
   assert.equal(perform(tour,'right'),false);
   const state=tour.state;assert.equal(tour.retry(),state);
   assert.equal(state.started,seconds*1000);assert(state.queue.length);assert(state.playing);
-  assert(perform(tour,'right'));assert.equal(tour.step.id,'lyrics');
+  assert(perform(tour,'right'));assert.equal(tour.step.id,'return');
 });

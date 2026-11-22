@@ -39,6 +39,26 @@ int main(void) {
         reply(&lib, SpotifyClearPreset + direction, 0);
         assert(lib.accepted);
     }
+    // Queue actions belong to a selected library row on a committed page.
+    for(int row = 0; row < 4; ++row) {
+        reply(&lib, SpotifyQueue + row, row);
+        assert(lib.accepted && lib.page == 8);
+        reply(&lib, SpotifyQueue + row, (row + 1) % 4);
+        assert(!lib.accepted && lib.error == SpotifyInvalid);
+    }
+    // Adding the current song asks for a page of playlist choices.
+    spotify_library_begin(&lib, SpotifyChooseCurrent, 1);
+    const uint8_t start[] = {0x10, 1, 0};
+    spotify_library_receive(&lib, start, sizeof(start));
+    assert(lib.collecting && !lib.accepted);
+    const uint8_t label[] = {0x11, 1, 0, 0, 'S', 'e', 'a'};
+    spotify_library_receive(&lib, label, sizeof(label));
+    const uint8_t end[] = {0x12, 1, 0, 1, 0, 0, 0, 0, 0, 0};
+    spotify_library_receive(&lib, end, sizeof(end));
+    assert(lib.page == 1 && lib.count == 1 && lib.selected == 0);
+    reply(&lib, SpotifyAddToPlaylist, 0);
+    assert(lib.accepted);
+
     const uint8_t status[] = {0x10, 1, 0, 1, 0x88, 0x13, 0, 0, 0x10, 0x27, 0, 0, 4, 64};
     for(int legacy = 0; legacy < 2; ++legacy) {
         spotify_library_begin(&lib, SpotifyNowPlaying, 1);

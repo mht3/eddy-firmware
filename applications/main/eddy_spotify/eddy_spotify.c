@@ -54,7 +54,7 @@ static void bridge_reset(SpotifyModel* model, bool connected) {
     screen->volume_pending = screen->toolbar_focus = false;
     screen->presets_loaded = false;
     model->presets = (SpotifyLibrary){0};
-    screen->tool = 2;
+    screen->volume_selected = true;
     model->chooser_for_player = false;
     screen->title_bytes = 0;
     screen->duration_s = screen->elapsed_s = 0;
@@ -525,13 +525,13 @@ static bool spotify_input(InputEvent* event, void* context) {
             if(key == InputKeyUp)
                 screen->toolbar_focus = false;
             else if(key == InputKeyLeft || key == InputKeyRight)
-                screen->tool = (screen->tool + (key == InputKeyLeft ? 2 : 1)) % 3;
+                screen->volume_selected = !screen->volume_selected;
             else if(key == InputKeyOk) {
-                if(screen->tool == 2) {
+                if(screen->volume_selected) {
                     screen->scene = SpotifyVolume;
                     model->queued = SpotifyNowPlaying;
                 } else if(screen->now_playing[0])
-                    model->queued = screen->tool ? SpotifyChooseCurrent : SpotifyQueueCurrent;
+                    model->queued = SpotifyChooseCurrent;
             }
         } else if(key == InputKeyOk)
             model->queued = SpotifyPlayerToggle;

@@ -36,7 +36,7 @@ typedef struct {
     char preset_labels[SpotifyRows][SpotifyLabelBytes + 1];
     bool presets_loaded;
     bool toolbar_focus;
-    uint8_t tool;
+    bool volume_selected;
     uint8_t title_bytes;
     uint32_t duration_s;
     uint32_t elapsed_s;

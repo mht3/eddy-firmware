@@ -18,8 +18,7 @@ bool spotify_library_action_unconfirmed(const SpotifyLibrary* lib) {
     if(lib->error != SpotifyOffline && lib->error != SpotifyInvalid) return false;
     uint8_t action = lib->op & 0xfc;
     return (lib->op >= SpotifyHoldPlaylist && lib->op < SpotifyHoldPlaylist + 16) ||
-           lib->op == SpotifyQueueCurrent || action == SpotifyQueue ||
-           action == SpotifyAddToPlaylist || action == SpotifyPlay ||
+           action == SpotifyQueue || action == SpotifyAddToPlaylist || action == SpotifyPlay ||
            (lib->op >= SpotifyPlayerPrevious && lib->op <= SpotifyPlayerNext);
 }
 
@@ -51,8 +50,7 @@ void spotify_library_receive(SpotifyLibrary* lib, const uint8_t* data, size_t si
     bool transport = lib->op >= SpotifyPlayerPrevious && lib->op <= SpotifySetVolume;
     bool preset_assignment = lib->op >= SpotifyAssignPreset && lib->op < SpotifyPlayPreset;
     bool held_playlist = lib->op >= SpotifyHoldPlaylist && lib->op < SpotifyHoldPlaylist + 16;
-    bool standalone_ack = transport || lib->op == SpotifyQueueCurrent ||
-                          action == SpotifyPlayPreset || action == SpotifyClearPreset;
+    bool standalone_ack = transport || action == SpotifyPlayPreset || action == SpotifyClearPreset;
     bool acknowledgement = standalone_ack || preset_assignment || held_playlist ||
                            action == SpotifyPlay || action == SpotifyQueue ||
                            action == SpotifyAddToPlaylist;

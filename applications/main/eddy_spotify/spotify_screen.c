@@ -152,17 +152,18 @@ static void draw_player(Canvas* canvas, const SpotifyScreen* screen) {
                        screen->play_state == 1 ? "OK: Pause" :
                                                  "OK: Play";
     canvas_draw_str(canvas, 125 - canvas_string_width(canvas, hint), 46, hint);
-    const char* labels[] = {"+ Queue", "+ Playlist", "Vol"};
-    const int x[] = {1, 43, 89}, w[] = {40, 44, 38};
-    for(size_t i = 0; i < 3; ++i) {
-        bool focus = screen->toolbar_focus && screen->tool == i;
+    const char* labels[] = {"Add to playlist", "Volume"};
+    const int x[] = {1, 73}, w[] = {70, 54};
+    for(size_t i = 0; i < COUNT_OF(labels); ++i) {
+        bool volume = i == 1;
+        bool focus = screen->toolbar_focus && screen->volume_selected == volume;
         if(focus) {
             canvas_draw_rbox(canvas, x[i], 50, w[i], 13, 2);
             canvas_set_color(canvas, ColorWhite);
         } else
             canvas_draw_rframe(canvas, x[i], 50, w[i], 13, 2);
         canvas_draw_str(canvas, x[i] + 4, 60, labels[i]);
-        if(i == 2) {
+        if(volume) {
             canvas_draw_frame(canvas, 117, 52, 5, 9);
             if(screen->volume <= 100) {
                 unsigned n = (screen->volume * 7 + 50) / 100;
@@ -265,17 +266,15 @@ void spotify_screen_draw(Canvas* canvas, void* context) {
         uint8_t action = lib->op & 0xfc;
         bool assigned = (lib->op >= SpotifyAssignPreset && lib->op < SpotifyPlayPreset) ||
                         (lib->op >= SpotifyHoldPlaylist && lib->op < SpotifyHoldPlaylist + 16);
-        const char* receipt = assigned                     ? "Preset saved" :
-                              action == SpotifyClearPreset ? "Preset cleared" :
-                              action == SpotifyQueue || lib->op == SpotifyQueueCurrent ?
-                                                             "Added to queue" :
+        const char* receipt = assigned                       ? "Preset saved" :
+                              action == SpotifyClearPreset   ? "Preset cleared" :
+                              action == SpotifyQueue         ? "Added to queue" :
                               action == SpotifyAddToPlaylist ? "Added to playlist" :
                                                                "Playback requested";
         canvas_set_font(canvas, FontPrimary);
         canvas_draw_str(canvas, 2, 24, receipt);
         canvas_set_font(canvas, FontSecondary);
-        const char* detail = lib->op == SpotifyQueueCurrent ? screen->now_playing :
-                             action == SpotifyClearPreset ? directions[screen->preset_direction] :
+        const char* detail = action == SpotifyClearPreset ? directions[screen->preset_direction] :
                                                             lib->rows[lib->selected];
         draw_label(canvas, detail, 36, screen->scroll);
         canvas_draw_str(canvas, 2, 47, "OK: Return");

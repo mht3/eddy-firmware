@@ -25,7 +25,6 @@ enum {
     SpotifyPlayerToggle = 0x41,
     SpotifyPlayerNext = 0x42,
     SpotifySetVolume = 0x43,
-    SpotifyQueueCurrent = 0x45,
     SpotifyChooseCurrent = 0x46,
     SpotifyVolumeUnknown = 255,
     SpotifyAssignPreset = 0x50,

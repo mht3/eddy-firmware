@@ -12,7 +12,10 @@ test('players, playlist editing, and navigation work from each list page',()=>{
   const s=openSpotifyDemo();
   tapRow(s,0); tapRow(s,1); tapRow(s,0); // On the Coast > Low Tide
   assert.equal(view(s).title,'Low Tide');
+  const initialTrack=s.track, started=s.started;
   tapRow(s,1); assert.equal(s.queue.at(-1).id,1);
+  assert.equal(s.track,initialTrack);
+  assert.equal(s.started,started);
   tapRow(s,2); tapRow(s,0);
   assert.ok(s.playlists[0].tracks.includes(1));
   tapRow(s,2); tapRow(s,0);
@@ -27,9 +30,9 @@ test('players, playlist editing, and navigation work from each list page',()=>{
   key(s,'up'); assert.equal(s.volume,5);
   assert(spotifyVolumeAt(s,-30,-8,true)); assert.equal(s.volume,100);
   key(s,'up','down','back'); assert.equal(s.volume,95);
-  const n=s.queue.length;
-  key(s,'right','ok'); assert.equal(s.queue.length,n+1);
+  const queue=[...s.queue];
   key(s,'right','ok'); assert.equal(view(s).kind,'destinations');
+  assert.deepEqual(s.queue,queue);
   tapRow(s,1); assert(s.playlists[1].tracks.includes(s.track));
   key(s,'up','ok'); assert.equal(s.playing,false);
 });
@@ -66,22 +69,31 @@ test('all four playlist holds are opt-in, persistent, replaceable and clearable'
   assert.equal(openSpotifyDemo().presets.up,undefined);
 });
 
-test('original lyric cues follow elapsed time, pause, seeking, restart, and track changes',t=>{
+test('lyrics follow the playback clock while navigation and taps leave the text alone',t=>{
   let seconds=0;
   t.mock.method(performance,'now',()=>seconds*1000);
   const s=openSpotifyPlayer(openSpotifyDemo());
   key(s,'up'); assert.match(spotifyStatus(s),/one more wave/); // starts at 0:21
   seconds+=8; assert.match(spotifyStatus(s),/salt on my face/);
-  key(s,'back','ok','up'); seconds+=45; assert.match(spotifyStatus(s),/salt on my face/);
-  key(s,'down'); assert.match(spotifyStatus(s),/stripe of foam/);
-  key(s,'ok'); assert.match(spotifyStatus(s),/salt on my face/);
-  key(s,'back');
+  const before=spotifyStatus(s);
+  key(s,'up','ok');
+  assert.equal(spotifyHit(s,12,18),false);
+  assert.equal(spotifyHit(s,65,43),false);
+  assert.equal(spotifyStatus(s),before);
+  drawSpotify(ctx,s);
+  key(s,'down'); assert.equal(view(s).kind,'player');
+  key(s,'ok','up'); seconds+=45; assert.match(spotifyStatus(s),/salt on my face/);
+  key(s,'back'); assert.equal(view(s).kind,'player');
   spotifyHit(s,2+123*70/songs[0].seconds,34); key(s,'up');
   assert.match(spotifyStatus(s),/harbor ringing/);
-  key(s,'back','left','up'); assert.match(spotifyStatus(s),/Two fins/);
-  key(s,'back','ok','up'); seconds+=songs[0].seconds+6;
-  assert.match(spotifyStatus(s),/Low Tide.*boats lean/);
+  key(s,'left'); assert.equal(view(s).kind,'lyrics'); assert.match(spotifyStatus(s),/Two fins/);
+  assert.equal(s.playing,false);
+  key(s,'right'); assert.equal(view(s).kind,'lyrics'); assert.match(spotifyStatus(s),/Low Tide.*Low tide at the landing/);
+  key(s,'left'); assert.equal(view(s).kind,'lyrics'); assert.match(spotifyStatus(s),/Dolphin Days.*Two fins/);
+  seconds+=songs[0].seconds+6; assert.match(spotifyStatus(s),/Low Tide.*boats lean/);
   seconds+=songs[1].seconds+2; assert.match(spotifyStatus(s),/High Tide.*One rung/);
+  spotifyHit(s,65,57); assert.equal(view(s).kind,'player');
+  key(s,'back'); assert.equal(view(s).kind,'home');
   for(const song of songs) {
     assert.equal(song.cues[0][0],0);
     assert(song.cues.every(([at,line],i)=>line.length>0 && at<song.seconds && (!i||at>song.cues[i-1][0])));
