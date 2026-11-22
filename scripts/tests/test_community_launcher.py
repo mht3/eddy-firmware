@@ -88,7 +88,9 @@ class CommunityLauncherTest(unittest.TestCase):
             (root / "storage").mkdir()
             (root / "storage/storage.h").write_text(STORAGE)
             (root / "applications.h").write_text(APPLICATIONS)
-            (root / "furi.h").write_text("#include <assert.h>\n#define furi_check assert\n")
+            (root / "furi.h").write_text(
+                "#include <assert.h>\n#define furi_check assert\n"
+            )
             (root / "assets_icons.h").write_text(
                 "extern const Icon I_CommunityCalendar_16x16, A_Plugins_14;"
             )
@@ -153,21 +155,32 @@ class CommunityLauncherTest(unittest.TestCase):
             )
             self.assertEqual(
                 loaded("details"),
-                [*stock, "3 Claude Remote " + imported, "1 Calendar " + calendar,
-                 "3 Old bundled app " + resistor],
+                [
+                    *stock,
+                    "3 Claude Remote " + imported,
+                    "1 Calendar " + calendar,
+                    "3 Old bundled app " + resistor,
+                ],
             )
             icon = "e4031201d9008900770066005500440033001100"
             manifest.write_text(f"f0_claude_remote\tClaude Remote\t{icon}\n")
-            self.assertEqual(loaded("details"), [*stock, icon + " Claude Remote " + imported])
+            self.assertEqual(
+                loaded("details"), [*stock, icon + " Claude Remote " + imported]
+            )
             (root / "apps/Community/4inrow.fap").touch()
             manifest.write_text("4inrow\tFour in a row")
             self.assertEqual(loaded(), [*stock, "apps/Community/4inrow.fap"])
             (root / "apps/rogue.fap").touch()
             for invalid in (
-                "f0_claude_remote", "f0_claude_remote\t", "f0_claude_remote\t   ",
-                "f0_claude_remote\tTwo\tfields", "f0_claude_remote\tEscape\x1b",
-                "f0_claude_remote\t" + "x" * 33, "../rogue\tOther",
-                "f0_claude_remote\tOne\x00Two", "f0_claude_remote\tInvalid\rBreak",
+                "f0_claude_remote",
+                "f0_claude_remote\t",
+                "f0_claude_remote\t   ",
+                "f0_claude_remote\tTwo\tfields",
+                "f0_claude_remote\tEscape\x1b",
+                "f0_claude_remote\t" + "x" * 33,
+                "../rogue\tOther",
+                "f0_claude_remote\tOne\x00Two",
+                "f0_claude_remote\tInvalid\rBreak",
                 "f0_claude_remote\tIcon\t" + "x" * 40,
                 "f0_claude_remote\tIcon\t" + "0" * 39,
                 ("f0_claude_remote\tName\n" * 265),
@@ -177,8 +190,13 @@ class CommunityLauncherTest(unittest.TestCase):
             names = ["app_" + str(i) for i in range(33)]
             for name in names:
                 (root / "apps/Community" / (name + ".fap")).touch()
-            manifest.write_text("".join(f"{name}\tApp {i}\n" for i, name in enumerate(names)))
-            self.assertEqual(loaded(), [*stock, *["apps/Community/" + name + ".fap" for name in names[:32]]])
+            manifest.write_text(
+                "".join(f"{name}\tApp {i}\n" for i, name in enumerate(names))
+            )
+            self.assertEqual(
+                loaded(),
+                [*stock, *["apps/Community/" + name + ".fap" for name in names[:32]]],
+            )
             manifest.write_bytes(b"resistors\ntechart_calendar")
             (root / resistor).unlink()
             self.assertEqual(loaded(), [*stock, calendar])

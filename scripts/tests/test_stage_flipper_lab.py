@@ -28,16 +28,36 @@ class LabStageTest(unittest.TestCase):
         fap = b"example build"
         source = bundle(MIT)
         digest = hashlib.sha256(fap).hexdigest()
-        test_clock = dict(name="Simple Clock", description="Test clock",
-                          category="64971d11577d519190ede5c5", versionId="a" * 24,
-                          api="88.2", sha256=digest)
-        unsupported = dict(name="4 Test", description="", category="other", versionId="b" * 24)
+        test_clock = dict(
+            name="Simple Clock",
+            description="Test clock",
+            category="64971d11577d519190ede5c5",
+            versionId="a" * 24,
+            api="88.2",
+            sha256=digest,
+        )
+        unsupported = dict(
+            name="4 Test", description="", category="other", versionId="b" * 24
+        )
         with tempfile.TemporaryDirectory() as temp:
             manifest = Path(temp, "main.json")
-            manifest.write_text(json.dumps(dict(version="eddy-test", catalogCompatibility={
-                "target":"f7", "api":"88.3", "catalog":"eddy-test/lab/index.json"})))
-            with patch.object(lab, "records", side_effect=[{"4test":unsupported}, {"clock_demo":test_clock}]), \
-                    patch.object(lab, "download", side_effect=[source, fap]):
+            manifest.write_text(
+                json.dumps(
+                    dict(
+                        version="eddy-test",
+                        catalogCompatibility={
+                            "target": "f7",
+                            "api": "88.3",
+                            "catalog": "eddy-test/lab/index.json",
+                        },
+                    )
+                )
+            )
+            with patch.object(
+                lab,
+                "records",
+                side_effect=[{"4test": unsupported}, {"clock_demo": test_clock}],
+            ), patch.object(lab, "download", side_effect=[source, fap]):
                 lab.stage(manifest)
             root = Path(temp, "eddy-test/lab")
             apps = json.loads((root / "index.json").read_text())["apps"]
@@ -45,12 +65,21 @@ class LabStageTest(unittest.TestCase):
             self.assertTrue(apps["clock_demo"]["mirrored"])
             self.assertNotIn("sha256", apps["4test"])
             self.assertEqual((root / "clock_demo.source.zip").read_bytes(), source)
-            self.assertIn("Example upstream developer", (root / "clock_demo.LICENSE.txt").read_text())
+            self.assertIn(
+                "Example upstream developer",
+                (root / "clock_demo.LICENSE.txt").read_text(),
+            )
 
     def test_only_mirror_distributable_packages_with_matching_digests(self):
         self.assertIsNone(lab.notice_from_source(bundle("All rights reserved")))
         data = bundle(MIT)
-        with tempfile.TemporaryDirectory() as tmp, patch.object(lab, "download", side_effect=[data,b"changed"]):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(
+            lab, "download", side_effect=[data, b"changed"]
+        ):
             with self.assertRaisesRegex(ValueError, "digest differs"):
-                lab.stage_mirror(Path(tmp), "clock_demo", {"versionId":"0"*24,"sha256":"1"*64,"api":"88.2"})
+                lab.stage_mirror(
+                    Path(tmp),
+                    "clock_demo",
+                    {"versionId": "0" * 24, "sha256": "1" * 64, "api": "88.2"},
+                )
             self.assertFalse(list(Path(tmp).iterdir()))

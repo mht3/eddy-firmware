@@ -115,7 +115,9 @@ class NativeSpotifyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             work = Path(directory)
             (work / "gui").mkdir()
-            (work / "gui/canvas.h").write_text("#pragma once\ntypedef struct Canvas Canvas;\n")
+            (work / "gui/canvas.h").write_text(
+                "#pragma once\ntypedef struct Canvas Canvas;\n"
+            )
             (work / "test.c").write_text(HARNESS)
             executable = work / "test"
             subprocess.run(

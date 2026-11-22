@@ -73,11 +73,15 @@ def catalog_compatibility(sdk_path, target, version):
     import zipfile
 
     with zipfile.ZipFile(sdk_path) as sdk:
-        (api_table,) = [name for name in sdk.namelist() if name.endswith("/api_symbols.csv")]
+        (api_table,) = [
+            name for name in sdk.namelist() if name.endswith("/api_symbols.csv")
+        ]
         rows = list(csv.DictReader(io.StringIO(sdk.read(api_table).decode())))
     api, device = target
     api_version = f"{api >> 16}.{api & 0xFFFF}"
-    if device != 7 or not any(r["entry"] == "Version" and r["name"] == api_version for r in rows):
+    if device != 7 or not any(
+        r["entry"] == "Version" and r["name"] == api_version for r in rows
+    ):
         raise ValueError("The catalog SDK and release target must match")
     symbols = []
     for row in rows:
@@ -89,7 +93,12 @@ def catalog_compatibility(sdk_path, target, version):
         symbols.append(value)
     if not symbols or len(symbols) != len(set(symbols)):
         raise ValueError("Invalid symbol table for catalog apps")
-    return dict(api=api_version, target="f7", symbols=sorted(symbols), catalog=f"{version}/lab/index.json")
+    return dict(
+        api=api_version,
+        target="f7",
+        symbols=sorted(symbols),
+        catalog=f"{version}/lab/index.json",
+    )
 
 
 def community_artifacts(directory, target):
@@ -138,7 +147,9 @@ def resource_index(data, profile):
             raise ValueError("Unsupported SD resource manifest")
         rows = set(archive.extractfile(manifest).read().decode().splitlines())
         if any(row.endswith(":" + SPOTIFY_SIGNIN) for row in rows):
-            raise ValueError("A shared resource manifest must preserve personal Spotify settings")
+            raise ValueError(
+                "A shared resource manifest must preserve personal Spotify settings"
+            )
         layout = archive.getmember("eddy/launcher_order.txt")
         if not layout.isfile() or layout.offset_data != layout.offset + 512:
             raise ValueError("Unsupported launcher layout entry")
@@ -158,7 +169,9 @@ def resource_index(data, profile):
             )
         for member in archive:
             if member.name == SPOTIFY_SIGNIN:
-                raise ValueError("A shared release must not include a personal Spotify sign-in code")
+                raise ValueError(
+                    "A shared release must not include a personal Spotify sign-in code"
+                )
             if member.name == "apps/Community" or member.name.startswith(
                 "apps/Community/"
             ):
@@ -313,13 +326,17 @@ def stage(package=None):
     shutil.copytree(ROOT / "website", site, ignore=shutil.ignore_patterns("*.fap"))
     invite = os.environ.get("EDDY_TESTFLIGHT_URL", "").strip()
     if invite:
-        if not re.fullmatch(r"https://testflight\.apple\.com/join/[A-Za-z0-9]{8}", invite):
+        if not re.fullmatch(
+            r"https://testflight\.apple\.com/join/[A-Za-z0-9]{8}", invite
+        ):
             raise ValueError("Expected an Apple TestFlight public invitation")
         app_page = site / "app/index.html"
-        app_page.write_text(app_page.read_text().replace(
-            '<p id="beta-availability">TestFlight invitations aren’t open yet.</p>',
-            f'<p id="beta-availability"><a class="small-cta" href="{invite}">Join the TestFlight beta</a></p>',
-        ))
+        app_page.write_text(
+            app_page.read_text().replace(
+                '<p id="beta-availability">TestFlight invitations aren’t open yet.</p>',
+                f'<p id="beta-availability"><a class="small-cta" href="{invite}">Join the TestFlight beta</a></p>',
+            )
+        )
     shutil.copy2(package, site / "firmware" / package.name)
     parts_dir = site / "firmware" / version
     parts_dir.mkdir()
