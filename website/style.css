@@ -213,11 +213,11 @@ p {
 }
 .music-tour h3 {font-size:1.25rem}
 .music-tour p {margin:.4rem 0 .9rem}
-.music-tour button {
+.music-tour .small-cta {
   font:inherit;background:transparent;color:var(--light);cursor:pointer;
   margin-right:.65rem;margin-bottom:.5rem;
 }
-.music-tour a {display:inline-block;color:var(--surf);text-decoration:underline}
+.music-tour a:not(.small-cta) {display:inline-block;color:var(--surf);text-decoration:underline}
 .install-wrap {
   padding-block:clamp(4rem,9vw,9rem);
 }

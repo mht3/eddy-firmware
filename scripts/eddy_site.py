@@ -274,6 +274,51 @@ def configure_testflight(site, invite):
         page.write_text(html)
 
 
+def stage_pages(site, spotify_source):
+    # Windows can check out symlinks as text. Stage their targets explicitly.
+    shutil.copytree(
+        ROOT / "website",
+        site,
+        ignore=shutil.ignore_patterns(
+            "*.fap", "spotify-demo", "preview-playlists.webp"
+        ),
+    )
+    tour = site / "spotify-demo"
+    tour.mkdir()
+    # Link previews read the static HTML. Keep the actual Flipper view shared.
+    tour_html = (
+        (site / "index.html")
+        .read_text()
+        .replace("<head>", '<head>\n    <base href="../">', 1)
+    )
+    tour_html = re.sub(
+        r"<title>[^<]*</title>",
+        "<title>Spotify demo · Eddy Firmware</title>",
+        tour_html,
+        count=1,
+    )
+    tour_html = re.sub(
+        r'(<meta name="description" content=")[^"]+',
+        r"\g<1>Try Spotify on a Flipper Zero with Eddy’s interactive tour. "
+        "Browse sample playlists, queue a song, follow its lyrics and save a playlist shortcut.",
+        tour_html,
+        count=1,
+    )
+    (tour / "index.html").write_text(tour_html)
+    for name in (
+        "spotify-demo-library.js",
+        "spotify-preview.js",
+        "spotify-tour.js",
+        "preview-playlists.webp",
+        "CREDITS.txt",
+    ):
+        shutil.copy2(spotify_source / "demo" / name, tour / name)
+    shutil.copy2(
+        site / "spotify-demo/preview-playlists.webp",
+        site / "spotify/preview-playlists.webp",
+    )
+
+
 def stage(package=None):
     options = runpy.run_path(str(ROOT / "fbt_options.py"))
     if package is None:
@@ -338,19 +383,7 @@ def stage(package=None):
     if site.exists():
         shutil.rmtree(site)
     spotify_source = ROOT / "applications/main/eddy_spotify/source"
-    # Windows can check out symlinks as text. Publish the pinned demo files on every OS.
-    shutil.copytree(
-        ROOT / "website",
-        site,
-        ignore=shutil.ignore_patterns(
-            "*.fap", "spotify-demo", "preview-playlists.webp"
-        ),
-    )
-    shutil.copytree(spotify_source / "demo", site / "spotify-demo")
-    shutil.copy2(
-        site / "spotify-demo/preview-playlists.webp",
-        site / "spotify/preview-playlists.webp",
-    )
+    stage_pages(site, spotify_source)
     configure_testflight(site, os.environ.get("EDDY_TESTFLIGHT_URL", "").strip())
     shutil.copy2(package, site / "firmware" / package.name)
     parts_dir = site / "firmware" / version

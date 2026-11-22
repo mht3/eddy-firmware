@@ -9,6 +9,12 @@ const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 // Decode the face while the tour is visible, ahead of the first button press.
 document.querySelector('#playable img').decode().catch(() => {});
 const tourLink = document.querySelector('.tour');
+if (document.documentElement.dataset.demo === 'spotify') {
+  // Keep fragment navigation on the tour even though its assets use the site root.
+  for (const link of document.querySelectorAll('a[href^="#"]')) {
+    link.href = location.pathname + location.search + link.hash;
+  }
+}
 let enterControls = false;
 tourLink.addEventListener('click', event => {
   enterControls = event.detail === 0;
@@ -62,7 +68,9 @@ reducedMotion.addEventListener('change', requestScene);
 syncScene();
 if (pickerPreview) {
   window.addEventListener('pageshow', () => {
-    document.querySelector('#playable [data-key=ok]').focus({preventScroll:true});
+    if (!location.hash || location.hash === '#home-screen') {
+      document.querySelector('#playable [data-key=ok]').focus({preventScroll:true});
+    }
   }, {once:true});
 }
 

@@ -378,7 +378,7 @@ private struct ConnectionView: View {
                         }
                     }
                     Link(destination: URL(string: "https://ko-fi.com/mhtaylor")!) {
-                        Label("Buy me a Coffee", systemImage: "cup.and.saucer")
+                        Label("Donate", systemImage: "heart")
                     }
                     NavigationLink { DiagnosticsView() } label: {
                         Label("Diagnostics", systemImage: "stethoscope")
