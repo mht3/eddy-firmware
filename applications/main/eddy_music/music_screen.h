@@ -10,6 +10,8 @@ typedef enum {
 } MusicFeedback;
 
 typedef struct {
+    const char* player_name;
+    const char* idle_hint;
     MusicState state;
     MusicTrackInfo track;
     bool available;

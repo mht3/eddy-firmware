@@ -85,7 +85,7 @@ async function drain() { for (let i = 0; i < 3; i++) await tick(); }
 
 test('signed-in Flipper browses real response rows and plays only the displayed page', async () => {
   await signIn();
-  const dom = Object.fromEntries(['bridge','notice','link','pair','disconnect','unlink'].map(key => [key, {}]));
+  const dom = Object.fromEntries(['bridge','notice','link','pair','disconnect','unlink','account-state','device-state','library-hint'].map(key => [key, {}]));
   const list = dom['library-links'] = {replaceChildren(...children) { this.children = children; }};
   globalThis.document = {getElementById: key => dom[key], createElement: tag =>
     ({tag, append(child) { this.child = child; }})};
@@ -258,6 +258,8 @@ test('the connection view can retry linking and preserves an existing session', 
   await startBridge(id);
   assert.equal(nodes.get('pair').hidden, true);
   assert.equal(nodes.get('unlink').hidden, false);
+  assert.equal(nodes.get('account-state').textContent, 'Signed in');
+  assert.equal(nodes.get('device-state').textContent, 'Bluetooth unavailable in this browser');
   assert.match(nodes.get('notice').textContent, /Spotify is linked.*Chrome on Android/);
   assert.equal(auth.linked(id), true);
   auth.unlink();

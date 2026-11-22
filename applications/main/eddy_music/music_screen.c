@@ -43,7 +43,7 @@ static const char* feedback_text(MusicFeedback feedback, const char* fallback) {
 
 static void draw_track(Canvas* canvas, const MusicScreen* model) {
     canvas_set_font(canvas, FontSecondary);
-    canvas_draw_str(canvas, 2, 8, "Music");
+    canvas_draw_str(canvas, 2, 8, model->player_name ? model->player_name : "Music");
     const char* status =
         feedback_text(model->feedback, model->track.playing ? "Playing" : "Paused");
     canvas_draw_str(canvas, 88 - canvas_string_width(canvas, status), 8, status);
@@ -79,7 +79,7 @@ void music_screen_draw(Canvas* canvas, void* context) {
         return;
     }
     canvas_set_font(canvas, FontPrimary);
-    canvas_draw_str(canvas, 2, 12, "Music");
+    canvas_draw_str(canvas, 2, 12, model->player_name ? model->player_name : "Music");
     canvas_set_font(canvas, FontSecondary);
     if(model->available && model->connected) {
         canvas_draw_str(canvas, 2, 29, "Media controls");
@@ -89,7 +89,9 @@ void music_screen_draw(Canvas* canvas, void* context) {
             41,
             feedback_text(
                 model->feedback,
-                model->state == MusicIdle ? "OK: resume on iPhone" : "Play music on your phone."));
+                model->idle_hint          ? model->idle_hint :
+                model->state == MusicIdle ? "OK: resume on iPhone" :
+                                            "Play music on your phone."));
         canvas_draw_str(canvas, 2, 61, "< Prev");
         canvas_draw_rbox(canvas, 39, 51, 50, 13, 5);
         canvas_set_color(canvas, ColorWhite);

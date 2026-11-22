@@ -11,7 +11,42 @@ APP = ROOT / "applications/main/eddy_spotify"
 
 HARNESS = r"""
 #include <assert.h>
-#include "spotify_library.h"
+#include "spotify_screen.h"
+#include <string.h>
+
+static void iphone_routing(void) {
+    SpotifyScreen screen = {0};
+    assert(!spotify_screen_shows_iphone(&screen) && spotify_screen_shows_setup(&screen));
+    screen.connected = screen.checking_iphone = true;
+    assert(!spotify_screen_shows_iphone(&screen) && !spotify_screen_shows_setup(&screen));
+    screen.checking_iphone = false;
+    assert(spotify_screen_shows_setup(&screen)); // peer did not offer AMS
+    MusicFrame frame = {0};
+    const uint8_t idle[] = {5,0}, start[] = {1}, title[] = {2,'S','o','n','g'};
+    const uint8_t artist[] = {3,'A','r','t'}, end[] = {4,1,0xe8,3,0,0,0xd0,7,0,0};
+    assert(music_frame_receive(&frame,&screen.iphone.track,&screen.iphone.state,idle,sizeof idle));
+    assert(spotify_screen_shows_iphone(&screen) && !spotify_screen_shows_setup(&screen));
+    assert(!music_frame_receive(&frame,&screen.iphone.track,&screen.iphone.state,start,sizeof start));
+    assert(!music_frame_receive(&frame,&screen.iphone.track,&screen.iphone.state,title,sizeof title));
+    assert(!music_frame_receive(&frame,&screen.iphone.track,&screen.iphone.state,artist,sizeof artist));
+    assert(music_frame_receive(&frame,&screen.iphone.track,&screen.iphone.state,end,sizeof end));
+    assert(spotify_screen_shows_iphone(&screen) && screen.iphone.track.playing);
+    assert(!strcmp(screen.iphone.track.title,"Song") && !strcmp(screen.iphone.track.artist,"Art"));
+    assert(screen.iphone.track.elapsed == 1000 && screen.iphone.track.duration == 2000);
+    screen.bridge = true;
+    assert(!spotify_screen_shows_iphone(&screen) && !spotify_screen_shows_setup(&screen));
+    screen.bridge = false;
+    assert(spotify_screen_shows_iphone(&screen)); // browser closed, phone still playing
+    screen.prefer_library = screen.dismissed_setup = true;
+    assert(!spotify_screen_shows_iphone(&screen) && !spotify_screen_shows_setup(&screen));
+    screen.manual_setup = true;
+    assert(spotify_screen_shows_setup(&screen) && !spotify_screen_shows_iphone(&screen));
+    screen.manual_setup = screen.prefer_library = false;
+    assert(spotify_screen_shows_iphone(&screen)); // deliberate return
+    screen.connected = false;
+    assert(!spotify_screen_shows_iphone(&screen));
+}
+
 
 static void reply(SpotifyLibrary* lib, uint8_t op, uint8_t row) {
     spotify_library_begin(lib, op, 0x1234);
@@ -21,6 +56,7 @@ static void reply(SpotifyLibrary* lib, uint8_t op, uint8_t row) {
 }
 
 int main(void) {
+    iphone_routing();
     SpotifyLibrary lib = {.count = 4, .page = 8};
     for(int direction = 0; direction < 4; ++direction) {
         for(int row = 0; row < 4; ++row) {
@@ -78,6 +114,8 @@ class NativeSpotifyTests(unittest.TestCase):
     def test_receiver(self):
         with tempfile.TemporaryDirectory() as directory:
             work = Path(directory)
+            (work / "gui").mkdir()
+            (work / "gui/canvas.h").write_text("#pragma once\ntypedef struct Canvas Canvas;\n")
             (work / "test.c").write_text(HARNESS)
             executable = work / "test"
             subprocess.run(
@@ -86,9 +124,12 @@ class NativeSpotifyTests(unittest.TestCase):
                     "-I",
                     str(APP),
                     "-I",
+                    str(work),
+                    "-I",
                     str(ROOT / "lib"),
                     str(work / "test.c"),
                     str(APP / "spotify_library.c"),
+                    str(APP.parent / "eddy_music/music_state.c"),
                     "-o",
                     str(executable),
                 ],

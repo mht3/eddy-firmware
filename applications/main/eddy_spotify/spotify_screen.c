@@ -3,11 +3,6 @@
 #include <stdio.h>
 #include <string.h>
 
-bool spotify_screen_shows_setup(const SpotifyScreen* screen) {
-    return screen->manual_setup ||
-           (!screen->bridge && (!screen->signin_qr || !screen->dismissed_setup));
-}
-
 static void
     draw_text_width(Canvas* canvas, int x, int width, const char* text, int y, uint32_t scroll) {
     int extra = (int)canvas_string_width(canvas, text) - width;
@@ -221,6 +216,10 @@ void spotify_screen_draw(Canvas* canvas, void* context) {
     const SpotifyScreen* screen = context;
     const SpotifyLibrary* lib = &screen->library;
     canvas_set_font(canvas, FontSecondary);
+    if(spotify_screen_shows_iphone(screen)) {
+        music_screen_draw(canvas, (void*)&screen->iphone);
+        return;
+    }
     if(spotify_screen_shows_setup(screen)) {
         if(screen->signin_qr) {
             // QR scanning requires dark modules on a light square in either theme.
@@ -241,7 +240,7 @@ void spotify_screen_draw(Canvas* canvas, void* context) {
             canvas_draw_str(canvas, 2, 25, "In the Eddy installer, select");
             canvas_draw_str(canvas, 2, 36, "Spotify and enter your");
             canvas_draw_str(canvas, 2, 47, "Client ID. Install that build.");
-            canvas_draw_str(canvas, 2, 62, screen->manual_setup ? "Back: Return" : "Back: Exit");
+            canvas_draw_str(canvas, 2, 62, "OK: Close");
         }
         return;
     }
@@ -269,9 +268,17 @@ void spotify_screen_draw(Canvas* canvas, void* context) {
         canvas_draw_str(canvas, 54, 8, screen->toolbar_focus ? "^ Player" : "v Buttons");
     if(screen->scene == SpotifyPresets) canvas_draw_str(canvas, 39, 8, "Hold to play");
     if(!screen->connected || !screen->bridge) {
-        canvas_draw_str(canvas, 2, 21, "Keep your sign-in page open.");
-        canvas_draw_str(canvas, 2, 32, "Choose your Flipper there.");
-        canvas_draw_str(canvas, 2, 62, "OK: Show sign-in QR");
+        if(screen->checking_iphone) {
+            canvas_draw_str(canvas, 2, 24, "Checking phone playback...");
+            canvas_draw_str(canvas, 2, 39, "Start Spotify on your iPhone.");
+        } else if(screen->connected && screen->iphone.state != MusicWaiting) {
+            canvas_draw_str(canvas, 2, 24, "iPhone connected");
+            canvas_draw_str(canvas, 2, 39, "Right: iPhone player");
+        } else {
+            canvas_draw_str(canvas, 2, 24, "Library: use Chrome on");
+            canvas_draw_str(canvas, 2, 36, "Android or a computer.");
+        }
+        canvas_draw_str(canvas, 2, 62, "OK: Library sign-in");
         return;
     }
     if(lib->accepted) {

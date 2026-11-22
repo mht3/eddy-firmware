@@ -1,4 +1,5 @@
 #include "spotify_screen.h"
+#include "../eddy_music/ams_client.h"
 #include <bt/bt_service/bt.h>
 #include <furi.h>
 #include <furi_hal_random.h>
@@ -8,6 +9,12 @@
 
 typedef struct {
     SpotifyScreen screen;
+    MusicFrame iphone_frame;
+    uint32_t connected_at;
+    uint32_t iphone_sample;
+    uint32_t iphone_title;
+    uint32_t iphone_feedback;
+    uint8_t iphone_command;
     SpotifyLibrary status;
     SpotifyLibrary presets;
     uint16_t suppressed_keys;
@@ -32,7 +39,9 @@ typedef struct {
 typedef struct {
     Bt* bt;
     View* view;
+    AmsClient* ams;
     uint16_t sequence;
+    uint16_t ams_connection;
 } SpotifyApp;
 
 static void reset_link(SpotifyModel* model, uint16_t handle) {
@@ -62,7 +71,11 @@ static void bridge_reset(SpotifyModel* model, bool connected) {
     screen->title_bytes = 0;
     screen->duration_s = screen->elapsed_s = 0;
     screen->bridge = connected;
-    if(connected) screen->manual_setup = false;
+    if(connected) {
+        screen->manual_setup = false;
+        screen->prefer_library = false;
+        model->iphone_command = 0;
+    }
     model->status_started = furi_get_tick();
     model->queued = connected ? SpotifyNowPlaying : 0;
 }
@@ -96,7 +109,11 @@ static void presets_unavailable(SpotifyModel* model) {
 
 static void spotify_event(BleMediaEvent event, const void* data, size_t size, void* context) {
     SpotifyApp* app = context;
-    if(event == BleMediaRadio) return;
+    if(event == BleMediaRadio) {
+        ams_client_event(app->ams, data);
+        return;
+    }
+    if(event == BleMediaLink) ams_client_set_link(app->ams, *(const uint16_t*)data);
     uint8_t peer[GAP_MAC_ADDR_SIZE];
     if(event == BleMediaFrame && !bt_get_connected_peer_address(app->bt, peer)) return;
     SpotifyModel* model = view_get_model(app->view);
@@ -207,6 +224,29 @@ static void spotify_event(BleMediaEvent event, const void* data, size_t size, vo
     view_commit_model(app->view, false);
 }
 
+// The AMS client publishes complete track updates on the dispatcher thread.
+static void spotify_iphone_update(const uint8_t* data, size_t size, void* context) {
+    SpotifyApp* app = context;
+    SpotifyModel* model = view_get_model(app->view);
+    MusicScreen* phone = &model->screen.iphone;
+    if(!data) {
+        model->iphone_frame.started = false;
+        *phone = (MusicScreen){0};
+    } else if(model->screen.connected && model->connection == app->ams_connection) {
+        bool title_changed = data[0] == 4 && model->iphone_frame.started &&
+                             strcmp(model->iphone_frame.pending.title, phone->track.title);
+        if(music_frame_receive(&model->iphone_frame, &phone->track, &phone->state, data, size)) {
+            model->iphone_sample = furi_get_tick();
+            if(title_changed) model->iphone_title = model->iphone_sample;
+            phone->player_name = "iPhone";
+            phone->idle_hint = "Start Spotify on your iPhone.";
+            phone->available = phone->connected = true;
+            phone->position = phone->track.elapsed;
+        }
+    }
+    view_commit_model(app->view, false);
+}
+
 static void spotify_tick(void* context) {
     SpotifyApp* app = context;
     uint8_t peer[GAP_MAC_ADDR_SIZE];
@@ -219,6 +259,7 @@ static void spotify_tick(void* context) {
         reset_link(model, model->connection);
     if(secure && model->connection != UINT16_MAX && !model->screen.connected) {
         model->screen.connected = true;
+        model->connected_at = now;
         memcpy(model->peer, peer, sizeof(peer));
         model->queued = SpotifyHello;
     }
@@ -274,8 +315,41 @@ static void spotify_tick(void* context) {
             elapsed += (now - model->status_received) / furi_ms_to_ticks(1000);
         model->screen.elapsed_s = MIN(elapsed, model->screen.duration_s);
     }
+    MusicScreen* phone = &model->screen.iphone;
+    model->screen.checking_iphone = model->screen.connected && phone->state == MusicWaiting &&
+                                    now - model->connected_at < furi_ms_to_ticks(8000);
+    if(phone->state == MusicTrack) {
+        uint64_t elapsed = phone->track.elapsed;
+        if(phone->track.playing)
+            elapsed +=
+                (uint64_t)(now - model->iphone_sample) * 1000 / furi_kernel_get_tick_frequency();
+        phone->position = phone->track.duration ? MIN(elapsed, phone->track.duration) :
+                                                  MIN(elapsed, UINT32_MAX);
+        phone->scroll = (now - model->iphone_title) / furi_ms_to_ticks(60);
+    }
+    if(now - model->iphone_feedback >= furi_ms_to_ticks(1800)) phone->feedback = MusicFeedbackNone;
+    uint8_t command = spotify_screen_shows_iphone(&model->screen) ? model->iphone_command : 0;
+    model->iphone_command = 0;
     model->screen.scroll = (now - model->scroll_start) / furi_ms_to_ticks(70);
     view_commit_model(app->view, true);
+    app->ams_connection = handle;
+    ams_client_tick(app->ams, secure, spotify_iphone_update, app);
+    if(command) {
+        uint8_t current[GAP_MAC_ADDR_SIZE];
+        bool sent = secure && bt_get_connected_peer_address(app->bt, current) &&
+                    !memcmp(peer, current, sizeof(peer)) &&
+                    (ams_client_send(app->ams, command) || ble_svc_media_send(app, command, true));
+        if(!sent || command == BleMediaVolumeUp || command == BleMediaVolumeDown) {
+            model = view_get_model(app->view);
+            if(model->connection == handle && spotify_screen_shows_iphone(&model->screen)) {
+                model->iphone_feedback = now;
+                model->screen.iphone.feedback = !sent                       ? MusicFeedbackFailed :
+                                                command == BleMediaVolumeUp ? MusicFeedbackLouder :
+                                                                              MusicFeedbackQuieter;
+            }
+            view_commit_model(app->view, true);
+        }
+    }
     if(request) {
         uint8_t current[GAP_MAC_ADDR_SIZE];
         bool sent = bt_get_connected_peer_address(app->bt, current) &&
@@ -395,11 +469,26 @@ static bool spotify_input(InputEvent* event, void* context) {
         view_commit_model(app->view, false);
         return false;
     }
-    if(lib->error == SpotifyMissingPreset && (key == InputKeyOk || key == InputKeyBack)) {
+    if(spotify_screen_shows_iphone(screen)) {
+        if(key == InputKeyBack) {
+            screen->prefer_library = true;
+            screen->dismissed_setup = true;
+        } else if(key == InputKeyOk)
+            model->iphone_command = BleMediaPlayPause;
+        else if(key == InputKeyLeft)
+            model->iphone_command = BleMediaPrevious;
+        else if(key == InputKeyRight)
+            model->iphone_command = BleMediaNext;
+        else if(key == InputKeyUp)
+            model->iphone_command = BleMediaVolumeUp;
+        else if(key == InputKeyDown)
+            model->iphone_command = BleMediaVolumeDown;
+        else
+            handled = false;
+    } else if(lib->error == SpotifyMissingPreset && (key == InputKeyOk || key == InputKeyBack)) {
         lib->error = SpotifyOk;
     } else if(spotify_screen_shows_setup(screen)) {
-        if((key == InputKeyOk && screen->signin_qr) ||
-           ((key == InputKeyBack || key == InputKeyOk) && screen->manual_setup)) {
+        if(key == InputKeyOk || (key == InputKeyBack && screen->manual_setup)) {
             screen->manual_setup = false;
             screen->dismissed_setup = true;
         } else
@@ -477,7 +566,9 @@ static bool spotify_input(InputEvent* event, void* context) {
         else
             return_home(model);
     } else if(!screen->bridge) {
-        if(key == InputKeyOk)
+        if(key == InputKeyRight && screen->connected && screen->iphone.state != MusicWaiting)
+            screen->prefer_library = false;
+        else if(key == InputKeyOk)
             screen->manual_setup = true;
         else
             handled = false;
@@ -674,6 +765,7 @@ int32_t eddy_spotify_app(void* argument) {
     SpotifyApp app = {
         .bt = furi_record_open(RECORD_BT),
         .view = view_alloc(),
+        .ams = ams_client_alloc(),
         .sequence = furi_hal_random_get()};
     Gui* gui = furi_record_open(RECORD_GUI);
     ViewDispatcher* dispatcher = view_dispatcher_alloc();
@@ -703,7 +795,9 @@ int32_t eddy_spotify_app(void* argument) {
     model->queued = clear ? SpotifyClear : 0;
     view_commit_model(app.view, false);
     if(clear) spotify_tick(&app);
+    ams_client_close(app.ams);
     ble_svc_media_unlisten(&app);
+    ams_client_free(app.ams);
     view_dispatcher_remove_view(dispatcher, 0);
     view_dispatcher_free(dispatcher);
     view_free(app.view);
