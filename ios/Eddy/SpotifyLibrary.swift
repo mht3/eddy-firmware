@@ -9,6 +9,23 @@ final class SpotifyLibrary: LibraryAPI {
     private var ownerID: String?
     private var retryAfter = Date.distantPast
     private var queue: [LibraryRow] = []
+    private struct BrowseBatch {
+        let source: LibrarySource
+        let offset: Int
+        let rows: [LibraryRow]
+        let hasMore: Bool
+        let fetchedAt = ContinuousClock.now
+
+        func page(at index: Int) -> LibraryPage? {
+            let start = index - offset
+            guard start >= 0, start < rows.count else { return nil }
+            let visible = Array(rows.dropFirst(start).prefix(4))
+            // Spotify can return a short batch even when more rows are available.
+            guard visible.count == 4 || !hasMore else { return nil }
+            return LibraryPage(rows: visible, offset: index, hasNext: start + visible.count < rows.count || hasMore)
+        }
+    }
+    private var browseBatch: BrowseBatch?
     private struct DestinationCursor {
         var nextOffset: Int? = 0
         var pending: [LibraryRow] = []
@@ -162,11 +179,17 @@ final class SpotifyLibrary: LibraryAPI {
             } else { path = "albums/" + (try spotifyID(uri, kind: "album")) + "/tracks" }
             kind = "track"
         }
-        let (entries, more) = try await items(path, offset: offset, limit: 4)
+        if offset > 0, let batch = browseBatch, batch.source == source,
+           batch.fetchedAt.duration(to: .now) < .seconds(30), let cached = batch.page(at: offset) {
+            return cached
+        }
+        let (entries, more) = try await items(path, offset: offset, limit: 20)
         let rows = entries.map { entry in
             row(unwrap.map { entry[$0] as? Object ?? entry["track"] as? Object } ?? entry, kind: kind)
         }
-        return LibraryPage(rows: rows, offset: offset, hasNext: more)
+        let batch = BrowseBatch(source: source, offset: offset, rows: rows, hasMore: more)
+        browseBatch = batch
+        return LibraryPage(rows: Array(rows.prefix(4)), offset: offset, hasNext: rows.count > 4 || more)
     }
 
     func act(_ action: LibraryAction) async throws {
@@ -176,6 +199,32 @@ final class SpotifyLibrary: LibraryAPI {
             guard ["track", "album", "playlist"].contains(kind) else { throw LibraryFailure.restricted }
             _ = try spotifyID(uri, kind: kind)
             _ = try await request("me/player/play", method: "PUT", body: kind == "track" ? ["uris": [uri]] : ["context_uri": uri])
+        case let .playFrom(context, position):
+            let kind = context.hasPrefix("spotify:playlist:") ? "playlist" : "album"
+            _ = try spotifyID(context, kind: kind)
+            guard position >= 0 else { throw LibraryFailure.restricted }
+            _ = try await request("me/player/play", method: "PUT",
+                                  body: ["context_uri": context, "offset": ["position": position]])
+        case let .playLiked(position, selectedURI):
+            guard position >= 0 else { throw LibraryFailure.restricted }
+            var uris: [String] = []
+            var offset = position
+            if let selectedURI {
+                _ = try spotifyID(selectedURI, kind: "track")
+                uris.append(selectedURI)
+                offset += 1
+            }
+            // Spotify supports playlist and album contexts. For Liked Songs, hand the player
+            // a sequence of saved tracks so Next works even after the phone disconnects.
+            repeat {
+                let (entries, more) = try await items("me/tracks", offset: offset, limit: 50 - uris.count)
+                uris += entries.map { row($0["track"] as? Object, kind: "track").uri }
+                    .filter { !$0.isEmpty && $0 != selectedURI }
+                offset += entries.count
+                if !more { break }
+            } while uris.isEmpty
+            guard !uris.isEmpty else { throw LibraryFailure.restricted }
+            _ = try await request("me/player/play", method: "PUT", body: ["uris": uris])
         case let .queue(uri):
             _ = try spotifyID(uri, kind: "track")
             _ = try await request("me/player/queue", method: "POST", query: [.init(name: "uri", value: uri)])
@@ -183,6 +232,7 @@ final class SpotifyLibrary: LibraryAPI {
             _ = try spotifyID(track, kind: "track")
             let id = try spotifyID(playlist, kind: "playlist")
             _ = try await request("playlists/" + id + "/items", method: "POST", body: ["uris": [track]])
+            browseBatch = nil
         case .previous:
             let state = try await request("me/player/currently-playing")
             if (state["progress_ms"] as? Int ?? 0) >= 3000 {

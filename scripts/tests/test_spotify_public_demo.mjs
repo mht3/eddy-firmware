@@ -31,11 +31,11 @@ test('the installer never asks for a Spotify ID and the companion guide covers a
   assert.doesNotMatch(installer, /spotify-client-id|Spotify Client ID/i);
   const setup = await file('index.html');
   assert.match(setup, /On <strong>Log in to Spotify<\/strong>, paste the Client ID/);
-  const steps = ['iphone-settings', 'copy-client-id', 'install-spotify', 'connect-spotify', 'try-spotify-preview'];
+  const steps = ['completed-form', 'copy-client-id', 'install-spotify', 'connect-spotify', 'try-spotify-preview'];
   const offsets = steps.map(step => setup.indexOf('id="' + step + '"'));
   assert(offsets.every((offset, i) => offset >= 0 && (i === 0 || offset > offsets[i - 1])));
-  assert(setup.includes('<code>eddyspotify://spotify-login</code>'));
-  assert(setup.includes('<code>dev.eddyfirmware.spotify</code>'));
+  assert.match(setup, /<code>https:\/\/mht3\.github\.io\/eddy-firmware\/spotify\/<\/code>/);
+  assert.doesNotMatch(setup, /eddyspotify:\/\/spotify-login/);
   const app = await file('../app/index.html');
   assert.match(app, /href="eddyspotify:\/\/setup"/);
   assert.match(app, /id="beta-availability"/);

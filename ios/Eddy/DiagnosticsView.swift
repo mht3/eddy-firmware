@@ -43,7 +43,6 @@ private struct LicensesView: View {
     var body: some View {
         List {
             document("Eddy and demo (GPLv3)", file: "LICENSE")
-            document("SpotifyLogin (Apache 2.0)", file: "SpotifyLogin-LICENSE.txt")
             document("Demo artwork credits", file: "CREDITS.txt", directory: "demo")
         }
         .navigationTitle("Licenses and credits")

@@ -83,6 +83,8 @@ import Foundation
         try await expect(0x28, 9, 4, [0x13,3]) // stale page token
         let second = try await command(0x11, 10, 7)
         precondition(second.last == Data([0x12,10,0,1,1,0,4,0,0,0]))
+        try await expect(0x20, 77, 10, [0x14,0])
+        precondition(api.actions.last == .playFrom(context: api.playlist, position: 4))
         _ = try await command(0x30, 11, 10)
         try await expect(0x34, 12, 11, [0x14,0])
         precondition(api.actions.last == .add(track: api.track, playlist: api.playlist))
@@ -90,11 +92,26 @@ import Foundation
         try await expect(0x28, 14, 13, [0x14,0])
         try await expect(0x42, 15, 0, [0x14,0])
         precondition(api.actions.last == .next)
+        let targets = try await command(0x46, 76) // Save from Now Playing immediately after Next
+        precondition(targets.last?.first == 0x12)
+        // A hold on Liked Songs fills an empty shortcut, or plays the existing assignment.
+        try await expect(0x87, 78, 0, [0x14,0])
+        try await expect(0x87, 79, 0, [0x14,4])
+        precondition(api.actions.last == .playLiked(position: 0, selectedURI: nil))
+        try await expect(0x86, 80, 0, [0x14,4])
+        precondition(api.actions.last == .play(api.playlist))
+        try await expect(0x82, 81, 0, [0x14,0]) // explicitly replace the playlist
+        let shortcuts = try await command(0x64, 82)
+        precondition(shortcuts.contains { $0.starts(with: [0x11,82,0,2]) && String(decoding: $0.dropFirst(4), as: UTF8.self) == "Liked Songs" })
         bridge.stop()
         start("bob")
         try await expect(0x62, 1, 0, [0x13,6])
         start("alice")
         try await expect(0x62, 1, 0, [0x14,0]) // account-scoped persistence
+
+        precondition(api.actions.last == .playLiked(position: 0, selectedURI: nil))
+        try await expect(0x6a, 2, 0, [0x14,0])
+        try await expect(0x62, 3, 0, [0x13,6])
 
         api.delayNext = true
         bridge.receive(request(0x18, 90))

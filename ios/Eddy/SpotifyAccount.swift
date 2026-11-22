@@ -5,7 +5,6 @@ import Foundation
 import Security
 #if canImport(UIKit)
 import UIKit
-import SpotifyLogin
 #else
 import AppKit
 #endif
@@ -26,7 +25,6 @@ struct SpotifyAccountError: LocalizedError {
 
 enum SpotifyOAuth {
     static let redirect = "https://mht3.github.io/eddy-firmware/spotify/"
-    static let nativeRedirect = "eddyspotify://spotify-login"
     static let scopes = ["user-library-read", "playlist-read-private", "playlist-read-collaborative",
                          "user-modify-playback-state", "user-read-currently-playing", "user-read-playback-state",
                          "playlist-modify-private", "playlist-modify-public"]
@@ -78,14 +76,6 @@ enum SpotifyOAuth {
         }
         guard codes.count == 1, let code = codes[0].value, !code.isEmpty else { throw invalid }
         return code
-    }
-
-    static func isNativeCallback(_ callback: URL) -> Bool {
-        guard let url = URLComponents(url: callback, resolvingAgainstBaseURL: false),
-              url.scheme == "eddyspotify", url.host == "spotify-login", url.path.isEmpty,
-              url.user == nil, url.password == nil, url.port == nil, url.fragment == nil else { return false }
-        let result = (url.queryItems ?? []).filter { $0.name == "code" || $0.name == "error" }
-        return result.count == 1 && !(result[0].value ?? "").isEmpty
     }
 
     static func form(_ fields: [String: String]) -> Data {
@@ -141,9 +131,12 @@ private enum SpotifyKeychain {
         var result: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
         if status == errSecItemNotFound { return nil }
+        if status == errSecInteractionNotAllowed {
+            throw SpotifyAccountError("Unlock your device to read the saved Spotify sign-in.")
+        }
         guard status == errSecSuccess, let data = result as? Data,
               let credential = try? JSONDecoder().decode(SpotifyCredential.self, from: data) else {
-            throw SpotifyAccountError("Unlock your device to read the saved Spotify sign-in.")
+            throw SpotifyAccountError("Could not read the saved Spotify sign-in. Log in again.")
         }
         return credential
     }
@@ -166,61 +159,10 @@ private enum SpotifyKeychain {
     }
 }
 
-#if canImport(UIKit)
-@MainActor
-private final class SpotifyAppLogin: NSObject, SessionManagerDelegate {
-    let manager: SessionManager
-    private var result: CheckedContinuation<SpotifyTokenResponse, Error>?
-    private var callbackReceived = false
-
-    init(clientID: String) {
-        let config = SpotifyLogin.Configuration(clientID: clientID, redirectURL: URL(string: SpotifyOAuth.nativeRedirect)!)
-        manager = SessionManager(configuration: config, delegate: nil)
-        super.init()
-        manager.delegate = self
-    }
-
-    func start() async throws -> SpotifyTokenResponse {
-        let scopes = SpotifyLogin.Scope.allCases.filter { SpotifyOAuth.scopes.contains($0.name) }
-        return try await withCheckedThrowingContinuation { continuation in
-            result = continuation
-            manager.initiateSession(with: scopes, authorizationFlow: .clientOnlyFailsIfNotInstalled)
-        }
-    }
-
-    func open(_ url: URL) -> Bool {
-        guard result != nil, !callbackReceived, SpotifyOAuth.isNativeCallback(url) else { return false }
-        callbackReceived = true
-        return manager.openURL(url)
-    }
-
-    func cancel() { complete(.failure(CancellationError())) }
-
-    private func complete(_ outcome: Result<SpotifyTokenResponse, Error>) {
-        guard let result else { return }
-        self.result = nil
-        manager.delegate = nil
-        result.resume(with: outcome)
-    }
-
-    nonisolated func sessionManager(manager: SessionManager, didInitiate session: Session) {
-        let token = SpotifyTokenResponse(access_token: session.accessToken, token_type: "Bearer",
-                                         expires_in: Int(session.expirationDate.timeIntervalSinceNow),
-                                         refresh_token: session.refreshToken, scope: session.scopes.map(\.name).joined(separator: " "))
-        Task { @MainActor in self.complete(.success(token)) }
-    }
-
-    nonisolated func sessionManager(manager: SessionManager, didFailWith error: Error) {
-        Task { @MainActor in self.complete(.failure(error)) }
-    }
-}
-#endif
-
 @MainActor
 final class SpotifyAccount: NSObject, ObservableObject, ASWebAuthenticationPresentationContextProviding {
     @Published private(set) var isSignedIn = false
     @Published private(set) var isSigningIn = false
-    @Published private(set) var waitingForSpotifyApp = false
     @Published private(set) var status = ""
     @Published private(set) var clientID = ""
     @Published private(set) var accountKey: String?
@@ -229,9 +171,6 @@ final class SpotifyAccount: NSObject, ObservableObject, ASWebAuthenticationPrese
     private var credential: SpotifyCredential?
     private var generation = UUID()
     private var refreshing: Task<String, Error>?
-    #if canImport(UIKit)
-    private var appLogin: SpotifyAppLogin?
-    #endif
     private var webSession: ASWebAuthenticationSession?
     private var callbackContinuation: CheckedContinuation<URL, Error>?
     private var presentationWindow: ASPresentationAnchor?
@@ -249,17 +188,12 @@ final class SpotifyAccount: NSObject, ObservableObject, ASWebAuthenticationPrese
         clientID = saved.id
         accountKey = saved.accountKey
         isSignedIn = true
-        status = "Signed in to Spotify."
+        status = ""
     }
 
     func signOut() {
         do {
             try SpotifyKeychain.clear()
-            #if canImport(UIKit)
-            appLogin?.cancel()
-            appLogin = nil
-            #endif
-            waitingForSpotifyApp = false
             callbackContinuation?.resume(throwing: CancellationError())
             callbackContinuation = nil
             pendingSignIn = nil
@@ -316,39 +250,7 @@ final class SpotifyAccount: NSObject, ObservableObject, ASWebAuthenticationPrese
         }
     }
 
-    @discardableResult func handleSpotifyCallback(_ url: URL) -> Bool {
-        #if canImport(UIKit)
-        return appLogin?.open(url) ?? false
-        #else
-        return false
-        #endif
-    }
-
-    private func authorize(clientID id: String, preferSpotifyApp: Bool, attempt: UUID) async throws -> SpotifyTokenResponse {
-        #if canImport(UIKit)
-        if preferSpotifyApp {
-            let login = SpotifyAppLogin(clientID: id)
-            if login.manager.isSpotifyAppInstalled {
-                appLogin = login
-                waitingForSpotifyApp = true
-                status = "Approve Eddy in Spotify."
-                defer {
-                    if pendingSignIn == attempt {
-                        appLogin = nil
-                        waitingForSpotifyApp = false
-                    }
-                }
-                do { return try await login.start() }
-                catch let error as SpotifyError where error == .authorizationCancelled || error == .accessDenied {
-                    throw SpotifyAccountError(error.localizedDescription)
-                } catch {
-                    guard pendingSignIn == attempt else { throw CancellationError() }
-                    // The app could not complete the handoff. The existing HTTPS
-                    // registration still supports personal accounts set up for web.
-                }
-            }
-        }
-        #endif
+    private func authorize(clientID id: String, attempt: UUID) async throws -> SpotifyTokenResponse {
         let state = "eddy-ios-" + (try SpotifyOAuth.randomString())
         let verifier = try SpotifyOAuth.randomString()
         status = "Waiting for Spotify…"
@@ -359,15 +261,8 @@ final class SpotifyAccount: NSObject, ObservableObject, ASWebAuthenticationPrese
                                    "redirect_uri":SpotifyOAuth.redirect, "code_verifier":verifier])
     }
 
-    func signIn(clientID input: String, preferSpotifyApp: Bool = true) async {
-        if isSigningIn {
-            guard waitingForSpotifyApp, !preferSpotifyApp else { return }
-            #if canImport(UIKit)
-            appLogin?.cancel()
-            appLogin = nil
-            #endif
-            waitingForSpotifyApp = false
-        }
+    func signIn(clientID input: String) async {
+        guard !isSigningIn else { return }
         let attempt = UUID()
         pendingSignIn = attempt
         isSigningIn = true
@@ -381,7 +276,7 @@ final class SpotifyAccount: NSObject, ObservableObject, ASWebAuthenticationPrese
         }
         do {
             let id = try SpotifyOAuth.clientID(input)
-            let token = try await authorize(clientID: id, preferSpotifyApp: preferSpotifyApp, attempt: attempt)
+            let token = try await authorize(clientID: id, attempt: attempt)
             guard pendingSignIn == attempt else { return }
             let key = try await profileKey(token: token.access_token, id: id)
             var next = SpotifyCredential(id: id, accountKey: key, access: "", refresh: "", expires: .distantPast)

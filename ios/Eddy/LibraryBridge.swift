@@ -8,6 +8,8 @@ enum LibrarySource: Equatable {
 
 enum LibraryAction: Equatable {
     case play(String), queue(String), add(track: String, playlist: String)
+    case playFrom(context: String, position: Int)
+    case playLiked(position: Int, selectedURI: String?)
     case previous, toggle, next, volume(Int, deviceID: String)
 }
 
@@ -15,6 +17,12 @@ struct LibraryRow: Codable, Equatable {
     let uri: String
     let name: String
     let label: String
+
+    static let likedSongs = LibraryRow(uri: "eddy:liked-songs", name: "Liked Songs", label: "Liked Songs")
+
+    var presetPlayback: LibraryAction {
+        uri == Self.likedSongs.uri ? .playLiked(position: 0, selectedURI: nil) : .play(uri)
+    }
 }
 
 struct LibraryPlayback {
@@ -65,7 +73,7 @@ private struct LibraryCommand: Equatable {
         }
         switch op {
         case 0x10, 0x15, 0x16, 0x18, 0x19, 0x1c, 0x1e, 0x40...0x43, 0x45, 0x46,
-             0x60...0x64, 0x68...0x6b:
+             0x60...0x64, 0x68...0x6b, 0x80...0x87:
             guard base == 0 else { return nil }
         case 0x11, 0x12, 0x1d, 0x20...0x23, 0x28...0x2b, 0x30...0x3b, 0x50...0x5f, 0x70...0x7f:
             guard base != 0 else { return nil }
@@ -81,7 +89,7 @@ private struct LibraryCommand: Equatable {
     var mutates: Bool {
         switch op {
         case 0x20...0x23, 0x28...0x2b, 0x34...0x37, 0x40...0x43, 0x45,
-             0x50...0x63, 0x68...0x6b, 0x70...0x7f: return true
+             0x50...0x63, 0x68...0x6b, 0x70...0x87: return true
         default: return false
         }
     }
@@ -218,7 +226,15 @@ private struct LibraryCommand: Equatable {
         case 0x20...0x23, 0x28...0x2b:
             if case .destinations = current?.source { throw LibraryFailure.restricted }
             let item = try row(c.row, in: current?.page, kind: c.op >= 0x28 ? "track" : nil)
-            action = c.op >= 0x28 ? .queue(item.uri) : .play(item.uri)
+            if c.op >= 0x28 {
+                action = .queue(item.uri)
+            } else if let current, case let .tracks(context) = current.source {
+                action = .playFrom(context: context, position: current.page.offset + c.row)
+            } else if let current, current.source == .liked {
+                action = .playLiked(position: current.page.offset + c.row, selectedURI: item.uri)
+            } else {
+                action = .play(item.uri)
+            }
             ack = UInt8(c.row)
         case 0x34...0x37:
             guard case let .destinations(track) = current?.source else { throw LibraryFailure.restricted }
@@ -232,24 +248,30 @@ private struct LibraryCommand: Equatable {
                   let device = now?.playback?.deviceID, !device.isEmpty else { throw LibraryFailure.volumeUnavailable }
             action = .volume(Int(value), deviceID: device)
         case 0x45: action = .queue(try row(0, in: now, kind: "track").uri)
-        case 0x50...0x5f, 0x60...0x64, 0x68...0x6b, 0x70...0x7f:
+        case 0x50...0x5f, 0x60...0x64, 0x68...0x6b, 0x70...0x87:
             var slots = readPresets()
             if c.op == 0x64 {
                 let empty = LibraryRow(uri: "", name: "", label: "Unassigned")
                 return packets(LibraryPage(rows: slots.map { $0 ?? empty }), for: c)
             }
-            let slot = (0x50...0x5f).contains(c.op) || c.op >= 0x70 ? Int((c.op >> 2) & 3) : c.row
+            let slot = (0x50...0x5f).contains(c.op) || (0x70...0x7f).contains(c.op) ? Int((c.op >> 2) & 3) : c.row
             if (0x60...0x63).contains(c.op) {
                 guard let saved = slots[slot] else { throw LibraryFailure.missingPreset }
-                action = .play(saved.uri)
+                action = saved.presetPlayback
             } else if (0x68...0x6b).contains(c.op) {
                 slots[slot] = nil
             } else {
-                guard current?.source == .playlists else { throw LibraryFailure.restricted }
-                let item = try row(c.row, in: current?.page, kind: "playlist")
-                ack = UInt8(c.row)
-                if c.op >= 0x70, let saved = slots[slot] {
-                    action = .play(saved.uri)
+                let item: LibraryRow
+                if c.op >= 0x80 {
+                    item = .likedSongs
+                } else {
+                    guard current?.source == .playlists else { throw LibraryFailure.restricted }
+                    item = try row(c.row, in: current?.page, kind: "playlist")
+                    ack = UInt8(c.row)
+                }
+                let hold = (0x70...0x7f).contains(c.op) || c.op >= 0x84
+                if hold, let saved = slots[slot] {
+                    action = saved.presetPlayback
                     ack += 4
                 } else {
                     slots[slot] = item
@@ -263,7 +285,7 @@ private struct LibraryCommand: Equatable {
             try await api.act(action)
             guard generation == epoch, !Task.isCancelled else { throw CancellationError() }
             switch action {
-            case .play, .next, .previous, .toggle: now = nil
+            case .play, .playFrom, .playLiked, .next, .previous, .toggle: now = nil
             default: break
             }
         }
@@ -296,6 +318,11 @@ private struct LibraryCommand: Equatable {
             source = .tracks(try row(c.row, in: current?.page, kind: current?.source == .playlists ? "playlist" : "album").uri)
         case 0x46:
             if case .destinations = current?.source { throw LibraryFailure.restricted }
+            if now == nil {
+                let currentSong = try await api.page(.nowPlaying, offset: 0)
+                guard generation == epoch, !Task.isCancelled else { throw CancellationError() }
+                now = currentSong
+            }
             source = .destinations(try row(0, in: now, kind: "track").uri)
         default: throw LibraryFailure.restricted
         }

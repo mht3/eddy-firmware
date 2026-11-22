@@ -36,7 +36,6 @@ jobs:
           diff -r applications/main/eddy_spotify/source/demo "$app/demo"
           cmp LICENSE "$app/LICENSE"
           cmp applications/main/eddy_spotify/source/LICENSE "$app/LICENSE"
-          cmp "$RUNNER_TEMP/eddy-build/SourcePackages/checkouts/ios-auth/LICENSE" "$app/SpotifyLogin-LICENSE.txt"
       - name: Test Spotify authorization, requests and Flipper messages
         run: |
           swiftc ios/Eddy/SpotifyAccount.swift ios/Tests/SpotifyAccountTests.swift -o "$RUNNER_TEMP/eddy-account-tests"

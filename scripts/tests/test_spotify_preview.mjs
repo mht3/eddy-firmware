@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 globalThis.Image=class {};
-const {openSpotifyDemo,openSpotifyPlayer,spotifyKey,spotifyHit,spotifyStatus,spotifyVolumeAt,drawSpotify}=await import('../../applications/main/eddy_spotify/source/demo/spotify-preview.js');
+const {openSpotifyDemo,openSpotifyPlayer,spotifyKey,spotifyHit,spotifyStatus,drawSpotify}=await import('../../applications/main/eddy_spotify/source/demo/spotify-preview.js');
 const {songs}=await import('../../applications/main/eddy_spotify/source/demo/spotify-demo-library.js');
 const view=s=>s.views.at(-1);
 function tapRow(s,row) { assert.equal(spotifyHit(s,20,13+12*row),true); }
@@ -10,12 +10,13 @@ const ctx=new Proxy({measureText:text=>({width:text.length*4})},{get:(o,key)=>o[
 
 test('players, playlist editing, and navigation work from each list page',()=>{
   const s=openSpotifyDemo();
-  tapRow(s,0); tapRow(s,1); tapRow(s,0); // On the Coast > Low Tide
+  tapRow(s,0); tapRow(s,1); tapRow(s,0); tapRow(s,0); // On the Coast > Low Tide
   assert.equal(view(s).title,'Low Tide');
   const initialTrack=s.track, started=s.started;
   tapRow(s,1); assert.equal(s.queue.at(-1).id,1);
   assert.equal(s.track,initialTrack);
   assert.equal(s.started,started);
+  assert.equal(view(s).kind,'playlist'); tapRow(s,0);
   tapRow(s,2); tapRow(s,0);
   assert.ok(s.playlists[0].tracks.includes(1));
   tapRow(s,2); tapRow(s,0);
@@ -25,16 +26,11 @@ test('players, playlist editing, and navigation work from each list page',()=>{
   key(s,'right'); assert.equal(view(s).kind,'player');
   key(s,'back'); assert.equal(view(s).row,3);
   spotifyHit(s,10,58); assert.equal(view(s).kind,'player');
-  key(s,'down','ok'); assert.equal(view(s).kind,'volume');
-  assert(spotifyVolumeAt(s,25,56)); assert.equal(s.volume,0);
-  key(s,'up'); assert.equal(s.volume,5);
-  assert(spotifyVolumeAt(s,-30,-8,true)); assert.equal(s.volume,100);
-  key(s,'up','down','back'); assert.equal(s.volume,95);
   const queue=[...s.queue];
-  key(s,'right','ok'); assert.equal(view(s).kind,'destinations');
+  key(s,'down'); assert.equal(view(s).kind,'destinations');
   assert.deepEqual(s.queue,queue);
   tapRow(s,1); assert(s.playlists[1].tracks.includes(s.track));
-  key(s,'up','ok'); assert.equal(s.playing,false);
+  key(s,'ok'); assert.equal(s.playing,false);
 });
 
 test('all four playlist holds are opt-in, persistent, replaceable and clearable',t=>{
@@ -65,7 +61,7 @@ test('all four playlist holds are opt-in, persistent, replaceable and clearable'
   }
   key(next,'back','down','down','down','down','ok','ok');
   assert.equal(view(next).kind,'presetSlot');
-  key(next,'down','down','ok'); assert.equal(next.presets.up,undefined);
+  key(next,'down','down','down','ok'); assert.equal(next.presets.up,undefined);
   assert.equal(openSpotifyDemo().presets.up,undefined);
 });
 
@@ -114,4 +110,38 @@ test('the demo describes how the device opens the iPhone companion',()=>{
   key(s,'up','ok'); assert.equal(view(s).kind,'setup');
   assert.match(spotifyStatus(s),/QR code to open Eddy on your iPhone/);
   key(s,'ok'); assert.equal(view(s).kind,'home');
+});
+
+test('playing a track from a playlist continues with the next track in that playlist',()=>{
+  const s=openSpotifyDemo();
+  key(s,'ok','ok','ok'); // Morning Swim
+  const tracks=s.playlists[view(s).value].tracks;
+  key(s,'down','ok','ok'); // Play the second track
+  assert.equal(view(s).kind,'player');
+  assert.equal(s.track,tracks[1]);
+  assert.deepEqual(s.queue.map(item=>item.id),tracks.slice(2));
+  key(s,'right');
+  assert.equal(s.track,tracks[2]);
+  key(s,'back');
+  assert.equal(view(s).kind,'playlist');
+  assert.equal(view(s).row,1);
+});
+
+test('Liked Songs shortcuts work from Home, its track list and the Presets editor',t=>{
+  const records=new Map();
+  globalThis.localStorage={getItem:k=>records.get(k),setItem:(k,v)=>records.set(k,v)};
+  t.after(()=>{delete globalThis.localStorage;});
+  const s=openSpotifyDemo();
+  key(s,'down','holdUp');
+  assert.equal(s.presets.up,'liked-songs');
+  key(s,'ok','holdOk','left');
+  assert.equal(s.presets.left,'liked-songs');
+  const next=openSpotifyDemo();
+  key(next,'holdUp');
+  assert.equal(view(next).kind,'player');
+  assert.equal(next.queue.length,songs.length-1);
+  key(next,'back','down','down','down','down','ok','down','ok','down','ok');
+  assert.equal(next.presets.right,'liked-songs');
+  key(next,'back','holdRight');
+  assert.equal(next.track,0);
 });

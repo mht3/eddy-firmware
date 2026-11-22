@@ -53,6 +53,16 @@ int main(void) {
             reply(&lib, SpotifyAssignPreset + 4 * direction + row, row);
             assert(lib.accepted && !lib.preset_played);
         }
+        reply(&lib, SpotifyAssignLiked + direction, 0);
+        assert(lib.accepted && !lib.preset_played);
+        reply(&lib, SpotifyAssignLiked + direction, 1);
+        assert(!lib.accepted && lib.error == SpotifyInvalid);
+        reply(&lib, SpotifyHoldLiked + direction, 0);
+        assert(lib.accepted && !lib.preset_played);
+        reply(&lib, SpotifyHoldLiked + direction, 4);
+        assert(lib.accepted && lib.preset_played);
+        reply(&lib, SpotifyHoldLiked + direction, 5);
+        assert(!lib.accepted && lib.error == SpotifyInvalid);
         reply(&lib, SpotifyPlayPreset + direction, 0);
         assert(lib.accepted);
         reply(&lib, SpotifyClearPreset + direction, 0);

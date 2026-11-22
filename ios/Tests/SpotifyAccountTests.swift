@@ -11,6 +11,7 @@ struct SpotifyAccountTests {
         let state = "eddy-ios-" + (try SpotifyOAuth.randomString())
         let verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
         let url = SpotifyOAuth.authorizeURL(clientID: id, state: state, verifier: verifier)
+        precondition(url.scheme == "https" && url.host == "accounts.spotify.com" && url.path == "/authorize")
         let query = URLComponents(url: url, resolvingAgainstBaseURL: false)!.queryItems!
         let fields = Dictionary(uniqueKeysWithValues: query.map { ($0.name, $0.value!) })
         precondition(fields["code_challenge"] == "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM")
@@ -26,14 +27,6 @@ struct SpotifyAccountTests {
                         valid + "#extra", valid.replacingOccurrences(of: "callback?", with: "callback/extra?"),
                         valid.replacingOccurrences(of: "callback", with: "other"), valid + "wrong"] {
             precondition((try? SpotifyOAuth.callbackCode(URL(string: invalid)!, state: state)) == nil)
-        }
-        for accepted in ["?code=from-spotify", "?error=access_denied"] {
-            precondition(SpotifyOAuth.isNativeCallback(URL(string: SpotifyOAuth.nativeRedirect + accepted)!))
-        }
-        for rejected in ["eddyspotify://callback?code=browser", "eddyspotify://setup?client_id=test",
-                         "eddyspotify://user@spotify-login?code=x", "eddyspotify://spotify-login?code=",
-                         "eddyspotify://spotify-login?code=a&code=b", "eddyspotify://spotify-login?error=no&code=yes"] {
-            precondition(!SpotifyOAuth.isNativeCallback(URL(string: rejected)!))
         }
         let form = String(decoding: SpotifyOAuth.form(["code": "+?=&", "client_id": id]), as: UTF8.self)
         precondition(form == "client_id=" + id + "&code=%2B%3F%3D%26")

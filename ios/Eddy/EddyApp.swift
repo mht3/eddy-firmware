@@ -84,7 +84,6 @@ private struct ConnectionView: View {
     @State private var tab = Tab.devices
     @State private var chooser = false
     @State private var accountSheet = false
-    @State private var diagnosticsSheet = false
     @State private var didLaunch = false
     @FocusState private var editingClientID: Bool
     @Environment(\.scenePhase) private var phase
@@ -137,23 +136,22 @@ private struct ConnectionView: View {
             if device != nil { chooser = false }
         }
         .onOpenURL { url in
-            if account.handleSpotifyCallback(url) { return }
             if url.scheme == "eddyspotify", url.host == "setup", onboarded {
                 tab = .devices
                 if !account.isSignedIn { accountSheet = true }
             }
         }
-        .sheet(isPresented: $diagnosticsSheet) {
-            NavigationStack {
-                DiagnosticsView()
-                    .toolbar { Button("Done") { diagnosticsSheet = false } }
-            }
-        }
         .sheet(isPresented: $chooser, onDismiss: { flipper.stopScanning() }) { deviceChooser }
         .sheet(isPresented: $accountSheet) {
             NavigationStack {
-                Form { spotifyControls }
+                Form {
+                    Section { spotifyControls }
+                        .listRowBackground(Color(red: 0.065, green: 0.15, blue: 0.23))
+                }
+                    .scrollContentBackground(.hidden)
+                    .background(ocean)
                     .navigationTitle("Spotify account")
+                    .navigationBarTitleDisplayMode(.inline)
                     .toolbar { Button("Done") { accountSheet = false } }
             }.preferredColorScheme(.dark)
         }
@@ -166,7 +164,7 @@ private struct ConnectionView: View {
                     Text("Connect your Flipper Zero and bring your Spotify library to its screen.")
                 }.tag(0)
                 panel("Connect your device", symbol: "antenna.radiowaves.left.and.right") {
-                    Text("Turn on Bluetooth on your Flipper running Eddy firmware.")
+                    Text("Turn on Bluetooth and open Apps → Spotify on your Flipper. Then choose it below.")
                     if let name = flipper.connectedName {
                         Label(name, systemImage: "checkmark.circle.fill")
                     } else {
@@ -199,9 +197,7 @@ private struct ConnectionView: View {
                 else { withAnimation { step += 1 } }
             }
             .buttonStyle(.borderedProminent).controlSize(.large)
-            .padding(.vertical, 4)
-            Button("Diagnostics") { diagnosticsSheet = true }
-                .font(.footnote).padding(.bottom, 6)
+            .padding(.bottom, 12)
         }
         .background(ocean.ignoresSafeArea())
     }
@@ -250,12 +246,10 @@ private struct ConnectionView: View {
             }
             .disabled(account.isSigningIn || (try? SpotifyOAuth.clientID(phone.clientID)) == nil)
             .buttonStyle(.borderedProminent)
-            Button("Use browser for sign-in") {
-                Task { await account.signIn(clientID: phone.clientID, preferSpotifyApp: false) }
-            }
-            .disabled((account.isSigningIn && !account.waitingForSpotifyApp) || (try? SpotifyOAuth.clientID(phone.clientID)) == nil)
         }
-        if !account.status.isEmpty { Text(account.status).font(.footnote).foregroundStyle(.secondary) }
+        if !account.status.isEmpty {
+            Text(account.status).font(.footnote).foregroundStyle(.secondary)
+        }
     }
 
     private func openChooser() { flipper.scan(); chooser = true }
@@ -332,17 +326,18 @@ private struct ConnectionView: View {
                     }
                 }
                 .buttonStyle(ConnectionButtonStyle())
-            } else if account.isSignedIn {
-                Text(flipper.firmwareLibraryEnabled
-                     ? "Open Apps → Spotify on your Flipper."
-                     : "Connecting your Spotify library…")
-                    .font(.callout)
             }
         }
         .padding(18)
         .listRowInsets(EdgeInsets())
         .listRowBackground(LinearGradient(colors: [Color(red: 0.08, green: 0.22, blue: 0.34), ocean],
                                            startPoint: .topLeading, endPoint: .bottomTrailing))
+    }
+
+    private var spotifySummary: String {
+        guard account.isSignedIn else { return "Log in to your account" }
+        guard flipper.connectedID != nil else { return "Account linked" }
+        return flipper.firmwareLibraryEnabled ? "Library connected" : "Connecting library…"
     }
 
     private var devicesPage: some View {
@@ -371,12 +366,26 @@ private struct ConnectionView: View {
                 }
                 Section {
                     Button { accountSheet = true } label: {
-                        LabeledContent {
-                            Text(account.isSignedIn ? "Linked" : "Log in").foregroundStyle(surf)
-                        } label: {
-                            Label("Spotify", systemImage: "music.note.list")
+                        HStack(spacing: 14) {
+                            Image(systemName: "music.note.list")
+                                .font(.title3)
+                                .foregroundStyle(surf)
+                                .frame(width: 34, height: 38)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("Spotify").font(.headline)
+                                Text(spotifySummary).font(.subheadline).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.footnote.weight(.semibold))
+                                .foregroundStyle(.secondary).accessibilityHidden(true)
                         }
+                        .frame(minHeight: 48)
+                        .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
+                }
+                .listRowBackground(Color(red: 0.065, green: 0.15, blue: 0.23))
+                Section {
                     Link(destination: URL(string: "https://ko-fi.com/mhtaylor")!) {
                         Label("Donate", systemImage: "heart")
                     }
