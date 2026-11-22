@@ -3,7 +3,7 @@
 #include <toolbox/eddy_media_label.h>
 
 const char* const spotify_category_names[SpotifyCategories] =
-    {"Playlists", "Queue", "Liked Songs", "Albums", "Now playing", "Presets", "Setup guide"};
+    {"Playlists", "Queue", "Liked Songs", "Albums", "Now playing", "Presets", "Sign in"};
 const uint8_t spotify_category_ops[SpotifyCategories] = {
     SpotifyPlaylists,
     SpotifyViewQueue,
@@ -11,7 +11,7 @@ const uint8_t spotify_category_ops[SpotifyCategories] = {
     SpotifyAlbums,
     SpotifyNowPlaying,
     SpotifyReadPresets,
-    SpotifySetupGuide};
+    SpotifySignIn};
 
 bool spotify_library_action_unconfirmed(const SpotifyLibrary* lib) {
     // An interrupted response can follow a successful mutation. A fresh request could repeat it.

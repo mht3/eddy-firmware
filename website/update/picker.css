@@ -160,3 +160,7 @@
 #community-apps .community-icon {font-size:1.5rem;font-weight:700}
 #community-apps .community-icon::after {display:none}
 #community-apps [hidden] {display:none}
+#spotify-settings {margin:1rem 0}
+#spotify-settings label {display:block; font-weight:650; margin-bottom:.35rem}
+#spotify-client-id {width:100%; min-width:0; padding:.55rem .65rem; font:inherit; color:var(--light); background:#0b192b; border:1px solid var(--line); border-radius:.4rem}
+#spotify-id-help {font-size:.9rem; margin-top:.4rem}

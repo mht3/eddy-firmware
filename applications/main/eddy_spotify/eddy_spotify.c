@@ -4,6 +4,7 @@
 #include <furi_hal_random.h>
 #include <gui/view_dispatcher.h>
 #include <profiles/serial_profile.h>
+#include <storage/storage.h>
 
 typedef struct {
     SpotifyScreen screen;
@@ -35,11 +36,13 @@ typedef struct {
 } SpotifyApp;
 
 static void reset_link(SpotifyModel* model, uint16_t handle) {
-    bool manual = model->screen.manual_qr, dismissed = model->screen.dismissed_qr;
+    bool manual = model->screen.manual_setup, dismissed = model->screen.dismissed_setup;
+    const uint8_t* qr = model->screen.signin_qr;
     memset(model, 0, sizeof(*model));
+    model->screen.signin_qr = qr;
     model->connection = handle;
-    model->screen.manual_qr = manual;
-    model->screen.dismissed_qr = dismissed;
+    model->screen.manual_setup = manual;
+    model->screen.dismissed_setup = dismissed;
 }
 
 static void bridge_reset(SpotifyModel* model, bool connected) {
@@ -59,6 +62,7 @@ static void bridge_reset(SpotifyModel* model, bool connected) {
     screen->title_bytes = 0;
     screen->duration_s = screen->elapsed_s = 0;
     screen->bridge = connected;
+    if(connected) screen->manual_setup = false;
     model->status_started = furi_get_tick();
     model->queued = connected ? SpotifyNowPlaying : 0;
 }
@@ -362,7 +366,7 @@ static bool spotify_input(InputEvent* event, void* context) {
                                  model->queued != SpotifyReadPresets);
     if(event->type == InputTypeLong && screen->scene != SpotifyVolume) {
         model->suppressed_keys |= bit;
-        if(screen->bridge && !busy && !lib->accepted && !lib->error && !screen->manual_qr) {
+        if(screen->bridge && !busy && !lib->accepted && !lib->error && !screen->manual_setup) {
             if(direction >= 0 && screen->scene == SpotifyPresetDirection && lib->count) {
                 screen->preset_direction = direction;
                 model->queued = SpotifyAssignPreset + direction * 4 + lib->selected;
@@ -393,10 +397,11 @@ static bool spotify_input(InputEvent* event, void* context) {
     }
     if(lib->error == SpotifyMissingPreset && (key == InputKeyOk || key == InputKeyBack)) {
         lib->error = SpotifyOk;
-    } else if(spotify_screen_shows_qr(screen)) {
-        if(key == InputKeyOk || (key == InputKeyBack && screen->manual_qr)) {
-            screen->manual_qr = false;
-            screen->dismissed_qr = true;
+    } else if(spotify_screen_shows_setup(screen)) {
+        if((key == InputKeyOk && screen->signin_qr) ||
+           ((key == InputKeyBack || key == InputKeyOk) && screen->manual_setup)) {
+            screen->manual_setup = false;
+            screen->dismissed_setup = true;
         } else
             handled = false;
     } else if(
@@ -473,7 +478,7 @@ static bool spotify_input(InputEvent* event, void* context) {
             return_home(model);
     } else if(!screen->bridge) {
         if(key == InputKeyOk)
-            screen->manual_qr = true;
+            screen->manual_setup = true;
         else
             handled = false;
     } else if(lib->accepted) {
@@ -495,8 +500,8 @@ static bool spotify_input(InputEvent* event, void* context) {
             } else if(op == SpotifyReadPresets) {
                 screen->scene = SpotifyPresets;
                 model->queued = SpotifyReadPresets;
-            } else if(op == SpotifySetupGuide) {
-                screen->manual_qr = true;
+            } else if(op == SpotifySignIn) {
+                screen->manual_setup = true;
             } else {
                 screen->scene = SpotifyResults;
                 model->queued = op;
@@ -626,6 +631,44 @@ static uint32_t spotify_exit(void* context) {
     return VIEW_NONE;
 }
 
+// The installer writes an opaque 64x64 XBM with a clear quiet zone. Size and
+// simple raster checks keep truncated, blank or inverted SD data off the screen.
+static bool qr_has_ink_and_margin(const uint8_t* bitmap) {
+    const size_t stride = SpotifyQrSize / 8;
+    size_t ink_rows = 0;
+    for(size_t y = 0; y < SpotifyQrSize; ++y) {
+        const uint8_t* row = bitmap + y * stride;
+        if((row[0] & 1) || (row[stride - 1] & 0x80)) return false;
+        uint8_t ink = 0;
+        for(size_t x = 0; x < stride; ++x)
+            ink |= row[x];
+        if(ink) {
+            if(y == 0 || y == SpotifyQrSize - 1) return false;
+            ++ink_rows;
+        }
+    }
+    return ink_rows >= 21;
+}
+
+static uint8_t* read_signin_qr(void) {
+    Storage* storage = furi_record_open(RECORD_STORAGE);
+    File* file = storage_file_alloc(storage);
+    uint8_t* qr = NULL;
+    if(storage_file_open(
+           file, EXT_PATH("eddy/spotify_signin.xbm"), FSAM_READ, FSOM_OPEN_EXISTING) &&
+       storage_file_size(file) == SpotifyQrBytes) {
+        qr = malloc(SpotifyQrBytes);
+        if(qr && (storage_file_read(file, qr, SpotifyQrBytes) != SpotifyQrBytes ||
+                  !qr_has_ink_and_margin(qr))) {
+            free(qr);
+            qr = NULL;
+        }
+    }
+    storage_file_free(file);
+    furi_record_close(RECORD_STORAGE);
+    return qr;
+}
+
 int32_t eddy_spotify_app(void* argument) {
     UNUSED(argument);
     SpotifyApp app = {
@@ -635,10 +678,14 @@ int32_t eddy_spotify_app(void* argument) {
     Gui* gui = furi_record_open(RECORD_GUI);
     ViewDispatcher* dispatcher = view_dispatcher_alloc();
     view_allocate_model(app.view, ViewModelTypeLocking, sizeof(SpotifyModel));
+    uint8_t* qr = read_signin_qr();
     with_view_model(
         app.view,
         SpotifyModel * model,
-        { *model = (SpotifyModel){.connection = UINT16_MAX}; },
+        {
+            *model = (SpotifyModel){.connection = UINT16_MAX};
+            model->screen.signin_qr = qr;
+        },
         false);
     view_set_context(app.view, &app);
     view_set_draw_callback(app.view, spotify_screen_draw);
@@ -660,6 +707,7 @@ int32_t eddy_spotify_app(void* argument) {
     view_dispatcher_remove_view(dispatcher, 0);
     view_dispatcher_free(dispatcher);
     view_free(app.view);
+    free(qr);
     furi_record_close(RECORD_GUI);
     furi_record_close(RECORD_BT);
     return 0;

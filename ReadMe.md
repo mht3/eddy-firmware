@@ -26,7 +26,7 @@ Open **Apps → Music** to control Spotify or Apple Music on your paired phone. 
 
 ![Dolphin Days playing in the Music preview on a Flipper Zero](.github/assets/dolphin-days.png)
 
-In the website demo, browse sample playlists, assign favorites to the four arrows and add tracks to the queue. Press Right in the library to open Now Playing. Live library access on the handheld is in private development. [Try the guided Spotify demo](https://mht3.github.io/eddy-firmware/?demo=spotify&tour=1#home-screen) · [Spotify setup](https://mht3.github.io/eddy-firmware/spotify/)
+Enter your personal Spotify Client ID in the installer, then scan the code in **Apps → Spotify**. With a Web Bluetooth browser such as Chrome on Android, you can browse playlists, save favorites to the four arrows and queue tracks from your Flipper. The website demo lets you try those controls with sample songs. [Try the guided Spotify demo](https://mht3.github.io/eddy-firmware/?demo=spotify&tour=1#home-screen) · [Spotify setup](https://mht3.github.io/eddy-firmware/spotify/)
 
 ## Acknowledgements
 

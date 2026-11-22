@@ -2,7 +2,7 @@ const pendingKey = 'eddy.spotify.library.pkce';
 const accountKey = 'eddy.spotify.library.session';
 const scopes = ['user-library-read', 'playlist-read-private', 'playlist-read-collaborative', 'user-modify-playback-state',
   'user-read-currently-playing', 'user-read-playback-state', 'playlist-modify-private', 'playlist-modify-public'];
-const redirect = new URL('./', location.href).href;
+const redirect = new URL('./', import.meta.url).href;
 export const pageSize = 4;
 
 export class PlaybackError extends Error {
@@ -57,7 +57,6 @@ export async function authorize(id) {
   const args = new URLSearchParams({
     client_id: id, response_type: 'code', scope: scopes.join(' '), redirect_uri: redirect,
     state, code_challenge_method: 'S256', code_challenge: base64url(new Uint8Array(digest)),
-    show_dialog: 'true',
   });
   location.assign('https://accounts.spotify.com/authorize?' + args);
 }
@@ -79,7 +78,7 @@ async function exchange(params, signal) {
   if (response.status === 400 || response.status === 401) {
     const issue = await response.json().catch(() => null);
     if (issue?.error === 'invalid_client') {
-      throw new PlaybackError(1, 'Spotify did not recognize your app. Check its Client ID in the Developer Dashboard and restart the companion with --change-client-id.');
+      throw new PlaybackError(1, 'Spotify did not recognize this app. Check the Client ID saved on your Flipper against your Spotify Developer Dashboard.');
     }
     if (params.grant_type === 'authorization_code') {
       throw new PlaybackError(1, 'Spotify could not finish sign-in. Check your app’s registered redirect URI, then choose Link Spotify again in this tab.');
@@ -104,17 +103,18 @@ function store(id, token, previous) {
   return account;
 }
 
-export async function callback(id) {
-  const query = new URLSearchParams(location.search);
-  if (!query.has('code') && !query.has('error')) return;
-  history.replaceState(null, '', location.pathname);
+export async function callback(id, query) {
   const pending = read(pendingKey);
-  sessionStorage.removeItem(pendingKey);
-  if (!pending || pending.id !== id || pending.redirect !== redirect || query.get('state') !== pending.state ||
-      Date.now() - pending.issued > 600000) {
-    throw new Error('This link expired or came from another tab. Start again here.');
+  if (!pending || pending.id !== id || pending.redirect !== redirect || query.getAll('state').length !== 1 ||
+      query.get('state') !== pending.state || Date.now() - pending.issued > 600000) {
+    throw new Error('This sign-in expired or came from another tab. Scan the QR again in the browser you want to connect.');
   }
-  if (query.has('error')) throw new Error('Spotify linking was canceled. You can try again.');
+  sessionStorage.removeItem(pendingKey);
+  if (query.has('error')) {
+    if (query.get('error') === 'access_denied') throw new Error('Spotify linking was canceled. You can try again.');
+    throw new Error('Spotify could not authorize this app. Check your app settings, then try linking again.');
+  }
+  if (query.getAll('code').length !== 1 || !query.get('code')) throw new Error('Spotify returned an incomplete sign-in. Try linking again.');
   const token = await exchange({grant_type: 'authorization_code', client_id: id, code_verifier: pending.verifier,
     code: query.get('code'), redirect_uri: pending.redirect}, AbortSignal.timeout(12000));
   const account = store(id, token);

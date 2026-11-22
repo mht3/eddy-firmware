@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <title>Connect your Flipper · Eddy Firmware</title>
+    <link rel="icon" href="../../eddy.svg"><link rel="stylesheet" href="../../style.css"><link rel="stylesheet" href="../music.css">
+    <script type="module" src="connect.js"></script>
+  </head>
+  <body>
+    <header><div class="bar"><a class="brand" href="../../"><img src="../../eddy.svg" alt=""> Eddy <span>Firmware</span></a></div></header>
+    <main class="music">
+      <h1>Spotify connection</h1>
+      <p id="notice" role="status">Scan the QR from Apps → Spotify on your Flipper in this browser to connect.</p>
+      <section id="bridge" hidden>
+        <h2>Your Flipper</h2>
+        <p>Keep this tab open while you use your library. Start playback in Spotify on the device you want to control.</p>
+        <div class="demo-links">
+          <button class="small-cta" id="link" hidden>Link Spotify</button>
+          <button class="small-cta" id="pair" hidden>Choose Flipper</button>
+          <button id="disconnect" hidden>Disconnect Flipper</button>
+          <button id="unlink" hidden>Unlink Spotify</button>
+        </div>
+        <ul id="library-links" aria-label="Open displayed items in Spotify" hidden></ul>
+      </section>
+      <details><summary>How Eddy uses this connection</summary>
+        <p>This tab keeps the Spotify session and sends your commands to Spotify. While connected, it sends track and playlist information to your paired Flipper. Your four playlist shortcuts stay in this browser. Choose <strong>Unlink Spotify</strong> to clear this session, or <a href="https://www.spotify.com/account/apps/" rel="noreferrer">remove Eddy’s access in Spotify</a>.</p>
+      </details>
+      <p><a href="../">Spotify setup guide</a></p>
+    </main>
+  </body>
+</html>

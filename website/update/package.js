@@ -65,7 +65,7 @@ function manifestFile(name,data) {
   return 'F:'+md5(data)+':'+data.length+':'+name;
 }
 
-async function filterResources(bytes,index,excluded,order,community) {
+async function filterResources(bytes,index,excluded,order,community,spotifyClientId) {
   const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
   const tar = new Uint8Array(await new Response(stream).arrayBuffer());
   const manifest = locateEntry(tar,index.manifest,'Manifest');
@@ -80,6 +80,7 @@ async function filterResources(bytes,index,excluded,order,community) {
   const layoutData = encoder.encode(order.map(id => id+'\n').join(''));
   edits.push(replaceEntry(layout,layoutData));
   const communityRows = [];
+  const additions = [];
   let listRow;
   if (community.length) {
     const list = locateEntry(tar,index.communityList,communityList);
@@ -88,7 +89,7 @@ async function filterResources(bytes,index,excluded,order,community) {
     edits.push(replaceEntry(list,listData));
     listRow = manifestFile(communityList,listData);
     communityRows.push('D:'+communityDir);
-    const additions = [packageHeader(communityDir+'/',0,true)];
+    additions.push(packageHeader(communityDir+'/',0,true));
     for (const {id,data,license} of community) {
       for (const [suffix,bytes] of [['.fap',data],['.LICENSE.txt',encoder.encode(license)]]) {
         const path = communityDir+'/'+id+suffix;
@@ -96,10 +97,18 @@ async function filterResources(bytes,index,excluded,order,community) {
         additions.push(packageHeader(path,bytes.length),bytes,padding(bytes.length));
       }
     }
+  }
+  if (spotifyClientId) {
+    const {spotifySignInBitmap} = await import('./spotify-qr.js');
+    const data = spotifySignInBitmap(spotifyClientId);
+    // A personal preference stays on the card when a later update cleans the resource manifest.
+    additions.push(packageHeader('eddy/spotify_signin.xbm', data.length), data, padding(data.length));
+  }
+  if (additions.length) {
     // Insert before the tar terminator, after all original parent directories.
     const end = index.archiveEnd;
     if (!Number.isSafeInteger(end) || end<block || end%block || end+2*block>tar.length ||
-        tar.subarray(end).some(Boolean)) throw Error('Invalid community app index in this release.');
+        tar.subarray(end).some(Boolean)) throw Error('Invalid resource archive index in this release.');
     edits.push({offset:end,end,replacement:additions});
   }
   const keep = [];
@@ -139,7 +148,7 @@ async function filterResources(bytes,index,excluded,order,community) {
   return new Uint8Array(await compressed.arrayBuffer());
 }
 
-export async function prepareInstall(build,selectedIds,onPart,order=getAppOrder(),communityIds=[]) {
+export async function prepareInstall(build,selectedIds,onPart,order=getAppOrder(),communityIds=[],spotifyClientId='') {
   if (!build.resourceIndex?.apps || !Number.isSafeInteger(build.resourceIndex.launcherOrder) ||
       !build.parts.some(part=>part.name==='resources.tar.gz')) {
     throw Error('This release does not include an editable launcher. Refresh for the latest build.');
@@ -151,6 +160,12 @@ export async function prepareInstall(build,selectedIds,onPart,order=getAppOrder(
     }
   }
   const selected = new Set(selectedIds);
+  if (spotifyClientId && (!selected.has('spotify') || !/^[0-9a-f]{32}$/i.test(spotifyClientId))) {
+    throw Error('To include a Spotify Client ID, select Spotify and enter the 32-character ID from app settings.');
+  }
+  if (spotifyClientId && !build.resourceIndex.spotifySignIn) {
+    throw Error('This firmware predates Spotify sign-in. Refresh the installer to get the latest build.');
+  }
   if ([...selected].some(id=>!catalog.some(app=>app.id===id))) throw Error('Unknown app selection.');
   if (!validAppOrder(order)) throw Error('Invalid app order. Reload the installer to try again.');
   const ids = [...communityIds];
@@ -176,10 +191,10 @@ export async function prepareInstall(build,selectedIds,onPart,order=getAppOrder(
     const data = await verifiedDownload(build.version+'/community/'+id+'.fap',app);
     community.push({id,data,license:app.license});
   }
-  if (community.length || excluded.length || order.some((id,i)=>id!==defaultAppOrder[i])) {
+  if (spotifyClientId || community.length || excluded.length || order.some((id,i)=>id!==defaultAppOrder[i])) {
     const resources = files.find(({part})=>part.name==='resources.tar.gz');
     const bytes = await filterResources(resources.bytes,build.resourceIndex,excluded,
-      order.filter(id => selected.has(id)),community);
+      order.filter(id => selected.has(id)),community,spotifyClientId);
     resources.bytes=bytes;
     resources.part={...resources.part,size:bytes.length,sha256:await sha256(bytes),md5:md5(bytes)};
   }

@@ -33,6 +33,7 @@ SYSTEM_APPS = {
 }
 
 COMMUNITY_LIST = "eddy/community_apps.txt"
+SPOTIFY_SIGNIN = "eddy/spotify_signin.xbm"
 
 
 def fap_target(data):
@@ -111,6 +112,8 @@ def resource_index(data, profile):
         if not manifest.isfile() or manifest.offset_data != manifest.offset + 512:
             raise ValueError("Unsupported SD resource manifest")
         rows = set(archive.extractfile(manifest).read().decode().splitlines())
+        if any(row.endswith(":" + SPOTIFY_SIGNIN) for row in rows):
+            raise ValueError("A shared resource manifest must preserve personal Spotify settings")
         layout = archive.getmember("eddy/launcher_order.txt")
         if not layout.isfile() or layout.offset_data != layout.offset + 512:
             raise ValueError("Unsupported launcher layout entry")
@@ -129,6 +132,8 @@ def resource_index(data, profile):
                 "Expected an empty community app list in the base firmware"
             )
         for member in archive:
+            if member.name == SPOTIFY_SIGNIN:
+                raise ValueError("A shared release must not include a personal Spotify sign-in code")
             if member.name == "apps/Community" or member.name.startswith(
                 "apps/Community/"
             ):
@@ -159,11 +164,13 @@ def resource_index(data, profile):
             if f"F:{digest.hexdigest()}:{member.size}:{member.name}" not in rows:
                 raise ValueError(f"Resource manifest mismatch: {member.name}")
             apps[app_id] = {"name": member.name, "offset": member.offset}
-        target = fap_target(archive.extractfile(apps["eddy_spotify"]["name"]).read())
+        spotify_binary = archive.extractfile(apps["eddy_spotify"]["name"]).read()
+        target = fap_target(spotify_binary)
         index = dict(
             manifest=manifest.offset,
             launcherOrder=layout.offset,
             communityList=community.offset,
+            spotifySignIn=SPOTIFY_SIGNIN.encode("ascii") in spotify_binary,
             archiveEnd=archive.offset,
             apps=apps,
         )

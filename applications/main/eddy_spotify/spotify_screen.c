@@ -1,12 +1,11 @@
 #include "spotify_screen.h"
-#include "setup_qr.h"
+#include <momentum/settings.h>
 #include <stdio.h>
 #include <string.h>
 
-_Static_assert(sizeof(spotify_setup_qr) == SpotifyQrBytes, "Invalid built-in QR bitmap");
-
-bool spotify_screen_shows_qr(const SpotifyScreen* screen) {
-    return screen->manual_qr || (!screen->bridge && !screen->dismissed_qr);
+bool spotify_screen_shows_setup(const SpotifyScreen* screen) {
+    return screen->manual_setup ||
+           (!screen->bridge && (!screen->signin_qr || !screen->dismissed_setup));
 }
 
 static void
@@ -41,7 +40,7 @@ static void row_icon(Canvas* c, uint8_t op, int y) {
         canvas_draw_line(c, 3, y + 3, 11, y + 3);
         canvas_draw_line(c, 7, y - 1, 7, y + 7);
         canvas_draw_frame(c, 5, y + 1, 5, 5);
-    } else if(op == SpotifySetupGuide) {
+    } else if(op == SpotifySignIn) {
         canvas_draw_str(c, 5, y + 7, "?");
     } else if(op == SpotifyViewQueue) {
         for(int i = 0; i < 3; ++i) {
@@ -222,14 +221,28 @@ void spotify_screen_draw(Canvas* canvas, void* context) {
     const SpotifyScreen* screen = context;
     const SpotifyLibrary* lib = &screen->library;
     canvas_set_font(canvas, FontSecondary);
-    if(spotify_screen_shows_qr(screen)) {
-        canvas_draw_xbm(canvas, 0, 0, SpotifyQrSize, SpotifyQrSize, spotify_setup_qr);
-        canvas_set_font(canvas, FontPrimary);
-        canvas_draw_str(canvas, 66, 20, "Spotify");
-        canvas_set_font(canvas, FontSecondary);
-        canvas_draw_str(canvas, 66, 33, "Personal setup");
-        canvas_draw_str(canvas, 66, 44, "Scan for guide");
-        canvas_draw_str(canvas, 66, 60, "OK: Close");
+    if(spotify_screen_shows_setup(screen)) {
+        if(screen->signin_qr) {
+            // QR scanning requires dark modules on a light square in either theme.
+            canvas_set_color(canvas, momentum_settings.dark_mode ? ColorWhite : ColorBlack);
+            canvas_set_bitmap_mode(canvas, false);
+            canvas_draw_xbm(canvas, 0, 0, SpotifyQrSize, SpotifyQrSize, screen->signin_qr);
+            canvas_set_color(canvas, ColorBlack);
+            canvas_set_font(canvas, FontPrimary);
+            canvas_draw_str(canvas, 66, 20, "Spotify");
+            canvas_set_font(canvas, FontSecondary);
+            canvas_draw_str(canvas, 66, 33, "Scan to sign in");
+            canvas_draw_str(canvas, 66, 44, "on your phone");
+            canvas_draw_str(canvas, 66, 60, "OK: Close");
+        } else {
+            canvas_set_font(canvas, FontPrimary);
+            canvas_draw_str(canvas, 2, 10, "Set up Spotify");
+            canvas_set_font(canvas, FontSecondary);
+            canvas_draw_str(canvas, 2, 25, "In the Eddy installer, select");
+            canvas_draw_str(canvas, 2, 36, "Spotify and enter your");
+            canvas_draw_str(canvas, 2, 47, "Client ID. Install that build.");
+            canvas_draw_str(canvas, 2, 62, screen->manual_setup ? "Back: Return" : "Back: Exit");
+        }
         return;
     }
     uint8_t category = spotify_category_ops[screen->category];
@@ -256,10 +269,9 @@ void spotify_screen_draw(Canvas* canvas, void* context) {
         canvas_draw_str(canvas, 54, 8, screen->toolbar_focus ? "^ Player" : "v Buttons");
     if(screen->scene == SpotifyPresets) canvas_draw_str(canvas, 39, 8, "Hold to play");
     if(!screen->connected || !screen->bridge) {
-        canvas_draw_str(canvas, 2, 21, "On your computer, open");
-        canvas_draw_str(canvas, 2, 32, "your Spotify companion.");
-        canvas_draw_str(canvas, 2, 45, "Choose your Flipper there.");
-        canvas_draw_str(canvas, 2, 62, "OK: Setup guide");
+        canvas_draw_str(canvas, 2, 21, "Keep your sign-in page open.");
+        canvas_draw_str(canvas, 2, 32, "Choose your Flipper there.");
+        canvas_draw_str(canvas, 2, 62, "OK: Show sign-in QR");
         return;
     }
     if(lib->accepted) {
@@ -281,8 +293,8 @@ void spotify_screen_draw(Canvas* canvas, void* context) {
     } else if(lib->error != SpotifyOk) {
         static const char* const errors[] = {
             [SpotifyNoPlayer] = "Open Spotify on a device.",
-            [SpotifyLogin] = "Sign in on your companion.",
-            [SpotifyOffline] = "Check your companion.",
+            [SpotifyLogin] = "Sign in on your phone.",
+            [SpotifyOffline] = "Check the browser link.",
             [SpotifyRestricted] = "Spotify declined access.",
             [SpotifyRateLimited] = "Spotify is busy. Try later.",
             [SpotifyVolumeUnavailable] = "Use the device volume.",
@@ -299,7 +311,7 @@ void spotify_screen_draw(Canvas* canvas, void* context) {
             canvas_draw_str(canvas, 2, 47, "OK: Return");
         } else {
             canvas_draw_str(canvas, 2, 24, errors[lib->error]);
-            canvas_draw_str(canvas, 2, 36, "See details on your computer.");
+            canvas_draw_str(canvas, 2, 36, "See the sign-in page.");
             canvas_draw_str(canvas, 2, 47, "OK: Retry    Back: Return");
         }
     } else if(screen->scene == SpotifyHome) {

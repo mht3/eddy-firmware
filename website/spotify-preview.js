@@ -1,8 +1,6 @@
 import {songs, samplePlaylists, drawIcon} from './spotify-demo-library.js';
 
 const pageSize=3;
-const setupQr=new Image();
-setupQr.src=new URL('./spotify/guide-qr.png',import.meta.url).href;
 const now=()=>performance.now();
 const clock=seconds=>Math.floor(seconds/60)+':'+String(Math.floor(seconds%60)).padStart(2,'0');
 const entry=(action,label,icon,value)=>({action,label,icon,value});
@@ -81,7 +79,7 @@ function menu(s) {
   const v=current(s);
   switch(v.kind) {
     case 'home': return [entry('playlists','Playlists','playlist'),entry('liked','Liked Songs','heart'),entry('queue','Queue','queue'),
-      entry('albums','Albums','album'),entry('presets','Presets','playlist'),entry('setup','Setup guide','tracks')];
+      entry('albums','Albums','album'),entry('presets','Presets','playlist'),entry('setup','Phone sign-in','tracks')];
     case 'playlists': case 'destinations': return s.playlists.map((p,i)=>entry(v.kind==='playlists'?'playlist':'save',p.name,p.art,i));
     case 'playlist': return s.playlists[v.value].tracks.map(songEntry);
     case 'queue': return s.queue.map(item=>entry('queued',songs[item.id].title,songs[item.id].art,item));
@@ -258,7 +256,7 @@ export function spotifyHit(s,x,y) {
 
 export function spotifyStatus(s) {
   const at=position(s), v=current(s), active=songs[s.track];
-  if(v.kind==='setup') return 'Scan for the personal Spotify setup guide. OK returns to the sample library.';
+  if(v.kind==='setup') return 'On your Flipper, scan the personal sign-in code. This preview uses a sample library. OK returns to the library.';
   const playing=(s.playing?'Playing ':'Paused on ')+active.title+' by '+active.artist;
   if(v.kind==='volume') return 'Volume '+s.volume+' percent. Up and Down adjust. OK returns to the player.';
   if(v.kind==='player') return [now()<s.noticeUntil?s.notice:'',playing,v.toolbar?actions[s.action]+'. Left or Right selects an action. OK opens it. Up returns to playback.':
@@ -330,11 +328,11 @@ export function drawSpotify(ctx,s) {
   const v=current(s), at=position(s);
   ctx.save(); ctx.textBaseline='alphabetic'; ctx.font='bold 9px sans-serif';
   if(v.kind==='setup') {
-    ctx.imageSmoothingEnabled=false;
-    if(setupQr.naturalWidth) ctx.drawImage(setupQr,0,0,64,64);
-    ctx.fillText('Spotify',66,20); ctx.font='8px sans-serif';
-    ctx.fillText('Personal setup',66,33); ctx.fillText('Scan for guide',66,44); ctx.fillText('OK: Back',66,60);
-    ctx.restore(); return !setupQr.complete;
+    ctx.fillText('Phone sign-in',2,9); ctx.fillRect(2,11,124,1);
+    ctx.font='8px sans-serif';
+    ctx.fillText('Your Flipper shows your',2,28); ctx.fillText('personal QR code here.',2,39);
+    ctx.fillText('OK  Back to demo',2,59);
+    ctx.restore(); return false;
   }
   const title=v.kind==='lyrics'?songs[s.track].title:v.title;
   cropped(ctx,v.kind==='playlists'?'Playlists · Hold arrow':title,2,9,89);

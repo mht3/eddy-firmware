@@ -109,9 +109,9 @@ test('a stale queue row cannot remove another song after a natural transition',(
   assert.deepEqual(s.queue,pending); assert.match(spotifyStatus(s),/already played/);
 });
 
-test('the informational setup guide can be opened from the home menu',()=>{
+test('the demo explains where to find the personal sign-in QR',()=>{
   const s=openSpotifyDemo();
   key(s,'up','ok'); assert.equal(view(s).kind,'setup');
-  assert.match(spotifyStatus(s),/personal Spotify setup guide/);
+  assert.match(spotifyStatus(s),/personal sign-in code/);
   key(s,'ok'); assert.equal(view(s).kind,'home');
 });

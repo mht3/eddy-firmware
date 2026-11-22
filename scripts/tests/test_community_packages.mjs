@@ -4,6 +4,7 @@ import {execFileSync} from 'node:child_process';
 import {test} from 'node:test';
 import {catalog,defaultAppOrder} from '../../website/app-catalog.js';
 import {prepareInstall,makeDownload} from '../../website/update/package.js';
+import {spotifySignInBitmap} from '../../website/update/spotify-qr.js';
 
 const digest = (algorithm,data)=>createHash(algorithm).update(data).digest('hex');
 const communityList = 'eddy/community_apps.txt';
@@ -38,7 +39,7 @@ const build = {
   version:'eddy-test',
   parts:[{name:'resources.tar.gz',size:resources.length,sha256:digest('sha256',resources)}],
   resourceIndex:{manifest:offsets.Manifest,launcherOrder:offsets[launcher],communityList:offsets[communityList],
-    archiveEnd,apps:Object.fromEntries(Object.keys(appFiles).map(name=>[stock[name],{name,offset:offsets[name]}]))},
+    archiveEnd,spotifySignIn:true,apps:Object.fromEntries(Object.keys(appFiles).map(name=>[stock[name],{name,offset:offsets[name]}]))},
   communityApps:Object.fromEntries(Object.entries(extra).map(([id,bytes])=>
     [id,{name:id,size:bytes.length,sha256:digest('sha256',bytes),license:'Fixture license '+id}])),
 };
@@ -88,4 +89,33 @@ test('selected community apps reach USB and qFlipper with an accurate resource m
   await assert.rejects(prepareInstall(build,all,null,defaultAppOrder,['resistors','resistors']),/unavailable/);
   responses.set('resistors.fap',Buffer.alloc(extra.resistors.length));
   await assert.rejects(prepareInstall(build,all,null,defaultAppOrder,['resistors']),/verification/);
+});
+
+test('personal Spotify setup adds the ID only to the local package on either install path', async t => {
+  const id = '1234567890abcdef1234567890abcdef';
+  const path = 'eddy/spotify_signin.xbm';
+  const requested = [];
+  t.mock.method(globalThis, 'fetch', async url => {
+    requested.push(String(url));
+    return new Response(resources);
+  });
+  const files = await prepareInstall(build, all, null, defaultAppOrder, [], id);
+  const image = files[0].bytes;
+  const downloaded = unpack(await (await makeDownload(build, files)).arrayBuffer());
+  assert.deepEqual(Object.values(downloaded).find(Boolean), Buffer.from(image));
+  assert.equal(digest('md5', image), files[0].part.md5);
+  const sd = unpack(image);
+  assert.equal(sd[path].length, 512);
+  assert.deepEqual(sd[path], Buffer.from(spotifySignInBitmap(id)));
+  assert.notDeepEqual(sd[path], Buffer.from(spotifySignInBitmap('0'.repeat(32))));
+  assert(!sd.Manifest.toString().includes(path), 'a later stock update must preserve personal data');
+  const stockFiles = await prepareInstall(build, all);
+  assert.deepEqual(Buffer.from(stockFiles[0].bytes), resources);
+  assert(!Object.hasOwn(unpack(stockFiles[0].bytes), path));
+  await assert.rejects(prepareInstall(build, all, null, defaultAppOrder, [], 'invalid'), /Client ID/);
+  await assert.rejects(prepareInstall(build, ['music'], null, defaultAppOrder, [], id), /select Spotify/);
+  const oldBuild = {...build, resourceIndex:{...build.resourceIndex, spotifySignIn:false}};
+  await assert.rejects(prepareInstall(oldBuild, all, null, defaultAppOrder, [], id), /predates Spotify/);
+  assert.equal(requested.length, 2);
+  assert(requested.every(url => url.endsWith('/resources.tar.gz') && !url.includes(id)));
 });

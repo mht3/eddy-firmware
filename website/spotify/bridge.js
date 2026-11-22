@@ -1,4 +1,4 @@
-import {addTrack, authorize, callback, controlPlayer, holdPlaylistShortcut, libraryPage, linked, pageSize, PlaybackError, playLibraryItem, playShortcut, queueTrack, selectedRow, sessionMarker, setPlayerVolume, setShortcut, shortcutPage, unlink} from './spotify.js';
+import {addTrack, authorize, controlPlayer, holdPlaylistShortcut, libraryPage, linked, pageSize, PlaybackError, playLibraryItem, playShortcut, queueTrack, selectedRow, sessionMarker, setPlayerVolume, setShortcut, shortcutPage, unlink} from './spotify.js';
 
 const uuid = n => 'efdd000' + n + '-5a34-4a32-9fab-1f72e60d00ed';
 const get = id => document.getElementById(id);
@@ -127,7 +127,7 @@ async function connect(device, onCommand, onDrop) {
   }
 }
 
-export async function startBridge(id) {
+export async function startBridge(id, initialMessage) {
   let session, lastDevice, pending = false, cooldown;
   let attempt = 0, retryTimer, retryIndex = 0;
   const retryDelays = [1000, 3000, 6000, 12000, 24000, 30000];
@@ -136,7 +136,7 @@ export async function startBridge(id) {
   function render() {
     const ready = linked(id);
     get('link').hidden = ready;
-    get('pair').hidden = !ready || Boolean(session);
+    get('pair').hidden = !ready || Boolean(session) || !navigator.bluetooth?.requestDevice;
     get('pair').textContent = lastDevice ? 'Reconnect Flipper' : 'Choose Flipper';
     get('unlink').hidden = !ready;
     get('disconnect').hidden = !session && !retryIndex;
@@ -434,12 +434,10 @@ export async function startBridge(id) {
   get('unlink').onclick = () => { cancelReconnect(); ++attempt; lastDevice = null; unlink(); return disconnect('Spotify unlinked from this tab.', true); };
   window.addEventListener('pagehide', () => { cancelReconnect(); ++attempt; lastDevice = null; disconnect(''); });
   get('bridge').hidden = false;
-  pending = true;
   render();
-  try {
-    await callback(id);
-  }
-  catch (error) { notice(error.message); }
-  pending = false;
-  render();
+  if (initialMessage) notice(initialMessage);
+  else if (linked(id)) notice(navigator.bluetooth?.requestDevice ?
+    'Spotify is linked. Open Apps → Spotify on your Flipper, then choose it below.' :
+    'Spotify is linked in this tab. This browser cannot send your library to the Flipper over Bluetooth. Scan the QR in Chrome on Android, or open the same QR link in desktop Chrome or Edge and link there.');
+  else notice('Link Spotify to continue with the app registered on your Flipper.');
 }

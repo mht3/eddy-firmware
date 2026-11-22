@@ -23,6 +23,7 @@ typedef enum {
 
 typedef struct {
     SpotifyLibrary library;
+    const uint8_t* signin_qr;
     uint32_t scroll;
     uint8_t category;
     SpotifyScene scene;
@@ -44,10 +45,10 @@ typedef struct {
     bool child_tracks;
     bool connected;
     bool bridge;
-    bool manual_qr;
-    bool dismissed_qr;
+    bool manual_setup;
+    bool dismissed_setup;
 } SpotifyScreen;
 
 uint8_t spotify_action_count(const SpotifyScreen* screen);
-bool spotify_screen_shows_qr(const SpotifyScreen* screen);
+bool spotify_screen_shows_setup(const SpotifyScreen* screen);
 void spotify_screen_draw(Canvas* canvas, void* context);

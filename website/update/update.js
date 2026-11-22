@@ -10,19 +10,33 @@ const progress = document.querySelector('#progress');
 const picker = document.querySelector('#app-picker');
 const download = document.querySelector('#download');
 const lab = document.querySelector('#lab');
+const spotifySettings = document.querySelector('#spotify-settings');
+const spotifyClientId = document.querySelector('#spotify-client-id');
 let build;
 let flipper;
 let operation = null;
 
 function updateControls() {
   const busy = Boolean(operation);
+  spotifySettings.hidden = !getSelectedApps().has('spotify');
+  spotifyClientId.disabled = busy || spotifySettings.hidden;
   picker.disabled = busy;
   action.disabled = busy || !build || !isSecureContext || !navigator.serial;
   download.disabled = busy || !build;
   const stockLayout = getAppOrder().every((id,i)=>id===defaultAppOrder[i]);
-  lab.hidden = busy || !lab.hasAttribute('href') || getSelectedApps().size !== catalog.length || !stockLayout || getCommunitySelection().length>0;
+  lab.hidden = busy || !lab.hasAttribute('href') || getSelectedApps().size !== catalog.length || !stockLayout || getCommunitySelection().length>0 || Boolean(spotifyClientId.value.trim());
 }
 window.addEventListener('eddy-apps-changed', updateControls);
+spotifyClientId.addEventListener('input', updateControls);
+
+function selectedClientId() {
+  return getSelectedApps().has('spotify') ? spotifyClientId.value.trim() : '';
+}
+
+function validSpotifySetting() {
+  spotifyClientId.value = spotifyClientId.value.trim();
+  return spotifyClientId.reportValidity();
+}
 
 async function checkedFetch(url,options) {
   const response = await fetch(url,options);
@@ -80,7 +94,7 @@ async function loadBuild() {
 async function install() {
   const files = await prepareInstall(build,getSelectedApps(),name=>{
     connection.textContent = 'Verifying '+name+'…';
-  },getAppOrder(),getCommunitySelection());
+  },getAppOrder(),getCommunitySelection(),selectedClientId());
   const resources = files.find(({part})=>part.name==='resources.tar.gz');
   const folder = '/ext/update/f7-update-'+build.version+'-'+resources.part.sha256.slice(0,12);
   await flipper.mkdir('/ext/update');
@@ -106,6 +120,7 @@ async function releasePort() {
 
 action.addEventListener('click',async () => {
   if (operation || !build) return;
+  if (flipper && !validSpotifySetting()) return;
   operation = 'usb';
   updateControls();
   try {
@@ -136,12 +151,13 @@ action.addEventListener('click',async () => {
 
 download.addEventListener('click', async () => {
   if (operation || !build) return;
+  if (!validSpotifySetting()) return;
   operation = 'download';
   updateControls();
   try {
     const files=await prepareInstall(build,getSelectedApps(),name=>{
       connection.textContent='Verifying '+name+'…';
-    },getAppOrder(),getCommunitySelection());
+    },getAppOrder(),getCommunitySelection(),selectedClientId());
     const blob=await makeDownload(build,files);
     const url=URL.createObjectURL(blob);
     const digest=files.find(({part})=>part.name==='resources.tar.gz').part.sha256;

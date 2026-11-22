@@ -20,21 +20,21 @@ if (!navigator.locks) {
     return result;
   }}});
 }
-const redirect = 'https://example.org/eddy-firmware/spotify/';
+const redirect = new URL('../../website/spotify/', import.meta.url).href;
 globalThis.location = {href: redirect, pathname: '/eddy-firmware/spotify/', search: '',
   assign(url) { this.destination = new URL(url); }};
 globalThis.history = {replaceState() { location.search = ''; }};
 globalThis.sessionStorage = {getItem: key => storage.get(key), setItem: (key, value) => storage.set(key, value),
   removeItem: key => storage.delete(key)};
-const auth = await import('../spotify/spotify.js');
-const {startBridge} = await import('../spotify/bridge.js');
+const auth = await import('../../website/spotify/spotify.js');
+const {startBridge} = await import('../../website/spotify/bridge.js');
 
 async function signIn(scope = scopes, corruptState = false, account = 'fixture-account') {
   await auth.authorize(id);
   const args = location.destination.searchParams;
   assert.equal(args.get('scope'), scopes);
   assert.equal(args.get('redirect_uri'), redirect);
-  assert.equal(args.get('show_dialog'), 'true');
+  assert.equal(args.has('show_dialog'), false, 'Spotify can reuse previously granted consent');
   assert.equal(args.get('code_challenge_method'), 'S256');
   location.search = '?' + new URLSearchParams({code: 'code', state: corruptState ? 'wrong' : args.get('state')});
   globalThis.fetch = async (url, {body}) => {
@@ -45,7 +45,7 @@ async function signIn(scope = scopes, corruptState = false, account = 'fixture-a
     assert.equal(args.get('code_challenge'), Buffer.from(digest).toString('base64url'));
     return Response.json({scope, access_token: 'access', refresh_token: 'refresh', expires_in: 3600});
   };
-  await auth.callback(id);
+  await auth.callback(id, new URLSearchParams(location.search));
 }
 
 test('Spotify library requires a new PKCE grant with library access', async () => {
@@ -233,7 +233,7 @@ test('signed-in Flipper browses real response rows and plays only the displayed 
   assert.match(dom.notice.textContent, /unlinked/);
 });
 
-test('the local companion starts PKCE only after Link Spotify is pressed', async () => {
+test('the connection view can retry linking and preserves an existing session', async () => {
   auth.unlink();
   const nodes = new Map();
   globalThis.document = {getElementById(key) {
@@ -250,9 +250,16 @@ test('the local companion starts PKCE only after Link Spotify is pressed', async
   assert.equal(location.destination.searchParams.get('redirect_uri'), redirect);
   await signIn();
   location.destination = undefined;
+  flipper();
   await startBridge(id);
   assert.equal(location.destination, undefined);
   assert.equal(nodes.get('pair').hidden, false);
+  Object.defineProperty(navigator, 'bluetooth', {configurable:true, value:undefined});
+  await startBridge(id);
+  assert.equal(nodes.get('pair').hidden, true);
+  assert.equal(nodes.get('unlink').hidden, false);
+  assert.match(nodes.get('notice').textContent, /Spotify is linked.*Chrome on Android/);
+  assert.equal(auth.linked(id), true);
   auth.unlink();
 });
 
