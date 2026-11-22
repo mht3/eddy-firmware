@@ -10,7 +10,7 @@ test('public guide links to the demo and offers no account login', async () => {
   const html = await file('index.html');
   assert.match(html, /<h1>Spotify setup<\/h1>/);
   assert.match(html, /href="https:\/\/developer\.spotify\.com\/dashboard"/);
-  for (const screenshot of ['dashboard.png', 'blank-create-app.png', 'client-id.webp']) {
+  for (const screenshot of ['dashboard.png', 'blank-create-app.png', 'completed-create-app.png', 'client-id.webp']) {
     assert(html.includes('src="' + screenshot + '"'));
   }
   assert.doesNotMatch(html, /Using the Flipper buttons/);
