@@ -10,6 +10,7 @@
 #include "loader.h"
 #include "loader_i.h"
 #include "loader_menu.h"
+#include "loader_menu_apps_i.h"
 #include "loader_menu_storage_i.h"
 #include "loader_quick_settings.h"
 
@@ -114,24 +115,6 @@ static const LauncherItem sections[] = {
     {"Settings", &A_Settings_14},
     {"Power off", &I_PowerOff_16x16}};
 
-// Catalog IDs are shared with the web installer. Names identify compiled menu apps.
-static const struct {
-    const char* id;
-    const char* name;
-} launcher_catalog[] = {
-    {"signal", "Sub-GHz"},
-    {"rfid", "RFID"},
-    {"infrared", "Infrared"},
-    {"spotify", "Spotify"},
-    {"builder", "Remotes"},
-    {"btRemote", "Bluetooth Remote"},
-    {"music", "Music"},
-    {"gpio", "GPIO"},
-    {"ibutton", "iButton"},
-    {"nfc", "NFC"},
-    {"pomodoro", "Pomodoro Timer"},
-    {"metronome", "Metronome"},
-};
 enum {
     LauncherColumns = 3,
     LauncherPageSize = LauncherColumns * 2
@@ -143,6 +126,7 @@ typedef struct {
     bool in_apps;
     const FlipperExternalApplication** apps;
     size_t app_count;
+    size_t community_start;
     FuriString* pinned_labels[EDDY_REMOTE_PIN_MAX];
     size_t pin_count;
     bool remote_unavailable;
@@ -156,73 +140,6 @@ typedef struct {
     Storage* storage;
     EddyRemotePins pins;
 } Launcher;
-
-static size_t launcher_catalog_index(const char* name) {
-    for(size_t i = 0; i < COUNT_OF(launcher_catalog); ++i) {
-        if(strcmp(name, launcher_catalog[i].name) == 0) return i;
-    }
-    return COUNT_OF(launcher_catalog);
-}
-
-static void launcher_read_order(Storage* storage, uint8_t* order) {
-    bool seen[COUNT_OF(launcher_catalog)] = {false};
-    size_t count = 0;
-    File* file = storage_file_alloc(storage);
-    if(storage_file_open(
-           file, EXT_PATH("eddy/launcher_order.txt"), FSAM_READ, FSOM_OPEN_EXISTING)) {
-        char text[256];
-        uint64_t size = storage_file_size(file);
-        if(size <= sizeof(text) && storage_file_read(file, text, size) == size &&
-           !memchr(text, '\0', size)) {
-            size_t start = 0;
-            for(size_t end = 0; end <= size; ++end) {
-                if(end != size && text[end] != '\n') continue;
-                size_t len = end - start;
-                if(len && text[end - 1] == '\r') --len;
-                for(size_t i = 0; i < COUNT_OF(launcher_catalog); ++i) {
-                    const char* id = launcher_catalog[i].id;
-                    if(!seen[i] && strlen(id) == len && !memcmp(text + start, id, len)) {
-                        seen[i] = true;
-                        order[count++] = i;
-                        break;
-                    }
-                }
-                start = end + 1;
-            }
-        }
-    }
-    storage_file_free(file);
-    // Older installations may omit later apps. Append each missing ID once.
-    for(size_t i = 0; i < COUNT_OF(launcher_catalog); ++i) {
-        if(!seen[i]) order[count++] = i;
-    }
-}
-
-static void launcher_load_apps(LauncherModel* model, Storage* storage) {
-    uint8_t order[COUNT_OF(launcher_catalog)];
-    launcher_read_order(storage, order);
-    const FlipperExternalApplication* installed[COUNT_OF(launcher_catalog)] = {0};
-    model->apps = malloc((FLIPPER_EXTERNAL_APPS_COUNT + 1) * sizeof(*model->apps));
-    model->app_count = 0;
-    for(size_t i = 0; i < FLIPPER_EXTERNAL_APPS_COUNT; ++i) {
-        const FlipperExternalApplication* app = &FLIPPER_EXTERNAL_APPS[i];
-        size_t index = launcher_catalog_index(app->name);
-        if(index < COUNT_OF(installed) && storage_file_exists(storage, app->path))
-            installed[index] = app;
-    }
-    for(size_t i = 0; i < COUNT_OF(installed); ++i) {
-        const FlipperExternalApplication* app = installed[order[i]];
-        if(!app) continue;
-        model->apps[model->app_count++] = app;
-    }
-    // Keep additional menu apps supplied by other builds discoverable as well.
-    for(size_t i = 0; i < FLIPPER_EXTERNAL_APPS_COUNT; ++i) {
-        const FlipperExternalApplication* app = &FLIPPER_EXTERNAL_APPS[i];
-        if(launcher_catalog_index(app->name) == COUNT_OF(installed) &&
-           storage_file_exists(storage, app->path))
-            model->apps[model->app_count++] = app;
-    }
-}
 
 static size_t launcher_vertical(const LauncherModel* model, bool up) {
     size_t count = model->app_count + model->pin_count;
@@ -327,6 +244,8 @@ static bool launcher_input(InputEvent* event, void* context) {
             if(model->app_index >= model->app_count)
                 remote_path = furi_string_get_cstr(
                     launcher->pins.paths[model->app_index - model->app_count]);
+            else if(model->app_index >= model->community_start)
+                launch = model->apps[model->app_index]->path;
             else
                 launch = model->apps[model->app_index]->name;
         } else if(model->in_apps) {
@@ -409,7 +328,8 @@ static int32_t loader_menu_thread(void* context) {
         launcher.grid,
         LauncherModel * model,
         {
-            launcher_load_apps(model, launcher.storage);
+            model->apps = loader_menu_apps_load(
+                launcher.storage, &model->app_count, &model->community_start);
             model->section = menu->section;
             model->pin_count = launcher.pins.count;
             for(size_t i = 0; i < model->pin_count; ++i) {

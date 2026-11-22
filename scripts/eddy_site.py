@@ -7,6 +7,7 @@ import re
 import runpy
 import os
 import shutil
+import struct
 import subprocess
 import tarfile
 from pathlib import Path
@@ -31,6 +32,76 @@ SYSTEM_APPS = {
     "system_settings",
 }
 
+COMMUNITY_LIST = "eddy/community_apps.txt"
+
+
+def fap_target(data):
+    """Read the SDK version and hardware target from an ARM ELF32's .fapmeta section."""
+    if (
+        len(data) < 52
+        or data[:6] != b"\x7fELF\x01\x01"
+        or int.from_bytes(data[18:20], "little") != 40
+    ):
+        raise ValueError("Expected a little-endian ARM Flipper app")
+    table = struct.unpack_from("<I", data, 32)[0]
+    entry_size, count, names_index = struct.unpack_from("<HHH", data, 46)
+    if (
+        entry_size != 40
+        or names_index >= count
+        or table + count * entry_size > len(data)
+    ):
+        raise ValueError("Invalid Flipper app section table")
+
+    def section(index):
+        offset, size = struct.unpack_from("<II", data, table + index * entry_size + 16)
+        return data[offset : offset + size]
+
+    names = section(names_index)
+    for index in range(count):
+        start = struct.unpack_from("<I", data, table + index * entry_size)[0]
+        if names[start : start + 9] == b".fapmeta\0":
+            magic, version, api, target = struct.unpack_from("<IIIH", section(index))
+            if magic == 0x52474448 and version == 1 and target == 7:
+                return api, target
+    raise ValueError("Missing or incompatible Flipper app metadata")
+
+
+def community_artifacts(directory, target):
+    catalog = {}
+    for item in json.loads((directory / "catalog.json").read_text()):
+        app_id, name, alias = (item[key] for key in ("id", "name", "alias"))
+        if (
+            not re.fullmatch(r"[a-z][a-z0-9_-]{0,47}", app_id)
+            or app_id in catalog
+            or not re.fullmatch(r"[A-Za-z0-9_-]+", alias)
+            or not isinstance(name, str)
+            or not name.strip()
+        ):
+            raise ValueError("Invalid or duplicate curated app")
+        data = (directory / (app_id + ".fap")).read_bytes()
+        digest = hashlib.sha256(data).hexdigest()
+        if digest != item["sha256"] or fap_target(data) != target:
+            raise ValueError(f"Curated app hash or SDK does not match: {app_id}")
+        license_file = app_id + ".LICENSE.txt"
+        notice = (directory / license_file).read_bytes()
+        if (
+            item["licenseFile"] != license_file
+            or not notice.strip()
+            or notice != (ROOT / "applications_user" / app_id / "LICENSE").read_bytes()
+        ):
+            raise ValueError(f"Incorrect upstream license for {app_id}")
+        catalog[app_id] = (
+            dict(
+                name=name,
+                alias=alias,
+                size=len(data),
+                sha256=digest,
+                license=notice.decode(),
+            ),
+            data,
+        )
+    return catalog
+
 
 def resource_index(data, profile):
     """Locate app binaries, launcher layout and SD manifest in the verified resource tar."""
@@ -47,7 +118,21 @@ def resource_index(data, profile):
         layout_md5 = hashlib.md5(layout_data, usedforsecurity=False).hexdigest()
         if f"F:{layout_md5}:{layout.size}:{layout.name}" not in rows:
             raise ValueError("Launcher layout does not match the SD resource manifest")
+        community = archive.getmember(COMMUNITY_LIST)
+        if (
+            not community.isfile()
+            or community.offset_data != community.offset + 512
+            or community.size
+            or f"F:d41d8cd98f00b204e9800998ecf8427e:0:{COMMUNITY_LIST}" not in rows
+        ):
+            raise ValueError(
+                "Expected an empty community app list in the base firmware"
+            )
         for member in archive:
+            if member.name == "apps/Community" or member.name.startswith(
+                "apps/Community/"
+            ):
+                raise ValueError("Community apps must be opt-in")
             if (
                 member.name.endswith(".fal")
                 and member.name != "apps_data/cli/plugins/cli_src.fal"
@@ -74,7 +159,15 @@ def resource_index(data, profile):
             if f"F:{digest.hexdigest()}:{member.size}:{member.name}" not in rows:
                 raise ValueError(f"Resource manifest mismatch: {member.name}")
             apps[app_id] = {"name": member.name, "offset": member.offset}
-    return {"manifest": manifest.offset, "launcherOrder": layout.offset, "apps": apps}
+        target = fap_target(archive.extractfile(apps["eddy_spotify"]["name"]).read())
+        index = dict(
+            manifest=manifest.offset,
+            launcherOrder=layout.offset,
+            communityList=community.offset,
+            archiveEnd=archive.offset,
+            apps=apps,
+        )
+    return index, target
 
 
 def validate_radio_layout(components, manifest, options):
@@ -178,16 +271,21 @@ def stage(package=None):
     ).strip()
     if metadata["firmware_dirty"]:
         commit = None
-    indexed_apps = resource_index(
+    indexed_apps, target = resource_index(
         components["resources.tar.gz"], options["FIRMWARE_APPS"]["eddy"]
     )
+    community = community_artifacts(ROOT / "website/community", target)
     site = ROOT / "dist/eddy-site"
     if site.exists():
         shutil.rmtree(site)
-    shutil.copytree(ROOT / "website", site)
+    shutil.copytree(ROOT / "website", site, ignore=shutil.ignore_patterns("*.fap"))
     shutil.copy2(package, site / "firmware" / package.name)
     parts_dir = site / "firmware" / version
     parts_dir.mkdir()
+    community_dir = parts_dir / "community"
+    community_dir.mkdir()
+    for app_id, (_, data) in community.items():
+        (community_dir / (app_id + ".fap")).write_bytes(data)
     parts = []
     for name, data in components.items():
         (parts_dir / name).write_bytes(data)
@@ -202,6 +300,7 @@ def stage(package=None):
     build = dict(
         parts=parts,
         resourceIndex=indexed_apps,
+        communityApps={app_id: meta for app_id, (meta, _) in community.items()},
         target="f7",
         version=version,
         file=package.name,

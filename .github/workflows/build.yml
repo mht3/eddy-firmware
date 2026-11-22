@@ -17,11 +17,8 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Check radio restrictions, remote storage and personal Spotify setup
-        run: |
-          python3 -m venv "$RUNNER_TEMP/spotify-setup"
-          "$RUNNER_TEMP/spotify-setup/bin/pip" install segno==1.6.6
-          "$RUNNER_TEMP/spotify-setup/bin/python" -m unittest discover -s scripts/tests
+      - name: Check radio restrictions, remote storage and the Spotify device interface
+        run: python3 -m unittest discover -s scripts/tests
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -29,20 +26,10 @@ jobs:
         run: node --test scripts/tests/test_*.mjs
       - name: Fetch pinned firmware dependencies
         run: git submodule update --init --jobs 8 -- assets/protobuf lib
-      - name: Configure the Spotify companion for this deployment
-        if: github.event_name != 'pull_request' && vars.EDDY_SPOTIFY_CLIENT_ID != ''
-        env:
-          CLIENT_ID: ${{ vars.EDDY_SPOTIFY_CLIENT_ID }}
-          SPOTIFY_SITE: ${{ vars.EDDY_SPOTIFY_SITE }}
-        run: |
-          repo_name="${GITHUB_REPOSITORY#*/}"
-          pages_host="${GITHUB_REPOSITORY_OWNER,,}.github.io"
-          pages_base="https://$pages_host"
-          if [[ "${repo_name,,}" != "$pages_host" ]]; then pages_base+="/$repo_name"; fi
-          "$RUNNER_TEMP/spotify-setup/bin/python" scripts/setup_spotify.py --site "${SPOTIFY_SITE:-$pages_base/spotify/}" --client-id "$CLIENT_ID"
-          echo "DIST_SUFFIX=eddy-personal-${GITHUB_SHA:0:8}-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
       - name: Build the F7 main package
         run: FBT_NO_SYNC=1 ./fbt STRICT_FAP_IMPORT_CHECK=1 updater_package
+      - name: Build optional community apps with the matching Eddy SDK
+        run: python3 scripts/build_community_apps.py
       - name: Prepare website with matching firmware
         run: python3 scripts/eddy_site.py
       - uses: actions/upload-artifact@v4

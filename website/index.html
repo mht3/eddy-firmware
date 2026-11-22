@@ -123,12 +123,26 @@
               Meet Eddy.
             </h2>
             <p id="preview-intro">Press the center button for Apps, Settings, and Power off. Try Up from home for brightness and volume.</p>
+            <div id="spotify-lesson" hidden>
+              <div aria-live="polite" aria-atomic="true">
+                <p id="lesson-step"></p>
+                <h3 id="lesson-title"></h3>
+                <p id="lesson-instruction"></p>
+              </div>
+              <progress id="lesson-progress" aria-label="Tour progress"></progress>
+              <p id="lesson-hint" role="status"></p>
+              <div class="lesson-actions">
+                <button type="button" id="lesson-retry">Repeat step</button>
+                <button type="button" id="lesson-exit">Explore freely</button>
+              </div>
+            </div>
+            <button type="button" class="small-cta" id="lesson-start" hidden>Start guided tour</button>
             <a href="update/#app-picker" class="cta" id="return-to-picker" hidden>Back to app selection</a>
             <div class="music-tour">
               <h3>Spotify</h3>
               <p>Open Morning Swim, queue up Dolphin Days, or find a favorite line. Try it with a sample library.</p>
-              <button class="small-cta" id="try-spotify" type="button">Try Spotify playlists</button>
-              <a href="spotify/">Set up Spotify</a>
+              <button class="small-cta" id="try-spotify" type="button">Try the Spotify demo!</button>
+              <a href="spotify/">Spotify setup</a>
             </div>
             <span class="sr-only" id="control-help">The preview uses sample data.</span>
           </section>
@@ -150,13 +164,6 @@
           <a class="cta" href="update/">Open Eddy updater</a>
         </div>
       </section>
-      <dialog id="spotify-search" class="name-dialog" aria-labelledby="spotify-search-label">
-        <form>
-          <label id="spotify-search-label" for="spotify-query">Search songs and artists</label>
-          <input id="spotify-query" type="search" placeholder="Try Tide or Mara Cove" required maxlength="64" autocomplete="off">
-          <div><button type="button">Cancel</button><button type="submit">Search</button></div>
-        </form>
-      </dialog>
       <dialog id="frequency-dialog" class="name-dialog" aria-labelledby="frequency-label">
         <form method="dialog">
           <label id="frequency-label" for="receive-frequency">Receive frequency (kHz)</label>

@@ -9,28 +9,39 @@ enum {
 
 typedef enum {
     SpotifyHome,
-    SpotifyFindKind,
     SpotifyPlayer,
     SpotifyResults,
     SpotifyActions,
     SpotifyDestinations,
     SpotifyLyricsHelp,
+    SpotifyVolume,
+    SpotifyPresets,
+    SpotifyPresetManage,
+    SpotifyPresetDirection,
+    SpotifyPresetPick,
 } SpotifyScene;
 
 typedef struct {
     SpotifyLibrary library;
-    const uint8_t* setup_qr;
     uint32_t scroll;
     uint8_t category;
     SpotifyScene scene;
     char now_playing[SpotifyLabelBytes + 1];
     uint8_t play_state;
+    uint8_t volume;
+    bool volume_pending;
+    uint8_t volume_target;
+    uint8_t preset_direction;
+    uint8_t preset_option;
+    char preset_labels[SpotifyRows][SpotifyLabelBytes + 1];
+    bool presets_loaded;
+    bool toolbar_focus;
+    uint8_t tool;
     uint8_t title_bytes;
     uint32_t duration_s;
     uint32_t elapsed_s;
     uint8_t action;
     bool child_tracks;
-    bool find_artist;
     bool connected;
     bool bridge;
     bool manual_qr;

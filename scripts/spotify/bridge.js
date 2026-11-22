@@ -1,29 +1,31 @@
-import {addTrack, authorize, callback, controlPlayer, libraryPage, linked, pageSize, PlaybackError, playLibraryItem, queueTrack, selectedRow, unlink} from './spotify.js';
+import {addTrack, authorize, callback, controlPlayer, holdPlaylistShortcut, libraryPage, linked, pageSize, PlaybackError, playLibraryItem, playShortcut, queueTrack, selectedRow, sessionMarker, setPlayerVolume, setShortcut, shortcutPage, unlink} from './spotify.js';
 
 const uuid = n => 'efdd000' + n + '-5a34-4a32-9fab-1f72e60d00ed';
 const get = id => document.getElementById(id);
-const categories = new Map([[0x10, 'track'], [0x18, 'playlist'], [0x19, 'album'], [0x1a, 'track'], [0x1b, 'artist'], [0x1c, 'now'], [0x1e, 'queue']]);
+const categories = new Map([[0x10, 'track'], [0x18, 'playlist'], [0x19, 'album'], [0x1c, 'now'], [0x1e, 'queue']]);
 const next = 0x11, previous = 0x12, hello = 0x15, dismiss = 0x16, parent = 0x1d;
-const playRow = 0x20, artistRow = 0x24, queueRow = 0x28, chooseRow = 0x30, addRow = 0x34, collectionRow = 0x38;
-const rowOperations = [playRow, artistRow, queueRow, chooseRow, addRow, collectionRow];
+const playRow = 0x20, queueRow = 0x28, chooseRow = 0x30, addRow = 0x34, collectionRow = 0x38;
+const rowOperations = [playRow, queueRow, chooseRow, addRow, collectionRow];
 
 function decodeCommand(value) {
   if (!value || value.byteLength < 5 || value.byteLength > 20) return;
   const op = value.getUint8(0), token = value.getUint16(1, true), base = value.getUint16(3, true);
-  const control = op >= 0x40 && op <= 0x42;
-  const standalone = control || categories.has(op) || op === hello || op === dismiss;
-  let query;
-  if (op === 0x1a || op === 0x1b) {
-    try {
-      const bytes = new Uint8Array(value.buffer, value.byteOffset + 5, value.byteLength - 5);
-      query = new TextDecoder('utf-8', {fatal:true}).decode(bytes).trim();
-    } catch { return; }
-    if (!query || /[\x00-\x1f\x7f]/.test(query)) return;
+  const assign = op >= 0x50 && op < 0x60;
+  const hold = op >= 0x70 && op < 0x80;
+  const playPreset = op >= 0x60 && op < 0x64;
+  const clearPreset = op >= 0x68 && op < 0x6c;
+  const control = (op >= 0x40 && op <= 0x43) || op === 0x45 || playPreset || clearPreset;
+  const standalone = control || op === 0x64 || op === 0x46 || categories.has(op) || op === hello || op === dismiss;
+  let volume;
+  if (op === 0x43) {
+    if (value.byteLength !== 6) return;
+    volume = value.getUint8(5);
+    if (volume > 100) return;
   } else if (value.byteLength !== 5) return;
   if (!token || (standalone ? base !== 0 : !base)) return;
   const action = rowOperations.find(start => op >= start && op < start + pageSize);
-  if (standalone || op === next || op === previous || op === parent || action !== undefined) {
-    return {op, token, base, query, control, action, row:op - action};
+  if (assign || hold || standalone || op === next || op === previous || op === parent || action !== undefined) {
+    return {op, token, base, volume, control, action, assign, hold, playPreset, clearPreset, row:assign || hold ? (op & 3) : op - action};
   }
 }
 
@@ -65,7 +67,7 @@ function pagePackets(page, token) {
     const progress = Number.isSafeInteger(page.progressMs) ? Math.max(0, Math.min(duration, page.progressMs + elapsed)) : 0;
     view.setUint32(0, progress, true);
     view.setUint32(4, duration, true);
-    header = packet(0x10, token, page.playState, ...timing, labelBytes(page.rows[0]?.name || '').length);
+    header = packet(0x10, token, page.playState, ...timing, labelBytes(page.rows[0]?.name || '').length, page.volume ?? 255);
   }
   const packets = [header];
   for (const [row, song] of page.rows.entries()) {
@@ -125,8 +127,8 @@ async function connect(device, onCommand, onDrop) {
   }
 }
 
-export async function startBridge(id, scanned = false) {
-  let session, lastDevice, pending = false, cooldown = 0;
+export async function startBridge(id) {
+  let session, lastDevice, pending = false, cooldown;
   let attempt = 0, retryTimer, retryIndex = 0;
   const retryDelays = [1000, 3000, 6000, 12000, 24000, 30000];
   const droppedMessage = 'Waiting for your Flipper. Leave this tab open and turn your Flipper back on.';
@@ -210,6 +212,10 @@ export async function startBridge(id, scanned = false) {
   // fresh first-page command and invalidates the previous foreground app's request.
   async function respond(current, request) {
     if (session !== current || !current.device) return;
+    if (sessionMarker(id) !== current.grant) {
+      await disconnect('Spotify account changed. Reconnect the Flipper to use this account.', true);
+      return;
+    }
     const {op, token, base} = request;
     if (op === dismiss) { forgetPage(current); return; }
     if (op === hello) {
@@ -240,7 +246,7 @@ export async function startBridge(id, scanned = false) {
     const controller = new AbortController();
     current.controller = controller;
     const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]);
-    const active = () => session === current && current.active === request;
+    const active = () => session === current && current.active === request && sessionMarker(id) === current.grant;
     let writing = false;
     async function send(bytes) {
       if (!active()) return;
@@ -249,23 +255,45 @@ export async function startBridge(id, scanned = false) {
       writing = false;
     }
     try {
-      if (!first && !request.control && current.page?.token !== base) {
+      if (!first && !request.control && op !== 0x64 && op !== 0x46 && current.page?.token !== base) {
         throw new PlaybackError(3, 'The displayed page changed. Reopen the library section and try again.');
       }
-      if (Date.now() < cooldown) throw new PlaybackError(4, 'Spotify is busy. Wait a moment before retrying.');
+      if (cooldown && Date.now() < cooldown.until) throw new PlaybackError(4, cooldown.message);
       const {action, row} = request;
-      if (request.control) {
+      if (request.control || request.assign || request.hold) {
         current.controls ??= new Map();
-        if (current.controls.has(token) && current.controls.get(token) !== op)
+        const commandKey = (op << 8) | (request.volume ?? 0);
+        const earlier = current.controls.get(token);
+        if (earlier && (earlier.commandKey !== commandKey || earlier.base !== base))
           throw new PlaybackError(3, 'Try the player control again.');
-        if (!current.controls.has(token)) {
-          await controlPlayer(id, op, signal);
+        let ack = earlier?.ack ?? (request.assign || request.hold ? row : 0);
+        if (!earlier) {
+          if (request.hold) {
+            const played = await holdPlaylistShortcut(id, (op - 0x70) >> 2, current.page, row, signal);
+            if (played) ack += pageSize;
+          } else if (request.assign) {
+            await setShortcut(id, (op - 0x50) >> 2, current.page, row, signal);
+          } else if (request.playPreset) {
+            await playShortcut(id, op - 0x60, signal);
+          } else if (request.clearPreset) {
+            await setShortcut(id, op - 0x68, null, 0, signal);
+          } else if (op === 0x43) {
+            await setPlayerVolume(id, current.now?.page, request.volume, signal);
+          } else if (op === 0x45) {
+            await queueTrack(id, current.now?.page, 0, signal);
+          } else {
+            await controlPlayer(id, op, signal);
+          }
           if (!active()) return;
           if (current.controls.size >= 32) current.controls.delete(current.controls.keys().next().value);
-          current.controls.set(token, op);
-          current.now = null;
+          current.controls.set(token, {commandKey, base, ack});
+          if (op !== 0x45 && !request.clearPreset && !request.assign && (!request.hold || ack >= pageSize)) current.now = null;
         }
-        await send(packet(0x14, token, 0));
+        await send(packet(0x14, token, ack));
+      } else if (op === 0x64) {
+        const shortcuts = await shortcutPage(id, signal);
+        for (const bytes of pagePackets(shortcuts, token)) await send(bytes);
+        if (active()) showLibraryLinks([...shortcuts.rows, ...(current.page?.rows || [])]);
       } else if (action === playRow || action === queueRow || action === addRow) {
         const page = current.page;
         if (page.source.destinationFor && action !== addRow)
@@ -294,10 +322,9 @@ export async function startBridge(id, scanned = false) {
           throw new PlaybackError(3, 'Open your library to choose another item.');
         let source = displayed?.source;
         let offset = 0;
-        if (first) source = {kind:categories.get(op), query:request.query};
-        else if (action === artistRow) {
-          const artist = selectedRow(current.page, row, 'artist');
-          source = {kind:'track', artist:artist.uri, query:'artist:"' + artist.name.replace(/"/g, ' ') + '"'};
+        if (first) source = {kind:categories.get(op)};
+        else if (op === 0x46) {
+          source = {kind:'playlist', destinationFor:selectedRow(current.now?.page, 0, 'track').uri};
         } else if (action === collectionRow) {
           if (displayed.source.destinationFor || !['album', 'playlist'].includes(displayed.kind))
             throw new PlaybackError(3, 'Choose an album or playlist to see its songs.');
@@ -311,22 +338,25 @@ export async function startBridge(id, scanned = false) {
         if (op === parent) page = displayed.parent;
         else if (status && current.now && Date.now() - current.now.at < 5000) page = current.now.page;
         else page = await libraryPage(id, source, offset, signal);
-        if (action === artistRow || action === chooseRow || action === collectionRow) page.parent = displayed;
+        if (op === 0x46 || action === chooseRow || action === collectionRow) page.parent = displayed;
         else if (!first && op !== parent) page.parent = displayed.parent;
+        // A player can report volume support and then reject the write. Refresh other
+        // metadata normally and briefly disable that player’s slider after a refusal.
+        if (status && current.volumeDenied?.key === page.deviceKey && Date.now() < current.volumeDenied.until)
+          page = {...page, volume:null};
         for (const bytes of pagePackets(page, token)) {
           if (!active()) return;
           await send(bytes);
         }
         if (!active()) return;
         if (status) {
-          if (current.now?.page !== page) current.now = {at:Date.now(), page};
+          if (current.now?.page !== page) current.now = {at:page.sampledAt, page};
           showLibraryLinks([...(current.page?.rows || []), ...page.rows]);
           return;
         }
         current.page = {...page, token};
         showLibraryLinks([...page.rows, ...(current.now?.page.rows || [])]);
         if (!page.rows.length && page.hasNext) notice('Press Right on your Flipper to look for more matches.');
-        else if (source.query && !page.rows.length) notice('No matches. Try another search on your Flipper.');
         else notice(page.rows.length ? 'Your library page is ready on the Flipper.' : 'This section of your library is empty.');
       }
     } catch (error) {
@@ -337,7 +367,13 @@ export async function startBridge(id, scanned = false) {
       } else showLibraryLinks();
       if (writing) { lostConnection(); return; }
       const issue = error instanceof PlaybackError ? error : new PlaybackError(2, 'Connection interrupted. Retry on your Flipper.');
-      if (issue.retryMs) cooldown = Date.now() + issue.retryMs;
+      if (op === 0x43) {
+        if (issue.code === 5 && current.now?.page) {
+          current.volumeDenied = {key:current.now.page.deviceKey, until:Date.now() + 30000};
+        }
+        current.now = null;
+      }
+      if (issue.retryMs) cooldown = {until: Date.now() + issue.retryMs, message: issue.message};
       notice(issue.message);
       try { await send(packet(0x13, token, issue.code)); }
       catch { if (active()) lostConnection(); return; }
@@ -361,7 +397,7 @@ export async function startBridge(id, scanned = false) {
     pending = true;
     render();
     notice(lastDevice ? 'Reconnecting to your Flipper…' : 'Choose your Flipper and leave Apps → Spotify open.');
-    const current = {};
+    const current = {grant:sessionMarker(id)};
     const sequence = ++attempt;
     try {
       current.device = await connect(lastDevice, request => respond(current, request), () => {
@@ -402,16 +438,6 @@ export async function startBridge(id, scanned = false) {
   render();
   try {
     await callback(id);
-    if (scanned) {
-      // Consume the scan before leaving, so Back or a canceled grant never loops.
-      history.replaceState(null, '', location.pathname);
-      if (!linked(id)) {
-        notice('Opening Spotify for permission…');
-        await authorize(id);
-      } else {
-        notice('Spotify is linked. Choose your Flipper to show your library.');
-      }
-    }
   }
   catch (error) { notice(error.message); }
   pending = false;

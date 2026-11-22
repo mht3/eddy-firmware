@@ -47,7 +47,7 @@ bool ble_svc_media_listen(BleMediaEventCallback callback, void* context);
 void ble_svc_media_unlisten(void* context);
 bool ble_svc_media_send(void* context, uint8_t command, bool hid);
 
-/** Request a Spotify library page or track on the active bridge. */
+/** Request a Spotify operation. For volume (0x43), pass the target percent in place of a page token. */
 bool ble_svc_media_library_request(
     void* context,
     uint16_t connection,
@@ -55,7 +55,7 @@ bool ble_svc_media_library_request(
     uint16_t request,
     uint16_t page);
 
-/** Search text must fit the default ATT payload (1 to 15 UTF-8 bytes). */
+/** Retained for older FAP binaries. Catalog search is unavailable. */
 bool ble_svc_media_library_search(
     void* context,
     uint16_t connection,

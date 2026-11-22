@@ -5,17 +5,31 @@ import {setImmediate as tick} from 'node:timers/promises';
 
 const id = '0'.repeat(32);
 const scopes = 'user-library-read playlist-read-private playlist-read-collaborative user-modify-playback-state user-read-currently-playing user-read-playback-state playlist-modify-private playlist-modify-public';
-const storage = new Map();
+const storage = new Map(), preferences = new Map();
+globalThis.localStorage = {getItem:key => preferences.get(key) ?? null,
+  setItem:(key,value) => preferences.set(key,value), removeItem:key => preferences.delete(key)};
+// Node 22's browser harness lacks Web Locks. Chromium and newer Node releases supply them.
+if (!navigator.locks) {
+  const pending = new Map();
+  Object.defineProperty(navigator, 'locks', {value:{request(key, {signal}, update) {
+    const result = (pending.get(key) || Promise.resolve()).then(() => {
+      signal.throwIfAborted();
+      return update();
+    });
+    pending.set(key, result.catch(() => {}));
+    return result;
+  }}});
+}
 const redirect = 'https://example.org/eddy-firmware/spotify/';
 globalThis.location = {href: redirect, pathname: '/eddy-firmware/spotify/', search: '',
   assign(url) { this.destination = new URL(url); }};
 globalThis.history = {replaceState() { location.search = ''; }};
 globalThis.sessionStorage = {getItem: key => storage.get(key), setItem: (key, value) => storage.set(key, value),
   removeItem: key => storage.delete(key)};
-const auth = await import('../../website/spotify/spotify.js');
-const {startBridge} = await import('../../website/spotify/bridge.js');
+const auth = await import('../spotify/spotify.js');
+const {startBridge} = await import('../spotify/bridge.js');
 
-async function signIn(scope = scopes, corruptState = false) {
+async function signIn(scope = scopes, corruptState = false, account = 'fixture-account') {
   await auth.authorize(id);
   const args = location.destination.searchParams;
   assert.equal(args.get('scope'), scopes);
@@ -24,6 +38,7 @@ async function signIn(scope = scopes, corruptState = false) {
   assert.equal(args.get('code_challenge_method'), 'S256');
   location.search = '?' + new URLSearchParams({code: 'code', state: corruptState ? 'wrong' : args.get('state')});
   globalThis.fetch = async (url, {body}) => {
+    if (url === 'https://api.spotify.com/v1/me') return Response.json({account_id:account, id:'profile'});
     assert.equal(url, 'https://accounts.spotify.com/api/token');
     assert.equal(body.get('redirect_uri'), redirect);
     const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(body.get('code_verifier')));
@@ -218,7 +233,7 @@ test('signed-in Flipper browses real response rows and plays only the displayed 
   assert.match(dom.notice.textContent, /unlinked/);
 });
 
-test('device scan starts PKCE once, guide visits and linked accounts stay on the page', async () => {
+test('the local companion starts PKCE only after Link Spotify is pressed', async () => {
   auth.unlink();
   const nodes = new Map();
   globalThis.document = {getElementById(key) {
@@ -229,19 +244,19 @@ test('device scan starts PKCE once, guide visits and linked accounts stay on the
   location.destination = undefined;
   await startBridge(id);
   assert.equal(location.destination, undefined);
-  await startBridge(id, true);
+  await nodes.get('link').onclick();
   assert.equal(location.destination.origin, 'https://accounts.spotify.com');
   assert.equal(location.destination.searchParams.get('code_challenge_method'), 'S256');
   assert.equal(location.destination.searchParams.get('redirect_uri'), redirect);
   await signIn();
   location.destination = undefined;
-  await startBridge(id, true);
+  await startBridge(id);
   assert.equal(location.destination, undefined);
   assert.equal(nodes.get('pair').hidden, false);
   auth.unlink();
 });
 
-test('search, artist matching, queue, owned playlist choices, Back and Now Playing over BLE', async t => {
+test('library, queue, owned playlist choices, Back and Now Playing over BLE', async t => {
   await signIn();
   const nodes = new Map();
   globalThis.document = {
@@ -258,8 +273,19 @@ test('search, artist matching, queue, owned playlist choices, Back and Now Playi
   const artist = {name:'Eddy', uri:uri('artist', 5)};
   const track = {type:'track', name:'Tidé - Mix', duration_ms:240000, uri:uri('track', 1), artists:[artist]};
   let playing = true, progress = 8000;
+  const player = {id:'desktop', supports_volume:true, volume_percent:37};
+  let volumeDenied = false;
   globalThis.fetch = async (url, options) => {
     const {pathname, searchParams} = new URL(url);
+    if (pathname === '/v1/me/player/volume') {
+      assert.equal(options.method, 'PUT');
+      assert.equal(searchParams.get('device_id'), player.id);
+      const volume = Number(searchParams.get('volume_percent'));
+      writes.push([pathname, volume]);
+      if (volumeDenied) return Response.json({error:{reason:'RESTRICTION_VIOLATED'}}, {status:403});
+      player.volume_percent = Math.min(volume, 80); // Real player may apply its own cap.
+      return new Response(null, {status:204});
+    }
     if (options.method === 'POST' || options.method === 'PUT') {
       writes.push([pathname, searchParams.get('uri') ?? searchParams.get('position_ms'), options.body && JSON.parse(options.body)]);
       return new Response(null, {status:204});
@@ -268,22 +294,19 @@ test('search, artist matching, queue, owned playlist choices, Back and Now Playi
     if (pathname === '/v1/me/player/queue') return Response.json({queue:[
       {type:'episode'}, ...Array.from({length:5}, () => track)]});
     if (pathname === '/v1/me') return Response.json({id:'owner'});
-    if (pathname === '/v1/me/player/currently-playing')
+    if (pathname === '/v1/me/player/currently-playing' || pathname === '/v1/me/player')
       return playing === null ? new Response(null, {status:204}) :
-        Response.json({is_playing:playing, progress_ms:progress, item:track});
+        Response.json({is_playing:playing, progress_ms:progress, item:track, device:player});
     if (pathname === '/v1/me/playlists') {
       const items = Array.from({length:8}, (_, n) => ({name:'List '+n, uri:uri('playlist', n),
         owner:{id:n%3 === 0 ? 'other' : 'owner'}}));
+      if (searchParams.get('limit') === '4') return Response.json({items:[items[1]], offset:0, next:null});
       assert.equal(searchParams.get('limit'), '50');
       return Response.json({items, offset:0, next:null});
     }
-    assert.equal(pathname, '/v1/search');
-    const type = searchParams.get('type'), query = searchParams.get('q');
-    if (type === 'artist') assert.equal(query, 'Eddy');
-    if (type === 'track') assert(['Tidé & Sea', 'artist:"Eddy"'].includes(query));
-    const items = type === 'artist' ? [artist] : [track];
-    if (query.startsWith('artist:')) items.unshift({...track, name:'Other', artists:[{name:'Eddy', uri:uri('artist', 9)}]});
-    return Response.json({[type+'s']:{offset:0, items, next:null}});
+    if (pathname === '/v1/me/tracks') return Response.json({items:[{track}], offset:0, next:null});
+    if (pathname.endsWith('/items')) return Response.json({items:[{item:track}], offset:0, next:null});
+    assert.fail('Unexpected Spotify endpoint ' + pathname);
   };
   await startBridge(id);
   await nodes.get('pair').onclick();
@@ -295,8 +318,8 @@ test('search, artist matching, queue, owned playlist choices, Back and Now Playi
     return device.frames.at(-1);
   }
   const begin = (op, args) => device.frames.some(p => JSON.stringify(p) === JSON.stringify([0x10,op,0,...args]));
-  const query = await command(0x1a, 0, 'Tidé & Sea');
-  assert.deepEqual(query, [0x12,1,0,1,0,0,0,0,0,0]);
+  const liked = await command(0x10);
+  assert.deepEqual(liked, [0x12,1,0,1,0,0,0,0,0,0]);
   assert.deepEqual(await command(0x28, 1), [0x14,2,0,0]);
   device.send(0x28,2,0,1,0);
   await drain();
@@ -313,8 +336,8 @@ test('search, artist matching, queue, owned playlist choices, Back and Now Playi
   assert.deepEqual(await command(0x34, 4), [0x13,7,0,3]);
   assert.deepEqual(await command(0x34, 6), [0x13,8,0,3]);
   assert.equal(writes.length, 2);
-  assert.deepEqual(await command(0x1b, 0, 'Eddy'), [0x12,9,0,1,0,0,0,0,0,0]);
-  assert.deepEqual(await command(0x24, 9), [0x12,10,0,1,0,0,0,0,0,0]);
+  assert.deepEqual(await command(0x18), [0x12,9,0,1,0,0,0,0,0,0]);
+  assert.deepEqual(await command(0x38, 9), [0x12,10,0,1,0,0,0,0,0,0]);
   assert.deepEqual(await command(0x1d, 10), [0x12,11,0,1,0,0,0,0,0,0]);
   const realNow = Date.now;
   let clock = realNow();
@@ -330,9 +353,9 @@ test('search, artist matching, queue, owned playlist choices, Back and Now Playi
       timing.writeUInt32LE(8000, 0);
       timing.writeUInt32LE(240000, 4);
     }
-    assert(begin(token, [flag, ...timing, count ? Buffer.byteLength(track.name) : 0]));
+    assert(begin(token, [flag, ...timing, count ? Buffer.byteLength(track.name) : 0, count ? 37 : 255]));
   }
-  assert.deepEqual(await command(0x24, 11), [0x12,15,0,1,0,0,0,0,0,0]); // Polls retained the artist results.
+  assert.deepEqual(await command(0x38, 11), [0x12,15,0,1,0,0,0,0,0,0]); // Polls retained the playlist selection.
   assert.deepEqual(await command(0x1e), [0x12,16,0,4,0,1,0,0,0,0]);
   assert.deepEqual(await command(0x11, 16), [0x12,17,0,1,1,0,4,0,0,0]);
   assert.equal(reads.filter(path => path.endsWith('/queue')).length, 1);
@@ -347,7 +370,7 @@ test('search, artist matching, queue, owned playlist choices, Back and Now Playi
   const originalFetch = globalThis.fetch;
   let releasePoll;
   globalThis.fetch = (url, options) => {
-    if (new URL(url).pathname.endsWith('/currently-playing'))
+    if (new URL(url).pathname === '/v1/me/player')
       return new Promise(resolve => { releasePoll = resolve; });
     return originalFetch(url, options);
   };
@@ -389,12 +412,54 @@ test('search, artist matching, queue, owned playlist choices, Back and Now Playi
   device.send(0x42,26,0,0,0);
   await drain();
   assert.equal(writes.length, mutationCount);
+  async function statusVolume() {
+    await command(0x1c);
+    return device.frames.findLast(frame => frame[0] === 0x10 && frame[1] === token)[13];
+  }
+  async function setVolume(percent) {
+    device.send(0x43,++token,0,0,0,percent);
+    await drain();
+    return device.frames.at(-1);
+  }
+  assert.equal(await statusVolume(), 37);
+  assert.deepEqual(await setVolume(95), [0x14,token,0,0]);
+  const afterSetting = writes.length;
+  device.send(0x43,token,0,0,0,95); // Duplicate must not change volume again.
+  await drain();
+  assert.equal(writes.length, afterSetting);
+  assert.equal(await statusVolume(), 80); // Authoritative, rather than the slider's requested 95.
+  assert.deepEqual(await command(0x45), [0x14,token,0,0]);
+  assert.deepEqual(writes.at(-1), ['/v1/me/player/queue',track.uri,undefined]);
+  await command(0x46);
+  assert.deepEqual(await command(0x34,token), [0x14,token,0,0]);
+  const destinations = token - 1;
+  assert.deepEqual(await command(0x1d,destinations), [0x12,token,0,1,1,0,4,0,0,0]);
+  volumeDenied = true;
+  assert.deepEqual(await setVolume(42), [0x13,token,0,5]);
+  assert.equal(await statusVolume(), 255);
+  volumeDenied = false;
+  const afterRefusal = writes.length;
+  assert.deepEqual(await setVolume(45), [0x13,token,0,5]);
+  assert.equal(writes.length, afterRefusal);
+  player.id = 'new-player';
+  clock += 31000;
+  assert.equal(await statusVolume(), 80);
+  player.supports_volume = false;
+  clock += 7000;
+  assert.deepEqual(await setVolume(10), [0x13,token,0,5]);
+  assert.equal(writes.length, afterRefusal);
+  assert.equal(await statusVolume(), 255);
+  const beforeMalformed = device.frames.length;
+  device.send(0x43,190,0,0,0,101); // outside supported percentage
+  device.send(0x43,191,0,0,0); // missing percentage
+  device.send(0x43,192,0,1,0,25); // unexpected page token
+  await drain();
+  assert.equal(device.frames.length, beforeMalformed);
 });
 
-test('sparse artist results bound each request and a canceled Next keeps its cursor intact', async () => {
+test('sparse owned playlists bound each request and a canceled Next keeps its cursor intact', async () => {
   await signIn();
-  const artist = 'spotify:artist:'+'2'.repeat(22);
-  const source = {kind:'track', artist, query:'artist:"Eddy"'};
+  const source = {kind:'playlist', destinationFor:'spotify:track:'+'2'.repeat(22), owner:'owner'};
   const starts = [];
   let fail = false;
   globalThis.fetch = async url => {
@@ -402,10 +467,10 @@ test('sparse artist results bound each request and a canceled Next keeps its cur
     starts.push(start);
     if (fail && start === 30) throw new Error('disconnected');
     const items = Array.from({length:10}, (_, i) => ({
-      name:'Song '+(start+i), artists:[{uri:start >= 25 ? artist : 'another'}],
-      uri:'spotify:track:'+String(start+i).padStart(22,'0'),
+      name:'List '+(start+i), owner:{id:start >= 25 ? 'owner' : 'another'},
+      uri:'spotify:playlist:'+String(start+i).padStart(22,'0'),
     }));
-    return Response.json({tracks:{offset:start, items, next:start < 40 ? 'next' : null}});
+    return Response.json({offset:start, items, next:start < 40 ? 'next' : null});
   };
   const signal = new AbortController().signal;
   const first = await auth.libraryPage(id, source, 0, signal);
@@ -417,7 +482,137 @@ test('sparse artist results bound each request and a canceled Next keeps its cur
   fail = false;
   const second = await auth.libraryPage(id, first.source, 4, signal);
   assert.deepEqual(starts, [0,10,20,30,20,30]);
-  assert.equal(second.rows[0].name, 'Song 30');
+  assert.equal(second.rows[0].name, 'List 30');
   assert.equal(first.source.cursor.pages.length, 1);
   auth.unlink();
+});
+
+test('Spotify distinguishes account quota, server rate limits and restricted playback', async () => {
+  await signIn();
+  const signal = new AbortController().signal;
+  async function errorFrom(status, body, headers) {
+    globalThis.fetch = async () => Response.json(body, {status, headers});
+    try {
+      await auth.controlPlayer(id, 0x42, signal);
+    } catch (error) {
+      return error;
+    }
+    assert.fail('Expected Spotify error');
+  }
+  const quota = await errorFrom(429, {error:{reason:'QUOTA_EXCEEDED'}});
+  assert.equal(quota.code, 4);
+  assert.match(quota.message, /request quota/);
+  const rate = await errorFrom(429, {error:{message:'too many requests'}}, {'Retry-After':'3'});
+  assert.equal(rate.retryMs, 3000);
+  assert.match(rate.message, /too many requests/);
+  const restricted = await errorFrom(403, {error:{reason:'RESTRICTION_VIOLATED'}});
+  assert.match(restricted.message, /current item/);
+  const premium = await errorFrom(403, {error:{reason:'PREMIUM_REQUIRED'}});
+  assert.match(premium.message, /Premium/);
+  auth.unlink();
+});
+
+test('four directional shortcuts persist across sessions, isolate accounts, and preserve the browse page', async t => {
+  const names = ['Morning Swim', 'Workshop', 'Pacific', 'Night Drive'];
+  const library = names.map((name,index) => ({name, uri:'spotify:playlist:'+String(index).padStart(22,'0')}));
+  const methods = [], targets = [];
+  let denied = false;
+  async function login(who) {
+    await signIn(scopes, false, who);
+    globalThis.fetch = async (url, options) => {
+      const endpoint = new URL(url);
+      methods.push(options.method + ' ' + endpoint.pathname);
+      if (endpoint.pathname === '/v1/me/playlists') return Response.json({offset:0,items:library,next:null});
+      if (endpoint.pathname.startsWith('/v1/playlists/')) {
+        if (denied) return new Response(null,{status:404});
+        assert.equal(endpoint.searchParams.get('fields'), 'uri,name');
+        const match = library.find(entry => entry.uri.endsWith(endpoint.pathname.split('/').pop()));
+        assert(match);
+        return Response.json(match);
+      }
+      assert.equal(endpoint.pathname, '/v1/me/player/play');
+      assert.equal(options.method, 'PUT');
+      targets.push(JSON.parse(options.body).context_uri);
+      return new Response(null,{status:204});
+    };
+  }
+  await login('account-A');
+  const nodes = new Map();
+  globalThis.document = {getElementById(key) {
+    if (!nodes.has(key)) nodes.set(key, key === 'library-links' ? {replaceChildren() {}} : {});
+    return nodes.get(key);
+  }, createElement() { return {append() {}}; }};
+  globalThis.window = new EventTarget();
+  const device = flipper();
+  await startBridge(id);
+  await nodes.get('pair').onclick();
+  t.after(() => nodes.get('unlink').onclick());
+  let token = 0;
+  async function cmd(op, base = 0) {
+    device.send(op, ++token,0,base,0);
+    await drain();
+    return device.frames.at(-1);
+  }
+  const labels = () => names.map((_, index) => Buffer.from(device.frames.filter(p => p[0] === 0x11 && p[1] === token && p[3] === index).flatMap(p => p.slice(4))).toString());
+  await cmd(0x64);
+  assert.deepEqual(labels(),Array(4).fill('Unassigned'));
+  await cmd(0x18);
+  const page = token;
+  assert.deepEqual(await cmd(0x72, page-1), [0x13,token,0,3]);
+  assert.deepEqual(await cmd(0x72, page), [0x14,token,0,2]); // Hold Up on Pacific to assign.
+  device.send(0x72,token,0,page,0);
+  await drain();
+  assert.deepEqual(device.frames.at(-1), [0x14,token,0,2]);
+  assert.deepEqual(targets, []); // Replayed assignment must not turn into playback.
+  assert.deepEqual(await cmd(0x71, page), [0x14,token,0,5]); // Up now plays Pacific, even over Workshop.
+  device.send(0x71,token,0,page,0);
+  await drain();
+  assert.deepEqual(device.frames.at(-1), [0x14,token,0,5]);
+  assert.deepEqual(targets.splice(0), [library[2].uri]);
+  assert.deepEqual(await cmd(0x68), [0x14,token,0,0]);
+  // Two same-account tabs can select different rows at the same time. Only one assigns.
+  const signal = new AbortController().signal;
+  const playlists = await auth.libraryPage(id, {kind:'playlist'}, 0, signal);
+  const results = await Promise.all([0,1].map(index => auth.holdPlaylistShortcut(id, 0, playlists, index, signal)));
+  assert.deepEqual([...results].sort(), [false,true]);
+  assert.deepEqual(targets.splice(0), [library[results.indexOf(false)].uri]);
+  for (let direction = 0; direction < 4; direction++) {
+    assert.deepEqual(await cmd(0x50 + 4*direction + direction, page), [0x14,token,0,direction]);
+  }
+  await cmd(0x64);
+  assert.deepEqual(labels(), names);
+  assert.deepEqual(await cmd(0x53, page-1), [0x13,token,0,3]); // Readout did not replace the actual browse page.
+  for (let direction=0; direction < 4; direction++) assert.deepEqual(await cmd(0x60 + direction),[0x14,token,0,0]);
+  assert.deepEqual(targets, library.map(entry => entry.uri));
+  device.send(0x63,token,0,0,0);
+  await drain();
+  assert.equal(targets.length, 4);
+  assert.equal([...preferences.values()].some(value => !library.some(entry => entry.uri === value)), false);
+  denied = true;
+  assert.deepEqual(await cmd(0x60),[0x13,token,0,3]);
+  assert.equal(targets.length,4);
+  denied = false;
+  assert.deepEqual(await cmd(0x68),[0x14,token,0,0]);
+  assert.deepEqual(await cmd(0x60),[0x13,token,0,6]);
+  const beforeOld = methods.length;
+  device.send(0x1a,90,0,0,0,100); // Obsolete search and artist commands cannot access the API.
+  device.send(0x1b,91,0,0,0,100);
+  device.send(0x24,92,0,page,0);
+  await drain();
+  assert.equal(methods.length,beforeOld);
+  await login('account-B'); // A live BLE session cannot use the previous owner's cached page.
+  await cmd(0x50, page);
+  assert.match(nodes.get('notice').textContent,/account changed/);
+  await nodes.get('pair').onclick();
+  await cmd(0x64);
+  assert.deepEqual(labels(),Array(4).fill('Unassigned'));
+  assert.deepEqual(await cmd(0x61),[0x13,token,0,6]);
+  await nodes.get('unlink').onclick();
+  assert.equal(preferences.size,3); // Unlink B does not erase A's settings.
+  await login('account-A');
+  await nodes.get('pair').onclick();
+  await cmd(0x64);
+  assert.deepEqual(labels(), ['Unassigned',...names.slice(1)]);
+  await nodes.get('unlink').onclick();
+  assert.equal(preferences.size,0);
 });

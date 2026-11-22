@@ -22,11 +22,11 @@ Available apps include Sub-GHz, RFID, NFC, Infrared, GPIO, iButton, Pomodoro Tim
 
 ## Music integration
 
-Open **Apps → Music** to control Spotify or Apple Music on your paired phone. On iPhone, the Flipper shows the song, artist, and playback time. Press **OK** to play or pause, **Left / Right** for tracks, and **Up / Down** for volume. Compatible Android phones support playback controls. [Music guide](https://mht3.github.io/eddy-firmware/music/) · [Bluetooth pairing](https://mht3.github.io/eddy-firmware/bluetooth/)
+Open **Apps → Music** to control Spotify or Apple Music on your paired phone. On iPhone, the Flipper shows the song, artist, and playback time. Press **OK** to play or pause, **Left / Right** for tracks, and **Up / Down** for volume. Compatible Android phones support playback controls. [Bluetooth pairing](https://mht3.github.io/eddy-firmware/bluetooth/)
 
 ![Dolphin Days playing in the Music preview on a Flipper Zero](.github/assets/dolphin-days.png)
 
-In **Apps → Spotify**, search for a song or artist, browse your library, add a track to the queue, or save it to a playlist you own. The current song stays at the bottom of the screen. A linked browser connects the Flipper to Spotify, and playback stays on your active Spotify device. Try the sample playlists in your browser, or set up a personal developer build with Spotify Premium and your app’s public Client ID. [Try the Spotify preview](https://mht3.github.io/eddy-firmware/?demo=spotify#home-screen) · [Spotify setup](https://mht3.github.io/eddy-firmware/spotify/#developer-setup)
+In the website demo, browse sample playlists, assign favorites to the four arrows and add tracks to the queue. Press Right in the library to open Now Playing. Live library access on the handheld is in private development. [Try the guided Spotify demo](https://mht3.github.io/eddy-firmware/?demo=spotify&tour=1#home-screen) · [Spotify setup](https://mht3.github.io/eddy-firmware/spotify/)
 
 ## Acknowledgements
 

@@ -1,5 +1,7 @@
 import {getAppOrder, getSelectedApps, restoreAppOrder, launcherColumns, launcherPageSize} from './app-catalog.js';
-import {openSpotifyDemo, drawSpotify, spotifyStatus, spotifyKey, spotifyHit, searchSpotifyDemo} from './spotify-preview.js';
+import {communityApps,savedCommunity} from './community-apps.js';
+import {openSpotifyDemo, openSpotifyPlayer, drawSpotify, spotifyStatus, spotifyKey, spotifyHit, spotifyVolumeAt} from './spotify-preview.js';
+import {startSpotifyTour, spotifyTourSteps} from './spotify-tour.js';
 import {openMusicDemo, drawMusic, musicStatus, musicKey} from './music-preview.js';
 import {presetButtons, tvPresetRows, tvPadStatus, tvPadKey, drawTvPad, tvPadHit, tvNavigationHit} from './tv-presets.js';
 import {openBuilder, builderKey, builderStatus, drawBuilder} from './builder-preview.js';
@@ -20,6 +22,12 @@ const ctx = display.getContext('2d');
 const status = document.querySelector('#preview-state');
 const previewIntro = document.querySelector('#preview-intro');
 const homeIntro = previewIntro.textContent;
+const lessonCard = document.getElementById('spotify-lesson');
+const lessonStart = document.getElementById('lesson-start');
+const lessonRetry = document.getElementById('lesson-retry');
+const lessonExit = document.getElementById('lesson-exit');
+const lessonHint = document.getElementById('lesson-hint');
+let guidedDemo, freeDemo;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const ink = '#432a14';
 const titles = {
@@ -72,12 +80,20 @@ export const pickerPreview = Boolean(guideApp) || previewParams.has('apps') || p
 const requestedApps = previewParams.has('apps') ? new Set(previewParams.get('apps').split(',')) : null;
 const orderParam = previewParams.get('order')?.split(',');
 const requestedOrder = restoreAppOrder(orderParam);
+function communitySelection() {
+  const ids=previewParams.has('community')?previewParams.get('community').split(','):savedCommunity();
+  return communityApps.filter(app=>ids.includes(app.id));
+}
+for(const app of communityApps) {
+  titles[app.id]=app.name;
+  samples[app.id]=['Community app','Opens on your Flipper'];
+}
 let visibleShortcuts = [];
 function refreshRemotes() {
   const saved=remoteDemo.rows;
   const enabled = requestedApps ?? getSelectedApps();
   visibleShortcuts = remoteDemo.shortcuts.filter(([,type])=>enabled.has('builder') || (type==='remote' && enabled.has('infrared')));
-  lists.apps=layoutApps([...apps.filter(([,id])=>enabled.has(id)),...visibleShortcuts],requestedOrder ?? getAppOrder());
+  lists.apps=layoutApps([...apps.filter(([,id])=>enabled.has(id)),...communitySelection().map(app=>[app.name,app.id]),...visibleShortcuts],requestedOrder ?? getAppOrder());
   lists.remotes=saved.length ? saved : [['Learn a remote','learn']];
   titles.remotes=saved.length?'My remotes':'No remotes yet';
   delete samples.remotes;
@@ -221,6 +237,8 @@ function draw() {
   }
   ctx.setTransform(width/128,0,0,height/64,0,0);
   const {page,row} = current();
+  display.style.touchAction = page==='spotify' && current().views.at(-1).kind==='volume'?'none':'';
+  display.classList.toggle('volume-adjust', page === 'spotify' && current().views.at(-1).kind === 'volume');
   display.classList.toggle('selectable',['menu','apps','quick','tvPad','pomodoro','spotify'].includes(page));
   const tick = reducedMotion.matches ? 4 : Math.floor(performance.now()/167);
   ctx.clearRect(0,0,128,64);
@@ -285,7 +303,7 @@ function draw() {
 function announce() {
   const {page,row} = current();
   if(!pickerPreview) previewIntro.textContent=page==='spotify'
-    ? 'Tap a row to explore. Back returns to your library, and the track at the bottom opens playback.'
+    ? 'Press Right in your library for Now Playing. Back returns you to the same list.'
     : homeIntro;
   let text = titles[page];
   if (readers[page]) {
@@ -318,7 +336,24 @@ function announce() {
 function press(key) {
   const state=current(), page=state.page, rows=lists[page];
   if(page==='gpio' && gpioKey(state,key)) { draw(); announce(); return; }
-  if(page==='spotify' && spotifyKey(state,key,openSpotifySearch)) { draw(); announce(); return; }
+  if (guidedDemo && state === guidedDemo.state) {
+    if (guidedDemo.complete || key !== guidedDemo.step.key) {
+      lessonHint.textContent = guidedDemo.complete ? 'Choose Explore freely to keep playing.' :
+        guidedDemo.step.hold ? 'Keep the highlighted button pressed for a moment.' : 'Tap the highlighted Flipper button.';
+      return;
+    }
+    spotifyKey(state, key);
+    if (guidedDemo.observe(key)) {
+      renderLesson();
+    } else {
+      guidedDemo.retry();
+      lessonHint.textContent = 'The sample player moved on. Try that button again.';
+    }
+    draw();
+    announce();
+    return;
+  }
+  if(page==='spotify' && spotifyKey(state,key)) { draw(); announce(); return; }
   if(page==='tvPad' && state.navigation && key==='back') {
     tvPadKey(state,key); draw(); announce(); return;
   }
@@ -442,19 +477,81 @@ function showAppPreview(id, standaloneSample = false) {
   draw(); announce();
 }
 
+function renderLesson() {
+  const step = guidedDemo?.step;
+  const complete = guidedDemo?.complete;
+  lessonCard.hidden = !guidedDemo;
+  lessonStart.hidden = guideApp !== 'spotify' || Boolean(guidedDemo);
+  previewIntro.hidden = Boolean(guidedDemo);
+  document.documentElement.classList.toggle('guided-preview', Boolean(guidedDemo));
+  let cue;
+  for (const button of panel.querySelectorAll('[data-key]')) {
+    const active = Boolean(step && button.dataset.key === step.key.replace(/^hold/, '').toLowerCase());
+    button.classList.toggle('tour-cue', active);
+    if (active) {
+      cue = button;
+      button.setAttribute('aria-describedby', 'lesson-instruction');
+    } else button.removeAttribute('aria-describedby');
+  }
+  if (!guidedDemo) return;
+  lessonHint.textContent = '';
+  const progress = document.getElementById('lesson-progress');
+  progress.max = spotifyTourSteps.length;
+  progress.value = guidedDemo.index;
+  document.getElementById('lesson-step').textContent = complete ? 'Tour complete' :
+    'Step ' + (guidedDemo.index + 1) + ' of ' + spotifyTourSteps.length;
+  document.getElementById('lesson-title').textContent = complete ? 'On the Coast is playing.' : step.title;
+  document.getElementById('lesson-instruction').textContent = complete ?
+    'Explore your own demo library, or take the tour again.' : step.instruction;
+  lessonRetry.textContent = complete ? 'Restart tour' : 'Repeat step';
+  if (panel.contains(document.activeElement) && document.activeElement.matches(':focus-visible')) {
+    (cue ?? lessonExit).focus({preventScroll:true});
+  }
+}
+function beginLessons() {
+  if (current().page !== 'spotify') showAppPreview('spotify', true);
+  freeDemo = current();
+  guidedDemo = startSpotifyTour();
+  history[history.length - 1] = guidedDemo.state;
+  renderLesson();
+  draw();
+  announce();
+}
+lessonStart.addEventListener('click', beginLessons);
+lessonRetry.addEventListener('click', () => {
+  if (guidedDemo.complete) guidedDemo.restart();
+  else guidedDemo.retry();
+  renderLesson();
+  draw();
+  announce();
+});
+lessonExit.addEventListener('click', () => {
+  guidedDemo.exit();
+  history[history.length - 1] = freeDemo;
+  guidedDemo = freeDemo = null;
+  renderLesson();
+  draw();
+  announce();
+  lessonStart.focus({preventScroll:true});
+});
 document.querySelector('#try-spotify').addEventListener('click', () => {
-  showAppPreview('spotify', true);
-  press('ok');
-  panel.querySelector('[data-key=ok]').focus({preventScroll:true});
+  location.assign('?demo=spotify&tour=1#home-screen');
 });
 if(pickerPreview) {
   document.documentElement.classList.add('picker-preview');
   const id=guideApp ?? previewParams.get('app');
   showAppPreview(id,Boolean(guideApp));
+  if (guideApp === 'spotify' && previewParams.get('view') === 'now-playing') {
+    openSpotifyPlayer(current());
+    draw();
+    announce();
+  }
   const title=(guideApp ? apps : lists.apps).find(([,page])=>page===id)?.[0] ?? 'Your Apps menu';
   document.querySelector('#home-screen h2').textContent=title;
   const guideIntro = {
-    spotify:'Pick a playlist, find a song, or build a queue. Use the Flipper buttons or tap a row. Tap the track at the bottom for playback.',
+    spotify:previewParams.get('view') === 'now-playing'
+      ? 'Dolphin Days is playing. Try the queue, save it to a playlist, or adjust its volume.'
+      : 'Browse your playlists and saved music. Press Right to open the current song.',
     music:'Try a sample track. Press OK to pause or play, Right to skip, and Up or Down for volume.',
   };
   document.querySelector('#preview-intro').textContent=guideIntro[guideApp] ??
@@ -462,10 +559,15 @@ if(pickerPreview) {
   const back=document.querySelector('#return-to-picker');
   const selection = lists.apps.filter(([,page])=>apps.some(([,id])=>id===page)).map(([,id])=>id);
   const returnTo = selection.includes(id) ? 'try-'+id : 'try-app-menu';
-  back.href='update/?'+new URLSearchParams({apps:selection.join(','),order:(requestedOrder ?? getAppOrder()).join(',')})+'#'+returnTo;
-  if(guideApp) {
-    back.href=guideApp+'/';
-    back.textContent='Back to the '+title+' guide';
+  back.href='update/?'+new URLSearchParams({apps:selection.join(','),community:communitySelection().map(app=>app.id).join(','),order:(requestedOrder ?? getAppOrder()).join(',')})+'#'+returnTo;
+  if (guideApp === 'spotify') {
+    back.href = 'spotify/';
+    back.textContent = 'Back to Spotify setup';
+    if (previewParams.get('tour') === '1') beginLessons();
+    else renderLesson();
+  } else if (guideApp === 'music') {
+    back.href = 'update/#try-music';
+    back.textContent = 'Back to app selection';
   }
   back.hidden=false;
 }
@@ -478,21 +580,6 @@ window.addEventListener('eddy-apps-changed', () => {
       !lists.apps.some(([,id])=>id===open.page)) history.length=appView+1;
   draw(); announce();
 });
-
-const searchDialog=document.getElementById('spotify-search');
-const searchInput=document.getElementById('spotify-query');
-function openSpotifySearch(query) {
-  searchInput.value=query;
-  searchDialog.showModal();
-  searchInput.select();
-}
-searchDialog.querySelector('button[type=button]').onclick=()=>searchDialog.close();
-searchDialog.querySelector('form').onsubmit=event=>{
-  event.preventDefault();
-  if(!searchInput.value.trim()) return;
-  searchSpotifyDemo(current(),searchInput.value);
-  searchDialog.close(); draw(); announce();
-};
 
 const nameDialog=document.getElementById('remote-name-dialog');
 const nameInput=document.getElementById('remote-name');
@@ -538,13 +625,41 @@ nameDialog.querySelector('form').addEventListener('submit',event=>{
   announce();
 });
 
-display.addEventListener('click', event=>{
-  const state=current();
+function lcdPoint(event) {
   const box=display.getBoundingClientRect();
-  const x=(event.clientX-box.left)*128/box.width;
-  const y=(event.clientY-box.top)*64/box.height;
+  return [(event.clientX-box.left)*128/box.width,(event.clientY-box.top)*64/box.height];
+}
+
+let volumePointer=null, volumeClick=false;
+display.addEventListener('pointerdown',event=>{
+  if(guidedDemo || !event.isPrimary || event.button!==0) return;
+  volumeClick=false;
+  const state=current();
+  if(state.page!=='spotify' || !spotifyVolumeAt(state,...lcdPoint(event))) return;
+  volumePointer=event.pointerId;
+  display.setPointerCapture(volumePointer);
+  event.preventDefault(); draw();
+});
+display.addEventListener('pointermove',event=>{
+  if(event.pointerId!==volumePointer || current().page!=='spotify') return;
+  if(spotifyVolumeAt(current(),...lcdPoint(event),true)) draw();
+});
+function finishVolumeDrag(event) {
+  if(event.pointerId!==volumePointer) return;
+  volumePointer=null; volumeClick=true; announce();
+}
+display.addEventListener('pointerup',finishVolumeDrag);
+display.addEventListener('pointercancel',finishVolumeDrag);
+display.addEventListener('click', event=>{
+  if (guidedDemo) {
+    lessonHint.textContent = guidedDemo.complete ? 'Choose Explore freely to keep playing.' : 'Use the highlighted button on the Flipper.';
+    return;
+  }
+  if(volumeClick) { volumeClick=false; return; }
+  const state=current();
+  const [x,y]=lcdPoint(event);
   if(state.page==='spotify') {
-    if(spotifyHit(state,x,y,openSpotifySearch)) { draw(); announce(); }
+    if(spotifyHit(state,x,y)) { draw(); announce(); }
     return;
   }
   if(state.page==='tvPad') {
@@ -605,112 +720,77 @@ for (const key of ['left','right']) {
     if (repeated) { repeated=false; event.stopPropagation(); }
   });
 }
-const upButton=panel.querySelector('[data-key=up]');
-let upTimer;
-let heldUp=false;
-function startSpotifyUpHold() {
-  heldUp=false;
-  clearTimeout(upTimer);
-  const state=current();
-  upTimer=setTimeout(()=>{
-    if(current()===state) {
-      heldUp=true;
-      press('holdUp');
-    }
-  },600);
-}
-upButton.addEventListener('pointerdown',event=>{
-  heldUp=false;
-  if(current().page!=='spotify' || event.button!==0) return;
-  upButton.setPointerCapture(event.pointerId);
-  startSpotifyUpHold();
-});
-for(const event of ['pointerup','pointercancel','lostpointercapture','blur']) {
-  upButton.addEventListener(event,()=>clearTimeout(upTimer));
-}
-// Let a focused Up button perform both gestures with native button activation keys.
-upButton.addEventListener('keydown',event=>{
-  if(current().page!=='spotify' || !['Enter',' '].includes(event.key)) return;
-  event.preventDefault();
-  if(!event.repeat) startSpotifyUpHold();
-});
-upButton.addEventListener('keyup',event=>{
-  if(current().page!=='spotify' || !['Enter',' '].includes(event.key)) return;
-  event.preventDefault();
-  clearTimeout(upTimer);
-  if(!heldUp) press('up');
-  heldUp=false;
-});
-const okButton=panel.querySelector('[data-key=ok]');
-let editTimer;
-let heldOk=false;
-let editKey=null;
-let keyHeld=false;
-function hasEditGesture(state) {
-  return (state.page==='builder' && state.step==='grid') ||
-    (state.page==='btRemote' && !state.mode);
-}
-function startEditHold(fromKeyboard=false) {
-  const state=current();
-  clearTimeout(editTimer);
-  heldOk=false;
-  keyHeld=false;
-  editTimer=setTimeout(()=>{
-    if(current()!==state || !hasEditGesture(state)) return;
-    if(fromKeyboard) keyHeld=true;
-    else heldOk=true;
-    press('hold');
-  },600);
-}
-okButton.addEventListener('pointerdown',event=>{
-  heldOk=false;
-  if(!hasEditGesture(current()) || event.button!==0) return;
-  okButton.setPointerCapture(event.pointerId);
-  startEditHold();
-});
-for(const event of ['pointerup','pointercancel','lostpointercapture']) {
-  okButton.addEventListener(event,()=>clearTimeout(editTimer));
-}
-okButton.addEventListener('keydown',event=>{
-  if(!['Enter',' '].includes(event.key) || (!editKey && !hasEditGesture(current()))) return;
-  event.preventDefault();
-  if(!event.repeat && !editKey) {
-    editKey=event.key;
-    startEditHold(true);
+// Delay long-press actions until the threshold and consume the following click.
+function holdAction(key, state) {
+  if (state.page === 'spotify' && key !== 'back') {
+    return () => press('hold' + key[0].toUpperCase() + key.slice(1));
   }
-});
-okButton.addEventListener('keyup',event=>{
-  if(event.key!==editKey) return;
-  event.preventDefault();
-  editKey=null;
-  clearTimeout(editTimer);
-  if(!keyHeld) press('ok');
-});
-okButton.addEventListener('blur',()=>{
-  clearTimeout(editTimer);
-  editKey=null;
-});
-const backButton=panel.querySelector('[data-key=back]');
-let hold;
-let heldBack=false;
-backButton.addEventListener('pointerdown', event=>{
-  heldBack=false;
-  if(current().page!=='home') return;
-  backButton.setPointerCapture(event.pointerId);
-  hold=setTimeout(()=>{
-    heldBack=true;
+  if (key === 'ok' && ((state.page === 'builder' && state.step === 'grid') ||
+      (state.page === 'btRemote' && !state.mode))) return () => press('hold');
+  if (key === 'back' && state.page === 'home') return () => {
     history.push({page:'shutdown',row:0});
-    draw(); announce();
-  },650);
-});
-for(const event of ['pointerup','pointercancel','lostpointercapture']) {
-  backButton.addEventListener(event,()=>clearTimeout(hold));
+    draw();
+    announce();
+  };
+}
+
+for (const button of panel.querySelectorAll('[data-key]')) {
+  const key = button.dataset.key;
+  let timer, held = false, activationKey = null;
+  function start(action) {
+    clearTimeout(timer);
+    held = false;
+    const state = current();
+    timer = setTimeout(() => {
+      if (current() !== state || panel.hidden) return;
+      held = true;
+      action();
+    }, 600);
+  }
+  function cancel() {
+    clearTimeout(timer);
+    activationKey = null;
+  }
+  button.addEventListener('pointerdown', event => {
+    if (!event.isPrimary || event.button !== 0) return;
+    held = false;
+    const action = holdAction(key, current());
+    if (!action) return;
+    button.setPointerCapture(event.pointerId);
+    start(action);
+  });
+  for (const event of ['pointerup', 'pointercancel', 'lostpointercapture', 'blur']) {
+    button.addEventListener(event, cancel);
+  }
+  button.addEventListener('contextmenu', event => {
+    if (current().page === 'spotify') event.preventDefault();
+  });
+  button.addEventListener('click', event => {
+    if (held) {
+      held = false;
+      event.stopPropagation();
+    }
+  });
+  button.addEventListener('keydown', event => {
+    if (!['Enter',' '].includes(event.key)) return;
+    const action = holdAction(key, current());
+    if (!action && !activationKey) return;
+    event.preventDefault();
+    if (!event.repeat && !activationKey) {
+      activationKey = event.key;
+      start(action);
+    }
+  });
+  button.addEventListener('keyup', event => {
+    if (event.key !== activationKey) return;
+    event.preventDefault();
+    cancel();
+    if (!held) press(key);
+    held = false;
+  });
 }
 panel.addEventListener('click', event => {
   const button = event.target.closest('[data-key]');
-  if (button===upButton && heldUp) { heldUp=false; return; }
-  if (button===okButton && heldOk) { heldOk=false; return; }
-  if (button===backButton && heldBack) { heldBack=false; return; }
   if (button) press(button.dataset.key);
 });
 new IntersectionObserver(([entry]) => { inView = entry.isIntersecting; draw(); }).observe(panel);

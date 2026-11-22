@@ -10,17 +10,13 @@ enum {
     SpotifyLiked = 0x10,
     SpotifyPlaylists = 0x18,
     SpotifyAlbums = 0x19,
-    SpotifySearchTracks = 0x1a,
-    SpotifySearchArtists = 0x1b,
     SpotifyNowPlaying = 0x1c,
     SpotifyParent = 0x1d,
     SpotifyViewQueue = 0x1e,
-    SpotifyCategories = 6,
-    SpotifyQueryBytes = 15,
+    SpotifyCategories = 7,
     SpotifyNext = 0x11,
     SpotifyPrevious = 0x12,
     SpotifyPlay = 0x20,
-    SpotifyArtistTracks = 0x24,
     SpotifyQueue = 0x28,
     SpotifyChoosePlaylist = 0x30,
     SpotifyAddToPlaylist = 0x34,
@@ -28,6 +24,16 @@ enum {
     SpotifyPlayerPrevious = 0x40,
     SpotifyPlayerToggle = 0x41,
     SpotifyPlayerNext = 0x42,
+    SpotifySetVolume = 0x43,
+    SpotifyQueueCurrent = 0x45,
+    SpotifyChooseCurrent = 0x46,
+    SpotifyVolumeUnknown = 255,
+    SpotifyAssignPreset = 0x50,
+    SpotifyPlayPreset = 0x60,
+    SpotifyReadPresets = 0x64,
+    SpotifyClearPreset = 0x68,
+    SpotifyHoldPlaylist = 0x70,
+    SpotifySetupGuide = 0xf0,
     SpotifyHello = 0x15,
     SpotifyClear = 0x16,
 };
@@ -39,6 +45,8 @@ typedef enum {
     SpotifyOffline,
     SpotifyRestricted,
     SpotifyRateLimited,
+    SpotifyVolumeUnavailable,
+    SpotifyMissingPreset,
     SpotifyInvalid,
 } SpotifyError;
 
@@ -54,12 +62,14 @@ typedef struct {
     uint8_t selected;
     uint8_t play_state;
     uint8_t title_bytes;
+    uint8_t volume;
     uint32_t duration_ms;
     uint32_t progress_ms;
     bool previous;
     bool next;
     bool collecting;
     bool accepted;
+    bool preset_played;
     SpotifyError error;
 } SpotifyLibrary;
 

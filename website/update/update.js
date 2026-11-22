@@ -1,5 +1,6 @@
 import {catalog,defaultAppOrder,getAppOrder,getSelectedApps} from '../app-catalog.js';
 import {prepareInstall,makeDownload} from './package.js';
+import {getCommunitySelection,setCommunityRelease} from '../community-apps.js';
 import {FlipperUpdater} from './flipper.js';
 
 const root = new URL('../firmware/',import.meta.url);
@@ -19,7 +20,7 @@ function updateControls() {
   action.disabled = busy || !build || !isSecureContext || !navigator.serial;
   download.disabled = busy || !build;
   const stockLayout = getAppOrder().every((id,i)=>id===defaultAppOrder[i]);
-  lab.hidden = busy || !lab.hasAttribute('href') || getSelectedApps().size !== catalog.length || !stockLayout;
+  lab.hidden = busy || !lab.hasAttribute('href') || getSelectedApps().size !== catalog.length || !stockLayout || getCommunitySelection().length>0;
 }
 window.addEventListener('eddy-apps-changed', updateControls);
 
@@ -65,6 +66,7 @@ async function loadBuild() {
       lab.href = labUrl;
     }
     build = data;
+    setCommunityRelease(data.communityApps);
     download.hidden = false;
     connection.textContent = navigator.serial && isSecureContext ? 'No device connected.' :
       'For USB installation, open this page in desktop Chrome or Edge. You can also download your selection for qFlipper.';
@@ -78,7 +80,7 @@ async function loadBuild() {
 async function install() {
   const files = await prepareInstall(build,getSelectedApps(),name=>{
     connection.textContent = 'Verifying '+name+'…';
-  });
+  },getAppOrder(),getCommunitySelection());
   const resources = files.find(({part})=>part.name==='resources.tar.gz');
   const folder = '/ext/update/f7-update-'+build.version+'-'+resources.part.sha256.slice(0,12);
   await flipper.mkdir('/ext/update');
@@ -139,7 +141,7 @@ download.addEventListener('click', async () => {
   try {
     const files=await prepareInstall(build,getSelectedApps(),name=>{
       connection.textContent='Verifying '+name+'…';
-    });
+    },getAppOrder(),getCommunitySelection());
     const blob=await makeDownload(build,files);
     const url=URL.createObjectURL(blob);
     const digest=files.find(({part})=>part.name==='resources.tar.gz').part.sha256;

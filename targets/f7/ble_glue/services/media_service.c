@@ -180,42 +180,37 @@ bool ble_svc_media_send(void* context, uint8_t command, bool hid) {
     return sent;
 }
 
-static bool media_request(
-    void* context,
-    uint16_t connection,
-    uint8_t op,
-    uint16_t request,
-    uint16_t page,
-    const char* query) {
-    bool search = op == 0x1a || op == 0x1b;
-    bool first = op == 0x10 || op == 0x15 || op == 0x16 || (op >= 0x18 && op <= 0x1c) ||
-                 op == 0x1e || (op >= 0x40 && op <= 0x42);
-    bool row = (op >= 0x20 && op <= 0x2b) || (op >= 0x30 && op <= 0x3b);
-    size_t length = query ? strnlen(query, 16) : 0;
-    if(!guard || !request || (first ? page != 0 : page == 0) ||
-       !(first || row || op == 0x11 || op == 0x12 || op == 0x1d) || (search != (length > 0)) ||
-       length > 15)
-        return false;
-
-    uint8_t packet[20] = {op, request, request >> 8, page, page >> 8};
-    if(length) memcpy(packet + 5, query, length);
-    furi_mutex_acquire(guard, FuriWaitForever);
-    bool sent = connection != UINT16_MAX && active && active->connection == connection &&
-                active->context == context && active->callback &&
-                aci_gatt_update_char_value(
-                    active->handle, active->command.handle, 0, 5 + length, packet) ==
-                    BLE_STATUS_SUCCESS;
-    furi_mutex_release(guard);
-    return sent;
-}
-
 bool ble_svc_media_library_request(
     void* context,
     uint16_t connection,
     uint8_t op,
     uint16_t request,
     uint16_t page) {
-    return media_request(context, connection, op, request, page, NULL);
+    bool volume = op == 0x43;
+    if(volume && page > 100) return false;
+    uint8_t percent = page;
+    if(volume) page = 0;
+    bool first = op == 0x10 || op == 0x15 || op == 0x16 ||
+                 (op == 0x18 || op == 0x19 || op == 0x1c) || op == 0x1e ||
+                 (op >= 0x40 && op <= 0x43) || op == 0x45 || op == 0x46 ||
+                 (op >= 0x60 && op <= 0x64) || (op >= 0x68 && op <= 0x6b);
+    bool row = ((op >= 0x20 && op <= 0x23) || (op >= 0x28 && op <= 0x2b)) ||
+               (op >= 0x30 && op <= 0x3b) || (op >= 0x50 && op <= 0x5f) ||
+               (op >= 0x70 && op <= 0x7f);
+
+    if(!guard || !request || (first ? page != 0 : page == 0) ||
+       !(first || row || op == 0x11 || op == 0x12 || op == 0x1d))
+        return false;
+
+    uint8_t packet[6] = {op, request, request >> 8, page, page >> 8, percent};
+    furi_mutex_acquire(guard, FuriWaitForever);
+    bool sent = connection != UINT16_MAX && active && active->connection == connection &&
+                active->context == context && active->callback &&
+                aci_gatt_update_char_value(
+                    active->handle, active->command.handle, 0, volume ? 6 : 5, packet) ==
+                    BLE_STATUS_SUCCESS;
+    furi_mutex_release(guard);
+    return sent;
 }
 
 bool ble_svc_media_library_search(
@@ -224,6 +219,10 @@ bool ble_svc_media_library_search(
     uint8_t op,
     uint16_t request,
     const char* query) {
-    if(op != 0x1a && op != 0x1b) return false;
-    return media_request(context, connection, op, request, 0, query);
+    UNUSED(context);
+    UNUSED(connection);
+    UNUSED(op);
+    UNUSED(request);
+    UNUSED(query);
+    return false;
 }

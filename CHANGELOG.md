@@ -2,11 +2,11 @@
 
 - The launcher keeps selected apps and pinned remotes together. Drag apps in the web installer to swap positions.
 - RFID, NFC, and iButton let you scan again from the result screen. Saved readings open in a named list.
-- The Music guide opens directly in the playable preview. You can reconnect a previously chosen Flipper to the Spotify library from the same browser tab.
+- The Spotify setup guide includes a guided tour of the player, original sample lyrics, and four playlist shortcuts. Right opens Now Playing from the library.
 
-- Music controls the active player on a paired phone, including Spotify or Apple Music. A separate optional Spotify app browses Liked Songs, playlists, and saved albums and plays the selected item through a linked browser. The website includes a sample library.
+- Music controls the active player on a paired phone, including Spotify or Apple Music. The optional Spotify integration is in private testing. The public website includes a sample library.
 
-- The installer opens with nine apps selected. You can add Pomodoro Timer and Metronome, swap app positions across pages, and try your layout before installing it.
+- The installer opens with ten apps selected. You can add Pomodoro Timer and Metronome, swap app positions across pages, and try your layout before installing it.
 - The first Apps page groups Music, Remote Builder, and Bluetooth Remote along the bottom. In Music, tap Up or Down for phone volume. The playable demo features Low Tide, High Tide, and Dolphin Days.
 - The installer lets you choose apps, try each one in the emulator, and install the same selection over USB or through qFlipper.
 - Apps → Spotify opens the library setup guide by QR. Apps → Music uses the Flipper’s existing phone pairing for playback controls and an iPhone track display. The website includes handheld screen captures and a playable demo.
