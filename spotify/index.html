@@ -27,20 +27,26 @@
       <section id="developer-setup">
         <h2>Create your Spotify developer app</h2>
         <ol class="setup-steps">
-          <li><strong>Open the developer dashboard.</strong> Sign in with the Spotify account you’ll use to develop your app. Spotify requires the app owner to have Premium in development mode. <a href="https://developer.spotify.com/dashboard">Open the Spotify Developer Dashboard.</a></li>
-          <li><strong>Choose Create app.</strong> Fill in these three fields.
+          <li><strong>Open the Spotify Developer Dashboard.</strong> Sign in with your Spotify Premium account. If this is your first app, you’ll see “You haven’t created any apps yet.” Look for the purple <strong>Create app</strong> button in the upper right. <a href="https://developer.spotify.com/dashboard">Open the dashboard.</a>
+            <figure><a href="dashboard.png" aria-label="View the dashboard screenshot at full size"><img src="dashboard.png" width="1469" height="522" alt="Empty Spotify Developer Dashboard with Create app in the upper right."></a></figure>
+          </li>
+          <li><strong>Click Create app.</strong> Spotify opens the blank form shown below. Scroll down to see the API choices and the Save button.
+            <figure><a href="blank-create-app.png" aria-label="View the blank form screenshot at full size"><img src="blank-create-app.png" width="1429" height="1101" alt="Blank Create app form with fields for the name, description, website and redirect URI, followed by API choices and the developer agreement."></a></figure>
+          </li>
+          <li><strong>Fill out the form.</strong> Use these values, working from top to bottom.
             <dl class="registration-fields">
               <dt>App name</dt><dd>Eddy</dd>
               <dt>App description</dt><dd>A Spotify interface for the Flipper Zero.</dd>
               <dt>Website</dt><dd><code>https://mht3.github.io/eddy-firmware</code></dd>
+              <dt>Redirect URIs</dt><dd>Paste <code>https://mht3.github.io/eddy-firmware/spotify/</code>, including the final slash. Click <strong>Add</strong> and check that the address appears in the list.</dd>
+              <dt>Which API/SDKs are you planning to use?</dt><dd>Check <strong>Web API</strong> only.</dd>
             </dl>
-            <figure><img src="create-app.webp" width="358" height="477" alt="Spotify’s Create app form with Eddy as the name and A Spotify interface for the Flipper Zero as the description."></figure>
           </li>
-          <li><strong>Add the redirect URI.</strong> Paste <code>https://mht3.github.io/eddy-firmware/spotify/</code>, including the final slash, and click <strong>Add</strong>. This is the return address Spotify uses after you approve or decline access.</li>
-          <li><strong>Select Web API and save.</strong> Under the APIs and SDKs, check <strong>Web API</strong>. Review the developer terms, check the agreement box if you accept them, and choose <strong>Save</strong>.</li>
-          <li><strong>Save your Client ID to your Flipper.</strong> Open your app’s <strong>Settings</strong> and copy the <strong>Client ID</strong>. Keep the Client Secret private. In the Eddy installer, select <strong>Spotify</strong> under Extras, paste the ID into <strong>Spotify Client ID</strong> under Your build, then install or download your update. <a href="../update/#your-build">Open the installer.</a>
+          <li><strong>Save your app.</strong> Read Spotify’s Developer Terms of Service and Design Guidelines. If you accept them, check the agreement box and click <strong>Save</strong> at the bottom left.</li>
+          <li><strong>Copy your Client ID.</strong> On the Eddy app page, open <strong>Settings</strong>. Click the copy icon beside <strong>Client ID</strong>. You can leave the Client Secret hidden.
             <figure><img src="client-id.webp" width="276" height="112" alt="The Client ID field in Settings, with the copy button at its right."></figure>
           </li>
+          <li><strong>Paste the ID into the Eddy installer.</strong> Select <strong>Spotify</strong> under <strong>Extras</strong>. Under <strong>Your build</strong>, paste the ID into <strong>Spotify Client ID</strong>, then install or download your update. <a href="../update/#your-build">Open the installer.</a></li>
         </ol>
       </section>
       <section>
