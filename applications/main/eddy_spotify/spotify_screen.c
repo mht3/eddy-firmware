@@ -216,10 +216,6 @@ void spotify_screen_draw(Canvas* canvas, void* context) {
     const SpotifyScreen* screen = context;
     const SpotifyLibrary* lib = &screen->library;
     canvas_set_font(canvas, FontSecondary);
-    if(spotify_screen_shows_iphone(screen)) {
-        music_screen_draw(canvas, (void*)&screen->iphone);
-        return;
-    }
     if(spotify_screen_shows_setup(screen)) {
         if(screen->signin_qr) {
             // QR scanning requires dark modules on a light square in either theme.
@@ -228,18 +224,18 @@ void spotify_screen_draw(Canvas* canvas, void* context) {
             canvas_draw_xbm(canvas, 0, 0, SpotifyQrSize, SpotifyQrSize, screen->signin_qr);
             canvas_set_color(canvas, ColorBlack);
             canvas_set_font(canvas, FontPrimary);
-            canvas_draw_str(canvas, 66, 20, "Spotify");
+            canvas_draw_str(canvas, 66, 20, "Eddy");
             canvas_set_font(canvas, FontSecondary);
-            canvas_draw_str(canvas, 66, 33, "Scan to sign in");
-            canvas_draw_str(canvas, 66, 44, "on your phone");
+            canvas_draw_str(canvas, 66, 33, "Scan for the");
+            canvas_draw_str(canvas, 66, 44, "iPhone app");
             canvas_draw_str(canvas, 66, 60, "OK: Close");
         } else {
             canvas_set_font(canvas, FontPrimary);
             canvas_draw_str(canvas, 2, 10, "Set up Spotify");
             canvas_set_font(canvas, FontSecondary);
-            canvas_draw_str(canvas, 2, 25, "In the Eddy installer, select");
-            canvas_draw_str(canvas, 2, 36, "Spotify and enter your");
-            canvas_draw_str(canvas, 2, 47, "Client ID. Install that build.");
+            canvas_draw_str(canvas, 2, 25, "Open Eddy on your iPhone.");
+            canvas_draw_str(canvas, 2, 36, "Connect your Flipper, then");
+            canvas_draw_str(canvas, 2, 47, "log in to Spotify.");
             canvas_draw_str(canvas, 2, 62, "OK: Close");
         }
         return;
@@ -268,17 +264,9 @@ void spotify_screen_draw(Canvas* canvas, void* context) {
         canvas_draw_str(canvas, 54, 8, screen->toolbar_focus ? "^ Player" : "v Buttons");
     if(screen->scene == SpotifyPresets) canvas_draw_str(canvas, 39, 8, "Hold to play");
     if(!screen->connected || !screen->bridge) {
-        if(screen->checking_iphone) {
-            canvas_draw_str(canvas, 2, 24, "Checking phone playback...");
-            canvas_draw_str(canvas, 2, 39, "Start Spotify on your iPhone.");
-        } else if(screen->connected && screen->iphone.state != MusicWaiting) {
-            canvas_draw_str(canvas, 2, 24, "iPhone connected");
-            canvas_draw_str(canvas, 2, 39, "Right: iPhone player");
-        } else {
-            canvas_draw_str(canvas, 2, 24, "Library: use Chrome on");
-            canvas_draw_str(canvas, 2, 36, "Android or a computer.");
-        }
-        canvas_draw_str(canvas, 2, 62, "OK: Library sign-in");
+        canvas_draw_str(canvas, 2, 24, "Open Eddy on your iPhone");
+        canvas_draw_str(canvas, 2, 36, "to connect your library.");
+        canvas_draw_str(canvas, 2, 62, "OK: Get Eddy");
         return;
     }
     if(lib->accepted) {
@@ -301,7 +289,7 @@ void spotify_screen_draw(Canvas* canvas, void* context) {
         static const char* const errors[] = {
             [SpotifyNoPlayer] = "Open Spotify on a device.",
             [SpotifyLogin] = "Sign in on your phone.",
-            [SpotifyOffline] = "Check the browser link.",
+            [SpotifyOffline] = "Check your phone link.",
             [SpotifyRestricted] = "Spotify declined access.",
             [SpotifyRateLimited] = "Spotify is busy. Try later.",
             [SpotifyVolumeUnavailable] = "Use the device volume.",
@@ -318,7 +306,7 @@ void spotify_screen_draw(Canvas* canvas, void* context) {
             canvas_draw_str(canvas, 2, 47, "OK: Return");
         } else {
             canvas_draw_str(canvas, 2, 24, errors[lib->error]);
-            canvas_draw_str(canvas, 2, 36, "See the sign-in page.");
+            canvas_draw_str(canvas, 2, 36, "Check Spotify in Eddy.");
             canvas_draw_str(canvas, 2, 47, "OK: Retry    Back: Return");
         }
     } else if(screen->scene == SpotifyHome) {

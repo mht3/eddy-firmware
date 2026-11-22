@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="../style.css">
     <link rel="stylesheet" href="picker.css">
     <script type="module" src="picker.js"></script>
-    <script type="module" src="update.js"></script>
+    <script type="module" src="update.js?v=iphone"></script>
   </head>
   <body>
     <header>
@@ -75,11 +75,6 @@
             </span>
             <span class="preview-caption">Try my Apps menu</span>
           </a>
-          <div id="spotify-settings" hidden>
-            <label for="spotify-client-id">Spotify Client ID</label>
-            <input id="spotify-client-id" type="text" pattern="[a-fA-F0-9]{32}" spellcheck="false" autocapitalize="none" autocomplete="off" aria-describedby="spotify-id-help">
-            <p id="spotify-id-help">Copy the Client ID from your Spotify app settings. Your browser adds it to this update. Leave it blank to keep your current setting. <a href="../spotify/#developer-setup">Setup guide</a></p>
-          </div>
           <p class="install-help">Insert your microSD card and connect your Flipper with a USB data cable. Close qFlipper and Flipper Lab before connecting.</p>
           <button class="cta" id="action" disabled>Connect Flipper Zero</button>
           <p id="connection" role="status"></p>

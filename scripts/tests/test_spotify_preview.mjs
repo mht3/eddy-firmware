@@ -109,9 +109,9 @@ test('a stale queue row cannot remove another song after a natural transition',(
   assert.deepEqual(s.queue,pending); assert.match(spotifyStatus(s),/already played/);
 });
 
-test('the demo explains where to find the personal sign-in QR',()=>{
+test('the demo describes how the device opens the iPhone companion',()=>{
   const s=openSpotifyDemo();
   key(s,'up','ok'); assert.equal(view(s).kind,'setup');
-  assert.match(spotifyStatus(s),/personal sign-in code/);
+  assert.match(spotifyStatus(s),/QR code to open Eddy on your iPhone/);
   key(s,'ok'); assert.equal(view(s).kind,'home');
 });

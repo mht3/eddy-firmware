@@ -421,9 +421,12 @@ final class FlipperConnection: NSObject, ObservableObject, @preconcurrency CBCen
         devices = []
         isScanning = false
         switch central.state {
-        case .poweredOff: status = "Turn on Bluetooth to connect your Flipper."
-        case .unauthorized: status = "Allow Bluetooth access for Eddy in Settings."
-        case .unsupported: status = "Bluetooth Low Energy is unavailable on this device."
+        case .poweredOff:
+            status = "Turn on Bluetooth to connect your Flipper."
+        case .unauthorized:
+            status = "Allow Bluetooth access for Eddy in Settings."
+        case .unsupported:
+            status = "Bluetooth Low Energy is unavailable on this device."
         default: status = "Waiting for Bluetooth…"
         }
     }

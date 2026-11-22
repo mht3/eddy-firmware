@@ -208,7 +208,6 @@ def resource_index(data, profile):
             manifest=manifest.offset,
             launcherOrder=layout.offset,
             communityList=community.offset,
-            spotifySignIn=SPOTIFY_SIGNIN.encode("ascii") in spotify_binary,
             archiveEnd=archive.offset,
             apps=apps,
         )

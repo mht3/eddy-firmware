@@ -1,7 +1,6 @@
 #pragma once
 #include <gui/canvas.h>
 #include "spotify_library.h"
-#include "../eddy_music/music_screen.h"
 
 enum {
     SpotifyQrSize = 64,
@@ -24,9 +23,6 @@ typedef enum {
 
 typedef struct {
     SpotifyLibrary library;
-    MusicScreen iphone;
-    bool prefer_library;
-    bool checking_iphone;
     const uint8_t* signin_qr;
     uint32_t scroll;
     uint8_t category;
@@ -54,14 +50,7 @@ typedef struct {
 } SpotifyScreen;
 
 uint8_t spotify_action_count(const SpotifyScreen* screen);
-static inline bool spotify_screen_shows_iphone(const SpotifyScreen* screen) {
-    return screen->connected && screen->iphone.state != MusicWaiting && !screen->bridge &&
-           !screen->manual_setup && !screen->prefer_library;
-}
-
 static inline bool spotify_screen_shows_setup(const SpotifyScreen* screen) {
-    return screen->manual_setup ||
-           (!screen->bridge && !screen->dismissed_setup && !screen->checking_iphone &&
-            !spotify_screen_shows_iphone(screen));
+    return screen->manual_setup || (!screen->bridge && !screen->dismissed_setup);
 }
 void spotify_screen_draw(Canvas* canvas, void* context);

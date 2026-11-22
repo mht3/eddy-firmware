@@ -1,3 +1,5 @@
+# The C sources, headers, and assets come from this revision of the standalone app.
+# https://github.com/mht3/flipper-spotify/tree/341bb5ce5ac7a82e09cf6144a5f1dafffeb2c4fc
 App(
     appid="eddy_spotify",
     name="Spotify",
@@ -8,5 +10,6 @@ App(
     icon="I_Spotify_16x16",
     order=102,
     stack_size=3072,
+    fap_file_assets="assets",
     fap_category="assets",
 )

@@ -221,7 +221,7 @@ final class SpotifyAccount: NSObject, ObservableObject, ASWebAuthenticationPrese
     @Published private(set) var isSignedIn = false
     @Published private(set) var isSigningIn = false
     @Published private(set) var waitingForSpotifyApp = false
-    @Published private(set) var status = "Sign in to Spotify."
+    @Published private(set) var status = ""
     @Published private(set) var clientID = ""
     @Published private(set) var accountKey: String?
 
@@ -393,7 +393,9 @@ final class SpotifyAccount: NSObject, ObservableObject, ASWebAuthenticationPrese
             refreshing = nil
             apply(next)
         } catch {
-            if pendingSignIn == attempt { status = error.localizedDescription }
+            if pendingSignIn == attempt {
+                status = error.localizedDescription
+            }
         }
     }
 

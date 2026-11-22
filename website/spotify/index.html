@@ -4,13 +4,13 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="referrer" content="no-referrer">
-    <meta name="description" content="Register a Spotify developer app, find your Client ID, and understand how Spotify sign-in works.">
+    <meta name="description" content="Copy your Spotify developer Client ID, install Spotify on your Flipper, and connect it to Eddy on your iPhone.">
     <title>Spotify setup · Eddy Firmware</title>
     <link rel="canonical" href="https://mht3.github.io/eddy-firmware/spotify/">
     <link rel="icon" href="../eddy.svg">
     <link rel="stylesheet" href="../style.css">
     <link rel="stylesheet" href="music.css">
-    <script type="module" src="music.js"></script>
+    <script type="module" src="music.js?v=iphone"></script>
   </head>
   <body>
     <header><div class="bar">
@@ -21,8 +21,8 @@
       <h1>Spotify setup</h1>
       <p id="return-notice" class="setup-note" role="status" hidden></p>
       <aside class="setup-note">
-        <p>Spotify works over bluetooth without any additional Flipper Zero modules. In order to give your Flipper Zero access to Spotify, you must follow the instructions below and setup a Spotify developer application.</p>
-        <p>I realize this is not ideal, however, <a href="https://developer.spotify.com/documentation/web-api/concepts/quota-modes">current spotify guidelines</a> limit us from doing anything else at the moment. Regardless, I hope this spotify setup is painless for you and know that I'm currently working on a better fix. Feel free to leave a <a href="https://github.com/mht3/eddy-firmware/issues/new?template=02_enhancements.yml">Github issue</a> for suggestions!</p>
+        <p>Spotify works over Bluetooth without any additional Flipper Zero modules. To give your Flipper Zero access to Spotify while testing your own developer application, follow the instructions below. You’ll need Spotify Premium and Eddy on your iPhone. <a href="../app/#iphone">Check iPhone beta availability.</a></p>
+        <p>I realize this is not ideal. <a href="https://developer.spotify.com/documentation/web-api/concepts/quota-modes">Spotify’s current guidelines</a> limit who can use a development app. Regardless, I hope this Spotify setup is painless for you and know that I’m currently working on a better fix. Feel free to leave a <a href="https://github.com/mht3/eddy-firmware/issues/new?template=02_enhancements.yml">GitHub issue</a> for suggestions!</p>
       </aside>
       <section id="developer-setup">
         <h2>Create your Spotify developer app</h2>
@@ -39,26 +39,35 @@
               <dt>App description</dt><dd>A Spotify interface for the Flipper Zero.</dd>
               <dt>Website</dt><dd><code>https://mht3.github.io/eddy-firmware</code></dd>
               <dt>Redirect URIs</dt><dd>Paste <code>https://mht3.github.io/eddy-firmware/spotify/</code>, including the final slash. Click <strong>Add</strong> and check that the address appears in the list.</dd>
-              <dt>Which API/SDKs are you planning to use?</dt><dd>Check <strong>Web API</strong> only.</dd>
+              <dt>Which API/SDKs are you planning to use?</dt><dd>Select <strong>Web API</strong>. You’ll add the iOS settings after saving the form.</dd>
             </dl>
           </li>
           <li id="completed-form"><strong>Check your completed form.</strong> Read Spotify’s Developer Terms of Service and Design Guidelines. If you accept them, check the agreement box.
             <figure><a href="completed-create-app.png" aria-label="View the completed Eddy form at full size"><img src="completed-create-app.png" width="1443" height="1127" alt="Completed Eddy form with the redirect URI listed beside Remove, only Web API selected, and the agreement box checked."></a></figure>
             Click <strong>Save</strong> at the bottom left.
           </li>
-          <li id="copy-client-id"><strong>Copy your Client ID.</strong> Open your Eddy app in the Spotify dashboard and go to <strong>Settings → Basic Information</strong>. Click the two overlapping squares at the right end of your <strong>Client ID</strong> field, circled below. You can leave the Client Secret hidden.
+          <li id="iphone-settings"><strong>Enable sign-in on iPhone.</strong> Open <strong>Settings → Edit</strong> for your Eddy developer app. Select <strong>iOS</strong> alongside <strong>Web API</strong>. Add the bundle ID <code>dev.eddyfirmware.spotify</code> and the second redirect URI <code>eddyspotify://spotify-login</code>. Keep the HTTPS redirect you entered above and click <strong>Save</strong>.</li>
+          <li id="copy-client-id"><strong>Copy your Client ID.</strong> Open your Eddy app in the Spotify dashboard and go to <strong>Settings → Basic Information</strong>. Click the two overlapping squares at the right end of the <strong>Client ID</strong> field, circled below. Keep the ID handy for the iPhone step. Leave the Client Secret hidden.
             <figure><a href="basic-information.webp" aria-label="View the circled copy icon at full size"><img src="basic-information.webp" width="1421" height="1107" alt="Spotify Basic Information for Eddy. The example Client ID is masked and a red circle marks its copy icon."></a></figure>
           </li>
-          <li><strong>Paste the ID into the Eddy installer.</strong> Select <strong>Spotify</strong> under <strong>Extras</strong>. Under <strong>Your build</strong>, paste the ID into <strong>Spotify Client ID</strong>, then install or download your update. <a href="../update/#your-build">Open the installer.</a></li>
         </ol>
       </section>
-      <section>
-        <h2>Connect your Flipper</h2>
+      <section id="install-spotify">
+        <h2>Install Spotify on your Flipper</h2>
         <ol>
-          <li>After the update, open <strong>Apps → Spotify</strong> on your Flipper. Scan the code on its screen with your phone and open the link in your browser.</li>
-          <li>Spotify opens automatically. Check the app name and requested permissions, then approve access. Spotify returns you to the connection page.</li>
-          <li>With Bluetooth on and the Spotify app still open on the Flipper, select <strong>Choose Flipper</strong> in the browser and pick your device. Start a song in Spotify and leave the browser tab open while using the Flipper.</li>
+          <li>Plug the Flipper into your computer with a USB data cable. In the <a href="../update/">Eddy installer</a>, include <strong>Spotify</strong> under <strong>Extras</strong>.</li>
+          <li>Select <strong>Connect Flipper Zero</strong>, choose your device, and follow the installer until the Flipper restarts.</li>
+          <li>On the Flipper, open <strong>Apps → Spotify</strong>. Scan its QR code with your iPhone to open Eddy or see the <a href="../app/">companion installation instructions</a>.</li>
         </ol>
+      </section>
+      <section id="connect-spotify">
+        <h2>Connect with Eddy on your iPhone</h2>
+        <ol>
+          <li>Keep Spotify open on the Flipper. In the Eddy iPhone app, tap <strong>Connect device</strong>, choose your Flipper’s name, and accept the Bluetooth pairing prompt if it appears.</li>
+          <li>On <strong>Log in to Spotify</strong>, paste the Client ID you copied into <strong>Spotify Client ID</strong>. Tap <strong>Log in to Spotify</strong>, approve access in Spotify, and return to Eddy. If you’ve finished onboarding, you can find sign-in under <strong>Devices → Spotify</strong>.</li>
+          <li>Follow the prompts on the Flipper. Once your library appears, open <strong>Playlists</strong> to pick a song. If Spotify asks for an active player, start a song in Spotify on your iPhone and try again.</li>
+        </ol>
+        <p><a href="https://github.com/mht3/flipper-spotify">View the Flipper Spotify app on GitHub</a></p>
       </section>
       <section id="try-spotify-preview">
         <h2>Try the Spotify demo!</h2>

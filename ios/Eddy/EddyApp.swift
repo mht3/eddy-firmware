@@ -10,6 +10,7 @@ final class EddyPhone: ObservableObject {
 
     init() {
         clientID = account.clientID
+        Diagnostics.removeLegacyCounts()
         flipper.onConnect = { [weak self] in self?.attachLibrary() }
         flipper.onCommand = { [weak self] packet in self?.bridge?.receive(packet) }
         flipper.onDisconnect = { [weak self] in self?.clearLibrary() }
@@ -40,30 +41,16 @@ final class EddyPhone: ObservableObject {
         activeAccount = account.accountKey
         clearLibrary()
         flipper.setLibraryEnabled(activeAccount != nil)
-
-    }
-
-    func openSetup(_ url: URL) {
-        guard url.scheme == "eddyspotify", url.host == "setup",
-              url.path.isEmpty || url.path == "/",
-              let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems else { return }
-        let ids = query.filter { $0.name == "client_id" }
-        guard ids.count == 1, let id = try? SpotifyOAuth.clientID(ids[0].value ?? "") else { return }
-        clientID = id
-
     }
 }
 
 @main
 @MainActor
-struct EddySpotifyApp: App {
+struct EddyApp: App {
     @StateObject private var phone = EddyPhone()
     var body: some Scene {
         WindowGroup {
             ConnectionView(phone: phone, account: phone.account, flipper: phone.flipper)
-                .onOpenURL { url in
-                    if !phone.account.handleSpotifyCallback(url) { phone.openSetup(url) }
-                }
         }
     }
 }
@@ -80,14 +67,17 @@ private struct ConnectionView: View {
     @State private var step = 0
     @State private var chooser = false
     @State private var accountSheet = false
+    @State private var diagnosticsSheet = false
     @State private var didLaunch = false
-    @State private var pairedDuringSetup = false
+    @FocusState private var editingClientID: Bool
     @Environment(\.scenePhase) private var phase
 
-    private var paired: Bool { pairedDuringSetup || flipper.connectedID != nil }
-    private var availableStep: Int { paired ? (account.isSignedIn ? 4 : 2) : 1 }
-    private var selection: Binding<Int> {
-        Binding(get: { step }, set: { step = min($0, availableStep) })
+    private var nextLabel: String {
+        if step == 4 { return "View devices" }
+        if (step == 1 && flipper.connectedID == nil) || (step == 2 && !account.isSignedIn) {
+            return "Set up later"
+        }
+        return "Continue"
     }
 
     var body: some View {
@@ -103,6 +93,7 @@ private struct ConnectionView: View {
             if flipper.selectedID != nil { flipper.reconnect() }
             if onboarded { flipper.refreshDevices() }
         }
+        .onChange(of: step) { _, _ in editingClientID = false }
         .onChange(of: phase) { _, value in
             if value == .active && (onboarded || step == 1) { flipper.refreshDevices() }
         }
@@ -111,10 +102,19 @@ private struct ConnectionView: View {
             if account.isSignedIn && step == 2 { withAnimation { step = 3 } }
         }
         .onChange(of: flipper.connectedID) { _, device in
-            if device != nil { pairedDuringSetup = true; chooser = false }
+            if device != nil { chooser = false }
         }
-        .onChange(of: phone.clientID) { _, id in
-            if onboarded && !account.isSignedIn && (try? SpotifyOAuth.clientID(id)) != nil { accountSheet = true }
+        .onOpenURL { url in
+            if account.handleSpotifyCallback(url) { return }
+            if url.scheme == "eddyspotify", url.host == "setup", onboarded, !account.isSignedIn {
+                accountSheet = true
+            }
+        }
+        .sheet(isPresented: $diagnosticsSheet) {
+            NavigationStack {
+                DiagnosticsView()
+                    .toolbar { Button("Done") { diagnosticsSheet = false } }
+            }
         }
         .sheet(isPresented: $chooser, onDismiss: { flipper.stopScanning() }) { deviceChooser }
         .sheet(isPresented: $accountSheet) {
@@ -128,7 +128,7 @@ private struct ConnectionView: View {
 
     private var welcomeFlow: some View {
         VStack(spacing: 12) {
-            TabView(selection: selection) {
+            TabView(selection: $step) {
                 panel("Welcome to Eddy!", symbol: nil) {
                     Text("Connect your Flipper Zero and bring your Spotify library to its screen.")
                 }.tag(0)
@@ -141,11 +141,15 @@ private struct ConnectionView: View {
                     }
                 }.tag(1)
                 panel("Log in to Spotify", symbol: "music.note.list") { spotifyControls }.tag(2)
-                panel("Analytics", symbol: "hand.raised.fill") {
-                    Text("Eddy collects no usage analytics. Your Spotify credentials stay in your iPhone’s Keychain. Spotify receives your library and playback requests.")
+                panel("Optional diagnostics", symbol: "hand.raised.fill") {
+                    DiagnosticsPreferences()
                 }.tag(3)
                 panel("You’re all set!", symbol: "checkmark.circle") {
-                    Text("Open Apps → Spotify on your Flipper. Pick a playlist or see what’s playing.")
+                    if flipper.connectedID != nil && account.isSignedIn {
+                        Text("Open Apps → Spotify on your Flipper to browse your playlists.")
+                    } else {
+                        Text("You can finish setting up your Flipper and Spotify in Devices.")
+                    }
                 }.tag(4)
             }
             #if os(iOS)
@@ -157,13 +161,14 @@ private struct ConnectionView: View {
                         .frame(width: index == step ? 22 : 7, height: 7)
                 }
             }.accessibilityElement(children: .ignore).accessibilityLabel("Step \(step + 1) of 5")
-            Button(step == 4 ? "View devices" : "Continue") {
+            Button(nextLabel) {
                 if step == 4 { onboarded = true; flipper.refreshDevices() }
                 else { withAnimation { step += 1 } }
             }
-            .disabled(step < 4 && step >= availableStep)
             .buttonStyle(.borderedProminent).controlSize(.large)
-            .padding(.vertical, 12)
+            .padding(.vertical, 4)
+            Button("Diagnostics") { diagnosticsSheet = true }
+                .font(.footnote).padding(.bottom, 6)
         }
         .background(ocean.ignoresSafeArea())
     }
@@ -197,10 +202,13 @@ private struct ConnectionView: View {
             }
         } else {
             if (try? SpotifyOAuth.clientID(phone.clientID)) == nil {
-                Text("Scan the QR in Apps → Spotify with your iPhone camera and tap Open Eddy, or paste your Client ID below.")
+                Text("Copy your Client ID from your Spotify developer app and paste it here.")
             }
             TextField("Spotify Client ID", text: $phone.clientID)
                 .textFieldStyle(.roundedBorder).autocorrectionDisabled()
+                .focused($editingClientID)
+                .submitLabel(.done)
+                .onSubmit { editingClientID = false }
                 #if os(iOS)
                 .textInputAutocapitalization(.never).keyboardType(.asciiCapable)
                 #endif
@@ -213,11 +221,6 @@ private struct ConnectionView: View {
                 Task { await account.signIn(clientID: phone.clientID, preferSpotifyApp: false) }
             }
             .disabled((account.isSigningIn && !account.waitingForSpotifyApp) || (try? SpotifyOAuth.clientID(phone.clientID)) == nil)
-            DisclosureGroup("Spotify app settings") {
-                Text("To sign in inside Spotify, add eddyspotify://spotify-login as a redirect URI and enable iOS for this bundle ID in your Spotify developer app.")
-                Text(Bundle.main.bundleIdentifier ?? "dev.eddyfirmware.spotify").font(.footnote.monospaced()).textSelection(.enabled)
-                Text("Already registered the Eddy website redirect? Use browser sign-in once, then return here for Bluetooth.")
-            }
         }
         if !account.status.isEmpty { Text(account.status).font(.footnote).foregroundStyle(.secondary) }
     }
@@ -272,8 +275,12 @@ private struct ConnectionView: View {
                     Button { openChooser() } label: { Label("Connect device", systemImage: "plus") }
                 }
                 Section {
+                    NavigationLink("Diagnostics") { DiagnosticsView() }
                     Button { accountSheet = true } label: {
                         LabeledContent("Spotify", value: account.isSignedIn ? "Linked" : "Log in")
+                    }
+                    Link(destination: URL(string: "https://ko-fi.com/mhtaylor")!) {
+                        Label("Buy me a Coffee", systemImage: "cup.and.saucer")
                     }
                 }
             }

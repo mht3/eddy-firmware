@@ -8,6 +8,7 @@
     <link rel="icon" href="../eddy.svg">
     <link rel="stylesheet" href="../style.css">
     <link rel="stylesheet" href="app.css">
+    <script type="module" src="open-app.js"></script>
   </head>
   <body>
     <header><div class="bar">
@@ -18,7 +19,7 @@
       <div class="app-hero">
         <div>
           <img class="app-mark" src="../eddy.svg" width="72" height="72" alt="">
-          <h1>Eddy for iPhone</h1>
+          <h1>Eddy</h1>
           <p>Pair your Flipper Zero, sign in to Spotify, and browse your playlists from the buttons on your Flipper.</p>
           <a class="small-cta" href="#iphone">iPhone beta</a>
         </div>
@@ -32,6 +33,11 @@
           <h2>iPhone</h2>
           <p class="platform-detail">TestFlight beta · iOS 17 or later</p>
           <p id="beta-availability">TestFlight invitations aren’t open yet.</p>
+          <ol>
+            <li>Already installed? <a href="eddyspotify://setup">Open Eddy</a> on your iPhone.</li>
+            <li>For a first install, get <a href="https://apps.apple.com/app/testflight/id899247664">Apple TestFlight</a> on your iPhone. Once invitations open, follow the beta link on this page and tap <strong>Accept → Install → Open</strong>.</li>
+            <li>In Eddy, tap <strong>Connect device</strong> and select your Flipper. Paste your Client ID on <strong>Log in to Spotify</strong>. <a href="../spotify/">Spotify setup guide</a></li>
+          </ol>
           <a class="source" href="https://github.com/mht3/eddy-firmware/tree/dev/ios">View the iPhone prototype</a>
         </section>
         <section>

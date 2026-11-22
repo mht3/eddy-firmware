@@ -79,7 +79,7 @@ function menu(s) {
   const v=current(s);
   switch(v.kind) {
     case 'home': return [entry('playlists','Playlists','playlist'),entry('liked','Liked Songs','heart'),entry('queue','Queue','queue'),
-      entry('albums','Albums','album'),entry('presets','Presets','playlist'),entry('setup','Phone sign-in','tracks')];
+      entry('albums','Albums','album'),entry('presets','Presets','playlist'),entry('setup','Eddy for iPhone','tracks')];
     case 'playlists': case 'destinations': return s.playlists.map((p,i)=>entry(v.kind==='playlists'?'playlist':'save',p.name,p.art,i));
     case 'playlist': return s.playlists[v.value].tracks.map(songEntry);
     case 'queue': return s.queue.map(item=>entry('queued',songs[item.id].title,songs[item.id].art,item));
@@ -256,7 +256,7 @@ export function spotifyHit(s,x,y) {
 
 export function spotifyStatus(s) {
   const at=position(s), v=current(s), active=songs[s.track];
-  if(v.kind==='setup') return 'On your Flipper, scan the personal sign-in code. This preview uses a sample library. OK returns to the library.';
+  if(v.kind==='setup') return 'On your Flipper, scan the QR code to open Eddy on your iPhone. This demo uses a sample library. Press OK to return.';
   const playing=(s.playing?'Playing ':'Paused on ')+active.title+' by '+active.artist;
   if(v.kind==='volume') return 'Volume '+s.volume+' percent. Up and Down adjust. OK returns to the player.';
   if(v.kind==='player') return [now()<s.noticeUntil?s.notice:'',playing,v.toolbar?actions[s.action]+'. Left or Right selects an action. OK opens it. Up returns to playback.':
@@ -328,9 +328,9 @@ export function drawSpotify(ctx,s) {
   const v=current(s), at=position(s);
   ctx.save(); ctx.textBaseline='alphabetic'; ctx.font='bold 9px sans-serif';
   if(v.kind==='setup') {
-    ctx.fillText('Phone sign-in',2,9); ctx.fillRect(2,11,124,1);
+    ctx.fillText('Eddy for iPhone',2,9); ctx.fillRect(2,11,124,1);
     ctx.font='8px sans-serif';
-    ctx.fillText('Your Flipper shows your',2,28); ctx.fillText('personal QR code here.',2,39);
+    ctx.fillText('Scan the QR on your Flipper',2,28); ctx.fillText('to open Eddy on your iPhone.',2,39);
     ctx.fillText('OK  Back to demo',2,59);
     ctx.restore(); return false;
   }
