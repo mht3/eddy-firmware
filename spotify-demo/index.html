@@ -1,47 +1,253 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="color-scheme" content="dark">
-  <title>Spotify demo · Eddy</title>
-  <link rel="stylesheet" href="./demo.css">
-  <script type="module" src="./demo.js"></script>
-</head>
-<body>
-  <main>
-    <h1>Spotify demo</h1>
-    <p class="intro">Explore a sample library. Press <strong>OK</strong> for playlists or <strong>Right</strong> for Now Playing.</p>
-    <section id="device" aria-label="Interactive Flipper Zero">
-      <div class="device-body">
-        <img src="./face.webp" width="1728" height="864" alt="" draggable="false">
-        <div class="controls">
-          <canvas id="lcd" width="128" height="64" aria-hidden="true"></canvas>
-          <button type="button" data-key="up" aria-label="Up">↑</button>
-          <button type="button" data-key="left" aria-label="Left">←</button>
-          <button type="button" data-key="ok" aria-label="OK">OK</button>
-          <button type="button" data-key="right" aria-label="Right">→</button>
-          <button type="button" data-key="down" aria-label="Down">↓</button>
-          <button type="button" data-key="back" aria-label="Back">Back</button>
+  <head>
+    <base href="../">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="theme-color" content="#071529">
+    <meta name="description" content="Try Spotify on a Flipper Zero with Eddy’s interactive tour. Browse sample playlists, queue a song, follow its lyrics and save a playlist shortcut.">
+    <title>Spotify demo · Eddy Firmware</title>
+    <script>
+      // The site and its Spotify tour share this page and its Flipper controls.
+      // Set the asset root before the browser resolves any relative links.
+      {
+        const url = new URL(location.href);
+        const onTourPage = /\/spotify-demo\/(?:index\.html)?$/.test(url.pathname);
+        if (onTourPage || url.searchParams.get('demo') === 'spotify') {
+          let base = document.querySelector('base');
+          if (!base) {
+            base = document.createElement('base');
+            base.href = new URL(onTourPage ? '../' : './', url).href;
+            document.head.append(base);
+          }
+          document.documentElement.dataset.demo = 'spotify';
+          document.documentElement.classList.add('picker-preview');
+          document.title = 'Spotify demo · Eddy Firmware';
+          if (!onTourPage) {
+            const target = new URL('spotify-demo/', base.href);
+            const options = url.searchParams;
+            const guided = options.get('tour') === '1';
+            options.delete('demo');
+            options.delete('tour');
+            if (guided) options.delete('view');
+            else if (options.get('view') !== 'now-playing') options.set('view', 'library');
+            target.search = options;
+            if (url.hash !== '#home-screen') target.hash = url.hash;
+            history.replaceState(history.state, '', target);
+          }
+        }
+      }
+    </script>
+    <link rel="icon" href="eddy.svg">
+    <link rel="stylesheet" href="style.css">
+    <script type="module" src="app.js">
+    </script>
+    <script type="module" src="device.js">
+    </script>
+  </head>
+  <body>
+    <a class="skip" href="#main">
+      Skip to content
+    </a>
+    <header>
+      <div class="bar">
+        <a class="brand" href="./">
+          <img src="eddy.svg" alt="">
+          Eddy
+          <span>
+            Firmware
+          </span>
+        </a>
+        <nav aria-label="Main">
+          <a href="wiki/">
+            Wiki
+          </a>
+          <a href="app/">App</a>
+          <a href="resources/">Resources</a>
+          <a class="small-cta" href="update/">
+            Install
+          </a>
+        </nav>
+      </div>
+    </header>
+    <main id="main">
+      <div class="showcase">
+        <div class="stage">
+          <canvas class="field" aria-hidden="true">
+          </canvas>
+          <eddy-device phase="0">
+          </eddy-device>
+          <div id="playable" hidden role="group" aria-label="Flipper Zero preview controls" aria-describedby="control-help">
+            <img src="models/face.webp" width="1728" height="864" alt="">
+            <div class="device-controls">
+              <canvas id="preview-lcd" width="128" height="64" aria-hidden="true"></canvas>
+              <button data-key="ok" aria-label="OK, open selection">OK</button>
+              <button data-key="up" aria-label="Move up">↑</button>
+              <button data-key="down" aria-label="Move down">↓</button>
+              <button data-key="left" aria-label="Move left">←</button>
+              <button data-key="right" aria-label="Move right">→</button>
+              <button data-key="back" aria-label="Go back">↩</button>
+            </div>
+            <span class="sr-only" role="status" id="preview-state"></span>
+          </div>
+          <div class="caption" aria-hidden="true">
+            <span>
+              FLIPPER ZERO
+            </span>
+            <span id="scene-label">
+              DEVICE PREVIEW
+            </span>
+          </div>
+        </div>
+        <div class="chapters">
+          <section class="hero" data-phase="0">
+            <div class="eyebrow">
+              CUSTOM FIRMWARE FOR FLIPPER ZERO
+            </div>
+            <h1>
+              Eddy
+              <br>
+              <em>
+                Firmware
+              </em>
+            </h1>
+            <p>
+              A new home for your Flipper Zero.
+            </p>
+            <a class="cta" href="update/">
+              Install Eddy Firmware
+            </a>
+            <a class="tour" href="#home-screen">
+              Try the home screen
+              <span aria-hidden="true">
+                ↓
+              </span>
+            </a>
+          </section>
+          <section id="connect" data-phase="1">
+            <div class="eyebrow">
+              USB CONNECTION
+            </div>
+            <h2>
+              Plug in.
+            </h2>
+            <p>
+              Insert your microSD card and connect your Flipper Zero with a USB data cable. Close qFlipper so the web installer can use the port.
+            </p>
+          </section>
+          <section data-phase="2">
+            <div class="eyebrow">
+              FIRMWARE UPDATE
+            </div>
+            <h2>
+              Load Eddy.
+            </h2>
+            <p>
+              <a href="update/">Open the Eddy updater</a>, connect your device, and install the main build. Leave your Flipper plugged in through the restart.
+            </p>
+          </section>
+          <section id="home-screen" data-phase="3">
+            <div class="eyebrow">
+              INTERACTIVE PREVIEW
+            </div>
+            <h2>
+              Meet Eddy.
+            </h2>
+            <p id="preview-intro">Play around with the Flipper Zero emulator to see Eddy in action! Start by pressing the center or down button.</p>
+            <div id="spotify-lesson" hidden>
+              <div aria-live="polite" aria-atomic="true">
+                <p id="lesson-step"></p>
+                <h3 id="lesson-title"></h3>
+                <p id="lesson-instruction"></p>
+              </div>
+              <progress id="lesson-progress" aria-label="Tour progress"></progress>
+              <p id="lesson-hint" role="status"></p>
+              <div class="lesson-actions">
+                <button type="button" id="lesson-retry">Repeat step</button>
+                <button type="button" id="lesson-exit">Explore freely</button>
+              </div>
+            </div>
+            <button type="button" class="small-cta" id="lesson-start" hidden>Start guided tour</button>
+            <details id="spotify-buttons" hidden>
+              <summary>Using the Flipper buttons</summary>
+              <dl class="controls-guide">
+                <dt>Open Now Playing</dt><dd>Press <strong>Right</strong> from your library. Press <strong>Back</strong> to pick up where you left off.</dd>
+                <dt>Save a playlist shortcut</dt><dd>In <strong>Playlists</strong>, highlight a playlist and hold an unused arrow to save it. Hold that arrow again to start the playlist. To replace a shortcut, highlight the new playlist, hold <strong>OK</strong>, then choose its arrow.</dd>
+                <dt>Queue a song</dt><dd>Open a playlist or <strong>Liked Songs</strong>, highlight the track you want to hear later, and press <strong>OK → Add to queue</strong>. Your current song keeps playing.</dd>
+                <dt>Save the current song or adjust volume</dt><dd>In Now Playing, press <strong>Down</strong>, use <strong>Left</strong> or <strong>Right</strong> to choose a button, and press <strong>OK</strong>.</dd>
+                <dt>Follow the demo lyrics</dt><dd>Press <strong>Up</strong> from Now Playing. The words follow the song automatically. <strong>Left</strong> restarts the song or goes to the previous track, and <strong>Right</strong> skips. <strong>Down</strong> or <strong>Back</strong> returns to Now Playing.</dd>
+              </dl>
+            </details>
+            <a href="update/#app-picker" class="cta" id="return-to-picker" hidden>Back to app selection</a>
+            <div class="music-tour">
+              <h3>Spotify</h3>
+              <p>A new Spotify app allows you to check your playlists, queue songs, and add songs to playlists.</p>
+              <a class="small-cta" id="try-spotify" href="spotify-demo/">Try the Spotify demo!</a>
+              <a href="spotify/">Spotify setup</a>
+            </div>
+            <span class="sr-only" id="control-help">The preview uses sample data.</span>
+          </section>
         </div>
       </div>
-    </section>
-    <p id="player-status" class="visually-hidden" role="status" aria-atomic="true"></p>
-    <button type="button" id="tour-start">Start guided tour</button>
-    <section id="lesson" hidden aria-labelledby="lesson-title">
-      <div aria-live="polite" aria-atomic="true">
-        <p id="lesson-step"></p>
-        <h2 id="lesson-title"></h2>
-        <p id="lesson-instruction"></p>
+      <section id="install">
+        <div class="install-wrap">
+          <div>
+            <div class="eyebrow">
+              MAIN BUILD
+            </div>
+            <h2>
+              Install Eddy.
+            </h2>
+            <p>
+              For Flipper Zero with a microSD card and USB data cable. Use desktop Chrome or Edge for the web installer.
+            </p>
+          </div>
+          <a class="cta" href="update/">Open Eddy updater</a>
+        </div>
+      </section>
+      <dialog id="frequency-dialog" class="name-dialog" aria-labelledby="frequency-label">
+        <form method="dialog">
+          <label id="frequency-label" for="receive-frequency">Receive frequency (kHz)</label>
+          <input type="number" id="receive-frequency" inputmode="numeric" step="1" required>
+          <div><button type="button">Cancel</button><button type="submit">Tune</button></div>
+        </form>
+      </dialog>
+      <dialog id="observation-dialog" class="name-dialog" aria-label="Save observation">
+        <form method="dialog">
+          <label for="observation-name">Name observation</label>
+          <input id="observation-name" maxlength="22" required>
+          <div><button type="button">Cancel</button><button type="submit">Save</button></div>
+        </form>
+      </dialog>
+      <dialog id="layout-name-dialog" class="name-dialog" aria-labelledby="layout-name-label">
+        <form method="dialog">
+          <label for="layout-name" id="layout-name-label">Remote name</label>
+          <input id="layout-name" maxlength="22" required>
+          <div><button type="button">Cancel</button><button type="submit">Save</button></div>
+        </form>
+      </dialog>
+      <dialog id="remote-name-dialog" class="name-dialog">
+        <form method="dialog">
+          <label for="remote-name" id="remote-name-label">Remote name</label>
+          <input id="remote-name" maxlength="22" placeholder="Living room TV" required>
+          <label for="remote-button" id="remote-button-label">Button name</label>
+          <input id="remote-button" maxlength="22" value="Power" required>
+          <div><button type="button" id="remote-cancel">Cancel</button><button type="submit">Save</button></div>
+        </form>
+      </dialog>
+    </main>
+    <footer>
+      <a class="brand" href="./">
+        <img src="eddy.svg" alt="">
+        Eddy
+        <span>
+          Firmware
+        </span>
+      </a>
+      <div>
+        <a href="wiki/">Wiki</a>
+        <a href="resources/">Resources</a>
       </div>
-      <progress id="progress" aria-label="Tour progress"></progress>
-      <p id="lesson-hint" role="status"></p>
-      <div class="actions">
-        <button type="button" id="retry">Repeat step</button>
-        <button type="button" id="exit">Explore freely</button>
-      </div>
-    </section>
-    <noscript>This interactive demo needs JavaScript.</noscript>
-  </main>
-</body>
+    </footer>
+  </body>
 </html>

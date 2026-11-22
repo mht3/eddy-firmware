@@ -76,7 +76,8 @@ const lists = {
   ...powerLists,
 };
 const previewParams = new URLSearchParams(location.search);
-const guideApp = ['music','spotify'].find(id=>id===previewParams.get('demo'));
+const guideApp = document.documentElement.dataset.demo ??
+  (previewParams.get('demo') === 'music' ? 'music' : undefined);
 export const pickerPreview = Boolean(guideApp) || ['apps','app','community'].some(key => previewParams.has(key));
 const requestedApps = previewParams.has('apps') ? new Set(previewParams.get('apps').split(',')) : null;
 const orderParam = previewParams.get('order')?.split(',');
@@ -538,9 +539,6 @@ lessonExit.addEventListener('click', () => {
   announce();
   lessonStart.focus({preventScroll:true});
 });
-document.querySelector('#try-spotify').addEventListener('click', () => {
-  location.assign('?demo=spotify&tour=1#home-screen');
-});
 if(pickerPreview) {
   document.documentElement.classList.add('picker-preview');
   const requestedApp = guideApp ?? previewParams.get('app');
@@ -569,8 +567,8 @@ if(pickerPreview) {
   if (guideApp === 'spotify') {
     back.href = 'spotify/';
     back.textContent = 'Back to Spotify setup';
-    if (previewParams.get('tour') === '1') beginLessons();
-    else renderLesson();
+    if (['library','now-playing'].includes(previewParams.get('view'))) renderLesson();
+    else beginLessons();
   } else if (guideApp === 'music') {
     back.href = 'update/#try-music';
     back.textContent = 'Back to app selection';

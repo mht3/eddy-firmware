@@ -8,6 +8,37 @@
     <title>
       Eddy Firmware for Flipper Zero
     </title>
+    <script>
+      // The site and its Spotify tour share this page and its Flipper controls.
+      // Set the asset root before the browser resolves any relative links.
+      {
+        const url = new URL(location.href);
+        const onTourPage = /\/spotify-demo\/(?:index\.html)?$/.test(url.pathname);
+        if (onTourPage || url.searchParams.get('demo') === 'spotify') {
+          let base = document.querySelector('base');
+          if (!base) {
+            base = document.createElement('base');
+            base.href = new URL(onTourPage ? '../' : './', url).href;
+            document.head.append(base);
+          }
+          document.documentElement.dataset.demo = 'spotify';
+          document.documentElement.classList.add('picker-preview');
+          document.title = 'Spotify demo · Eddy Firmware';
+          if (!onTourPage) {
+            const target = new URL('spotify-demo/', base.href);
+            const options = url.searchParams;
+            const guided = options.get('tour') === '1';
+            options.delete('demo');
+            options.delete('tour');
+            if (guided) options.delete('view');
+            else if (options.get('view') !== 'now-playing') options.set('view', 'library');
+            target.search = options;
+            if (url.hash !== '#home-screen') target.hash = url.hash;
+            history.replaceState(history.state, '', target);
+          }
+        }
+      }
+    </script>
     <link rel="icon" href="eddy.svg">
     <link rel="stylesheet" href="style.css">
     <script type="module" src="app.js">
@@ -152,7 +183,7 @@
             <div class="music-tour">
               <h3>Spotify</h3>
               <p>A new Spotify app allows you to check your playlists, queue songs, and add songs to playlists.</p>
-              <button class="small-cta" id="try-spotify" type="button">Try the Spotify demo!</button>
+              <a class="small-cta" id="try-spotify" href="spotify-demo/">Try the Spotify demo!</a>
               <a href="spotify/">Spotify setup</a>
             </div>
             <span class="sr-only" id="control-help">The preview uses sample data.</span>
