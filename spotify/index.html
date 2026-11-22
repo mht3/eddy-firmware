@@ -27,10 +27,15 @@
         <h2>Create your Spotify developer app</h2>
         <ol class="setup-steps">
           <li><strong>Open the developer dashboard.</strong> Sign in with the Spotify account you’ll use to develop your app. Spotify requires the app owner to have Premium in development mode. <a href="https://developer.spotify.com/dashboard">Open the Spotify Developer Dashboard.</a></li>
-          <li><strong>Choose Create app.</strong> Enter a name and a short description that you’ll recognize when Spotify asks for permission. Here’s how I filled out those fields for Eddy. Use your own project’s name and description. You can leave Website blank if you don’t have one.
+          <li><strong>Choose Create app.</strong> Spotify shows your app’s name when it asks for permission. Here’s how I registered Eddy. If you’re building a separate project, use its details here.
+            <dl class="registration-fields">
+              <dt>App name</dt><dd>Eddy</dd>
+              <dt>App description</dt><dd>A Spotify interface for the Flipper Zero.</dd>
+              <dt>Website</dt><dd><code>https://mht3.github.io/eddy-firmware</code></dd>
+            </dl>
             <figure><img src="create-app.webp" width="358" height="477" alt="Spotify’s Create app form with Eddy as the name and A Spotify interface for the Flipper Zero as the description."></figure>
           </li>
-          <li><strong>Add your redirect URI.</strong> This is where your app receives Spotify’s answer after you approve or decline. Use the exact callback address your app handles, including the final slash if it has one, and click <strong>Add</strong>. For example, my desktop prototype listens at <code>http://127.0.0.1:8000/spotify/</code> on the same computer where I sign in. A phone opening that address would look for an app on the phone. <a href="https://developer.spotify.com/documentation/web-api/concepts/redirect_uri">Spotify’s redirect URI guide.</a></li>
+          <li><strong>Add your redirect URI.</strong> Enter the address in your app that receives Spotify’s answer after someone approves or declines, then click <strong>Add</strong>. I registered <code>https://mht3.github.io/eddy-firmware/spotify/</code> for Eddy. For your own project, enter the full HTTPS address where you handle sign-in, including its final slash if it has one. <a href="https://developer.spotify.com/documentation/web-api/concepts/redirect_uri">Spotify’s redirect URI guide.</a></li>
           <li><strong>Select Web API and save.</strong> Under the APIs and SDKs, check <strong>Web API</strong>. Review the developer terms, check the agreement box if you accept them, and choose <strong>Save</strong>.</li>
           <li><strong>Copy the Client ID.</strong> Open your app’s <strong>Settings</strong> and use the copy button beside <strong>Client ID</strong>. Use this ID in your app’s sign-in configuration. Keep the Client Secret private. Spotify’s PKCE sign-in flow only needs the public Client ID.
             <figure><img src="client-id.webp" width="276" height="112" alt="The Client ID field in Settings, with the copy button at its right."></figure>
@@ -38,9 +43,9 @@
         </ol>
       </section>
       <section>
-        <h2>How sign-in works</h2>
-        <p>Registration gives your app an identity. To grant it access to your library, start sign-in from your app. Spotify shows the app name and requested permissions, then sends you back to your registered callback. Your app can refresh its access after that. Spotify can ask you to sign in again if access expires or you revoke it. <a href="https://developer.spotify.com/documentation/web-api/tutorials/code-pkce-flow">Spotify’s sign-in walkthrough.</a></p>
-        <p>In my private Eddy prototype, I open <strong>Apps → Spotify</strong> on the Flipper and choose <strong>Link Spotify</strong> in the companion on my computer. Once I’ve approved access, I choose my Flipper in the companion. My phone can keep playing the music.</p>
+        <h2>What should happen when I scan?</h2>
+        <p>My goal is for you to open <strong>Apps → Spotify</strong> on your Flipper and scan its QR code with your phone. Spotify would show you Eddy’s name and ask whether it can read your library and control playback. After you approve, Spotify would send your browser back to Eddy to finish connecting. You’d only need to grant access again if Spotify requests it. <a href="https://developer.spotify.com/documentation/web-api/tutorials/code-pkce-flow">How Spotify sign-in works.</a></p>
+        <p>The QR in the current firmware opens this guide. You can try playlists and playback with the sample library below.</p>
       </section>
       <section id="try-spotify-preview">
         <h2>Try the Spotify demo!</h2>
