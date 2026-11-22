@@ -40,14 +40,13 @@
               <dt>App description</dt><dd>A Spotify interface for the Flipper Zero.</dd>
               <dt>Website</dt><dd><code>https://mht3.github.io/eddy-firmware</code></dd>
               <dt>Redirect URIs</dt><dd>Paste <code>https://mht3.github.io/eddy-firmware/spotify/</code>, including the final slash. Click <strong>Add</strong> and check that the address appears in the list.</dd>
-              <dt>Which API/SDKs are you planning to use?</dt><dd>Select <strong>Web API</strong>. You’ll add the iOS settings after saving the form.</dd>
+              <dt>Which API/SDKs are you planning to use?</dt><dd>Select <strong>Web API</strong>.</dd>
             </dl>
           </li>
           <li id="completed-form"><strong>Check your completed form.</strong> Read Spotify’s Developer Terms of Service and Design Guidelines. If you accept them, check the agreement box.
             <figure><a href="completed-create-app.png" aria-label="View the completed Eddy form at full size"><img src="completed-create-app.png" width="1443" height="1127" alt="Completed Eddy form with the redirect URI listed beside Remove, only Web API selected, and the agreement box checked."></a></figure>
             Click <strong>Save</strong> at the bottom left.
           </li>
-          <li id="iphone-settings"><strong>Enable sign-in on iPhone.</strong> Open <strong>Settings → Edit</strong> for your Eddy developer app. Select <strong>iOS</strong> alongside <strong>Web API</strong>. Add the bundle ID <code>dev.eddyfirmware.spotify</code> and the second redirect URI <code>eddyspotify://spotify-login</code>. Keep the HTTPS redirect you entered above and click <strong>Save</strong>.</li>
           <li id="copy-client-id"><strong>Copy your Client ID.</strong> Open your Eddy app in the Spotify dashboard and go to <strong>Settings → Basic Information</strong>. Click the two overlapping squares at the right end of the <strong>Client ID</strong> field, circled below. Keep the ID handy for the iPhone step. Leave the Client Secret hidden.
             <figure><a href="basic-information.webp" aria-label="View the circled copy icon at full size"><img src="basic-information.webp" width="1421" height="1107" alt="Spotify Basic Information for Eddy. The example Client ID is masked and a red circle marks its copy icon."></a></figure>
           </li>
@@ -62,11 +61,12 @@
         </ol>
       </section>
       <section id="connect-spotify">
-        <h2>Connect with Eddy on your iPhone</h2>
+        <h2 id="iphone-settings">Connect with Eddy on your iPhone</h2>
         <ol>
           <li>Keep Spotify open on the Flipper. In the Eddy iPhone app, tap <strong>Connect device</strong>, choose your Flipper’s name, and accept the Bluetooth pairing prompt if it appears.</li>
-          <li>On <strong>Log in to Spotify</strong>, paste the Client ID you copied into <strong>Spotify Client ID</strong>. Tap <strong>Log in to Spotify</strong>, approve access in Spotify, and return to Eddy. If you’ve finished onboarding, you can find sign-in under <strong>Devices → Spotify</strong>.</li>
+          <li>On <strong>Log in to Spotify</strong>, paste the Client ID you copied into <strong>Spotify Client ID</strong>. Tap <strong>Log in to Spotify</strong>, approve access on Spotify’s sign-in page, and return to Eddy. If you’ve finished onboarding, you can find sign-in under <strong>Devices → Spotify</strong>.</li>
           <li>Follow the prompts on the Flipper. Once your library appears, open <strong>Playlists</strong> to pick a song. If Spotify asks for an active player, start a song in Spotify on your iPhone and try again.</li>
+          <li>For a shortcut, highlight <strong>Liked Songs</strong> or a playlist and hold an unused arrow. Hold that arrow again to play it. A Liked Songs shortcut starts up to 50 saved tracks.</li>
         </ol>
         <p><a href="https://github.com/mht3/flipper-spotify">View the Flipper Spotify app on GitHub</a></p>
       </section>

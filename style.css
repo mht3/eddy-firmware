@@ -468,7 +468,6 @@ nav [aria-current=page] {color:var(--surf)}
 .updater progress {width:100%;accent-color:var(--surf);margin-bottom:1rem}
 
 #preview-lcd.selectable {cursor:pointer}
-#preview-lcd.volume-adjust {touch-action:none}
 .name-dialog {background:#11263b;color:#eaf5ff;border:1px solid #55708a;border-radius:1rem;padding:1.5rem;font:inherit}
 .name-dialog::backdrop {background:#051223b8}
 .name-dialog form {display:grid;gap:1rem}

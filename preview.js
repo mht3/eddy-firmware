@@ -1,6 +1,6 @@
 import {getAppOrder, getSelectedApps, restoreAppOrder, launcherColumns, launcherPageSize} from './app-catalog.js';
 import {previewCommunity,savedCommunity,previewId} from './community-apps.js';
-import {openSpotifyDemo, openSpotifyPlayer, drawSpotify, spotifyStatus, spotifyKey, spotifyHit, spotifyVolumeAt} from './spotify-demo/spotify-preview.js';
+import {openSpotifyDemo, openSpotifyPlayer, drawSpotify, spotifyStatus, spotifyKey, spotifyHit} from './spotify-demo/spotify-preview.js';
 import {startSpotifyTour, spotifyTourSteps} from './spotify-demo/spotify-tour.js';
 import {openMusicDemo, drawMusic, musicStatus, musicKey} from './music-preview.js';
 import {presetButtons, tvPresetRows, tvPadStatus, tvPadKey, drawTvPad, tvPadHit, tvNavigationHit} from './tv-presets.js';
@@ -241,8 +241,6 @@ function draw() {
   }
   ctx.setTransform(width/128,0,0,height/64,0,0);
   const {page,row} = current();
-  display.style.touchAction = page==='spotify' && current().views.at(-1).kind==='volume'?'none':'';
-  display.classList.toggle('volume-adjust', page === 'spotify' && current().views.at(-1).kind === 'volume');
   display.classList.toggle('selectable',['menu','apps','quick','tvPad','pomodoro','spotify'].includes(page));
   const tick = reducedMotion.matches ? 4 : Math.floor(performance.now()/167);
   ctx.clearRect(0,0,128,64);
@@ -554,7 +552,7 @@ if(pickerPreview) {
   document.querySelector('#home-screen h2').textContent=title;
   const guideIntro = {
     spotify:previewParams.get('view') === 'now-playing'
-      ? 'Dolphin Days is playing. Follow its lyrics, save it to a playlist, or adjust its volume.'
+      ? 'Dolphin Days is playing. Press Down to save it to a playlist or Up to read its sample lyrics.'
       : 'Browse your playlists and saved music. Press Right to open the current song.',
     music:'Try a sample track. Press OK to pause or play, Right to skip, and Up or Down for volume.',
   };
@@ -634,32 +632,11 @@ function lcdPoint(event) {
   return [(event.clientX-box.left)*128/box.width,(event.clientY-box.top)*64/box.height];
 }
 
-let volumePointer=null, volumeClick=false;
-display.addEventListener('pointerdown',event=>{
-  if(guidedDemo || !event.isPrimary || event.button!==0) return;
-  volumeClick=false;
-  const state=current();
-  if(state.page!=='spotify' || !spotifyVolumeAt(state,...lcdPoint(event))) return;
-  volumePointer=event.pointerId;
-  display.setPointerCapture(volumePointer);
-  event.preventDefault(); draw();
-});
-display.addEventListener('pointermove',event=>{
-  if(event.pointerId!==volumePointer || current().page!=='spotify') return;
-  if(spotifyVolumeAt(current(),...lcdPoint(event),true)) draw();
-});
-function finishVolumeDrag(event) {
-  if(event.pointerId!==volumePointer) return;
-  volumePointer=null; volumeClick=true; announce();
-}
-display.addEventListener('pointerup',finishVolumeDrag);
-display.addEventListener('pointercancel',finishVolumeDrag);
 display.addEventListener('click', event=>{
   if (guidedDemo) {
     lessonHint.textContent = guidedDemo.complete ? 'Choose Explore freely to keep playing.' : 'Use the highlighted button on the Flipper.';
     return;
   }
-  if(volumeClick) { volumeClick=false; return; }
   const state=current();
   const [x,y]=lcdPoint(event);
   if(state.page==='spotify') {

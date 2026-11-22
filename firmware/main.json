@@ -2,9 +2,9 @@
   "parts": [
     {
       "name": "firmware.dfu",
-      "size": 801485,
-      "sha256": "aa11ed90beb1d1b9090e5d4ef6cd5cfdb253b49d11c2a6b2f9fcd54f018cc59f",
-      "md5": "f4c063ef27659da9847aec5f44ef73da"
+      "size": 801501,
+      "sha256": "bcfc0e4acd9ee7d958025872e15f75d077aa829a0d81b397aa318a74a5044d1f",
+      "md5": "3b851a038774bfd3fc1b420693774e37"
     },
     {
       "name": "firstboot.bin",
@@ -20,9 +20,9 @@
     },
     {
       "name": "resources.tar.gz",
-      "size": 218626,
-      "sha256": "9286b34f9ef6ee8f0e8334c38f66e7de3784e926220b0adb880a4d6cda5476ba",
-      "md5": "35d9854b165681610e2b31db05b3fabf"
+      "size": 218136,
+      "sha256": "481a406bc6962082d0d8efed1a1bcce7f265fdf975fe72b07d9f9ff7d0bd48c7",
+      "md5": "d1bd2349fe57e49d095e8db658c6ea3a"
     },
     {
       "name": "splash.bin",
@@ -33,21 +33,21 @@
     {
       "name": "update.fuf",
       "size": 1589,
-      "sha256": "62afeaf2be3b2a9138acf55bf86cafb71aec87a4b127a857da7bfb509c4430eb",
-      "md5": "ac7c8e23e35893dc4dffc2d81d5834b8"
+      "sha256": "ae7fb55e3c7d811e6f427e0b9d81399c3900bd4a339b3313948b1a2acaad38b1",
+      "md5": "69242c9a0ef4cbc1506abc063bc95ace"
     },
     {
       "name": "updater.bin",
       "size": 120833,
-      "sha256": "847d159b1eb81fddbc41d1e1aa9a4accf912ee54b5e74e13a89e447ebfe12c5b",
-      "md5": "dd0b611edc702bf352afc3f481b1543e"
+      "sha256": "fcf5ccc1e586a98eb43eb3e1b65494043a5458a6896641e4d9a40c674d38b18a",
+      "md5": "dbc5633864dbf9034bac86b374425a93"
     }
   ],
   "resourceIndex": {
     "manifest": 512,
-    "launcherOrder": 520192,
-    "communityList": 519680,
-    "archiveEnd": 521216,
+    "launcherOrder": 519680,
+    "communityList": 519168,
+    "archiveEnd": 520704,
     "apps": {
       "gpio": {
         "name": "apps/GPIO/gpio.fap",
@@ -115,31 +115,31 @@
       },
       "expansion_settings": {
         "name": "apps/assets/expansion_settings.fap",
-        "offset": 402432
+        "offset": 401920
       },
       "input_settings": {
         "name": "apps/assets/input_settings.fap",
-        "offset": 407040
+        "offset": 406528
       },
       "notification_settings": {
         "name": "apps/assets/notification_settings.fap",
-        "offset": 412672
+        "offset": 412160
       },
       "passport": {
         "name": "apps/assets/passport.fap",
-        "offset": 421888
+        "offset": 421376
       },
       "power_settings": {
         "name": "apps/assets/power_settings.fap",
-        "offset": 427008
+        "offset": 426496
       },
       "storage_settings": {
         "name": "apps/assets/storage_settings.fap",
-        "offset": 454656
+        "offset": 454144
       },
       "system_settings": {
         "name": "apps/assets/system_settings.fap",
-        "offset": 482304
+        "offset": 481792
       }
     }
   },
@@ -3342,12 +3342,12 @@
       4291153410,
       4294433683
     ],
-    "catalog": "eddy-dev-14220af1/lab/index.json"
+    "catalog": "eddy-dev-ad345cd5/lab/index.json"
   },
   "target": "f7",
-  "version": "eddy-dev-14220af1",
-  "file": "flipper-z-f7-update-eddy-dev-14220af1.tgz",
-  "commit": "14220af1efaf066fb18deda3f66b6d8e61d29852",
-  "spotifyCommit": "8ddee05483738ecec9213e00a63ecf1f2ac14629",
-  "sha256": "6e2ffc9c76876e52b4f516171323b502f437855597f49bbe61a9a957afc31aaa"
+  "version": "eddy-dev-ad345cd5",
+  "file": "flipper-z-f7-update-eddy-dev-ad345cd5.tgz",
+  "commit": "ad345cd5ad08b1c4fda122d3832f3228b8526a32",
+  "spotifyCommit": "fd530a74dfd0a6d7b908d69047d18f4c7ae890ae",
+  "sha256": "2e56ab74ac8f2711060d24318fa1de19bf9b28e8c4cae13578ae54b0a1e018ad"
 }
