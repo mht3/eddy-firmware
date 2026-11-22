@@ -23,6 +23,7 @@ const status = document.querySelector('#preview-state');
 const previewIntro = document.querySelector('#preview-intro');
 const homeIntro = previewIntro.textContent;
 const lessonCard = document.getElementById('spotify-lesson');
+const spotifyButtons = document.getElementById('spotify-buttons');
 const lessonStart = document.getElementById('lesson-start');
 const lessonRetry = document.getElementById('lesson-retry');
 const lessonExit = document.getElementById('lesson-exit');
@@ -302,6 +303,7 @@ function draw() {
 
 function announce() {
   const {page,row} = current();
+  spotifyButtons.hidden = page !== 'spotify';
   if(!pickerPreview) previewIntro.textContent=page==='spotify'
     ? 'Press Right in your library for Now Playing. Back returns you to the same list.'
     : homeIntro;

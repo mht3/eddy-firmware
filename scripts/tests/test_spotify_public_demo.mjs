@@ -9,6 +9,14 @@ const script = await file('music.js');
 test('public guide links to the demo and offers no account login', async () => {
   const html = await file('index.html');
   assert.match(html, /<h1>Spotify setup<\/h1>/);
+  assert.match(html, /href="https:\/\/developer\.spotify\.com\/dashboard"/);
+  for (const screenshot of ['create-app.webp', 'client-id.webp']) {
+    assert(html.includes('src="' + screenshot + '"'));
+  }
+  assert.doesNotMatch(html, /Using the Flipper buttons/);
+  const demo = await file('../index.html');
+  assert.match(demo, /<details id="spotify-buttons" hidden>/);
+  assert.match(demo, /<summary>Using the Flipper buttons<\/summary>/);
   assert(html.indexOf('id="developer-setup"') < html.indexOf('id="try-spotify-preview"'));
   assert.match(html, /href="\.\.\/\?demo=spotify#home-screen"/);
   assert.doesNotMatch(html, /href="[^"]*view=now-playing/);
