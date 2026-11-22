@@ -2,9 +2,9 @@
   "parts": [
     {
       "name": "firmware.dfu",
-      "size": 800617,
-      "sha256": "2a78f4221a47caec962fbdcc026262c583d13332057a88ce37df8d7e410c5936",
-      "md5": "6ca54a907d668e89c94e4916c5f230c2"
+      "size": 801017,
+      "sha256": "edca29d49a2404469440c841bc129a12fa6d74d23cbed3bac8f24be46b26d508",
+      "md5": "e864df74d76f35ac98388fe976f93e4c"
     },
     {
       "name": "firstboot.bin",
@@ -20,9 +20,9 @@
     },
     {
       "name": "resources.tar.gz",
-      "size": 215479,
-      "sha256": "b1c790ed903ae9c7b1ff38a153927426d9342d816d0d8b1f578207ad6a728794",
-      "md5": "5c234433e07568d6850362d43396de6f"
+      "size": 217875,
+      "sha256": "703594c4340f3704d32bb2460e4cb5f0ac8bdd016ab123c4c952599bd08aa04e",
+      "md5": "277e371a501bbd1d6efbcdadca0ef464"
     },
     {
       "name": "splash.bin",
@@ -33,19 +33,21 @@
     {
       "name": "update.fuf",
       "size": 1589,
-      "sha256": "9e3248a5a4a9f31ac7e687e5282dc8770514480a9ef7c458aa448b97f98bdbcd",
-      "md5": "d5cb2b635c5fee7e45d547ce58bc3116"
+      "sha256": "b2fb9b887940236bd827ab7880f9cac5228cb8820290e4ccb6327673bf3e572f",
+      "md5": "3d61d72dc2ee9ade743c8e9879057c29"
     },
     {
       "name": "updater.bin",
       "size": 120833,
-      "sha256": "d1a011434947555d513a2fec3d36dcc32301304b638e8c281a106f48637188cf",
-      "md5": "d837cb0b8f4b44cba2c65a7c64f4c333"
+      "sha256": "decd01e282c09e27c0363b54dfc5dde9ec8b0b46784b51d061020c13983510eb",
+      "md5": "c98912cc0e092bf06eec9d126650136a"
     }
   ],
   "resourceIndex": {
     "manifest": 512,
-    "launcherOrder": 515072,
+    "launcherOrder": 518656,
+    "communityList": 518144,
+    "archiveEnd": 519680,
     "apps": {
       "gpio": {
         "name": "apps/GPIO/gpio.fap",
@@ -113,37 +115,53 @@
       },
       "expansion_settings": {
         "name": "apps/assets/expansion_settings.fap",
-        "offset": 397824
+        "offset": 400896
       },
       "input_settings": {
         "name": "apps/assets/input_settings.fap",
-        "offset": 402432
+        "offset": 405504
       },
       "notification_settings": {
         "name": "apps/assets/notification_settings.fap",
-        "offset": 408064
+        "offset": 411136
       },
       "passport": {
         "name": "apps/assets/passport.fap",
-        "offset": 417280
+        "offset": 420352
       },
       "power_settings": {
         "name": "apps/assets/power_settings.fap",
-        "offset": 422400
+        "offset": 425472
       },
       "storage_settings": {
         "name": "apps/assets/storage_settings.fap",
-        "offset": 450048
+        "offset": 453120
       },
       "system_settings": {
         "name": "apps/assets/system_settings.fap",
-        "offset": 477696
+        "offset": 480768
       }
     }
   },
+  "communityApps": {
+    "techart_calendar": {
+      "name": "Calendar",
+      "alias": "techart_calendar",
+      "size": 4188,
+      "sha256": "a577ba1d0b80e9dd31cc41e356da3927c270ffbd06e4bb49029ff627853aca00",
+      "license": "MIT License\n\nCopyright (c) 2024 TechArtDev\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n"
+    },
+    "resistors": {
+      "name": "Resistance calculator",
+      "alias": "resistors",
+      "size": 24456,
+      "sha256": "b7e01e4228b7c22b986da5b2524b2bfe1d6f9a255ad326afe78d4d51100554b3",
+      "license": "MIT License\n\nCopyright (c) 2023 Lewis Westbury\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n"
+    }
+  },
   "target": "f7",
-  "version": "eddy-dev-cac450c3",
-  "file": "flipper-z-f7-update-eddy-dev-cac450c3.tgz",
-  "commit": "cac450c372ae70efeb2b28b4c04821699e6280f8",
-  "sha256": "88ca0e2ca929c3b8aa909bf7f6e1c6494c4733e4002b21dbd853b9c54b737a8e"
+  "version": "eddy-dev-da207c3e",
+  "file": "flipper-z-f7-update-eddy-dev-da207c3e.tgz",
+  "commit": "da207c3edf6bda3c26029f6eacc7741d6243a954",
+  "sha256": "ac010f25562008fb49833510e431e1e26d94e14f5e05aa3c45229aff5532a35a"
 }

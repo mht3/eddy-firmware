@@ -148,3 +148,15 @@
   color:var(--surf); text-decoration:underline; text-underline-offset:.18em;
 }
 .order-footer button:disabled {opacity:.55}
+.community-intro {max-width:56ch;font-size:1rem;margin:0 0 1rem}
+.community-intro a {color:var(--surf);text-decoration:underline}
+.community-import {margin:0 0 .8rem}
+.community-import label {display:block;margin-bottom:.4rem;font-weight:600}
+.community-import div {display:flex;gap:.5rem;flex-wrap:wrap}
+.community-import input {min-width:0;flex:1 1 15rem;padding:.6rem .8rem;border-radius:.5rem;font:inherit;color:var(--light);background:#0b192b;border:1px solid var(--line)}
+.updater .community-import button {margin:0;width:auto;padding:.6rem 1rem}
+#community-status {font-size:.9rem;max-width:none}
+#community-apps .app-card {--highlight:#28617a;--shade:#18384b;--glyph:#d2f5ff}
+#community-apps .community-icon {font-size:1.5rem;font-weight:700}
+#community-apps .community-icon::after {display:none}
+#community-apps [hidden] {display:none}

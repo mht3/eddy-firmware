@@ -11,6 +11,16 @@ async function sha256(bytes) {
   return Array.from(digest,b=>b.toString(16).padStart(2,'0')).join('');
 }
 
+async function verifiedDownload(path,record) {
+  const response = await fetch(new URL(path,firmwareRoot));
+  if (!response.ok) throw Error('The build could not be downloaded. Try again.');
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (bytes.length!==record.size || await sha256(bytes)!==record.sha256) {
+    throw Error('The download failed verification.');
+  }
+  return bytes;
+}
+
 function gzip(blob) {
   return new Response(blob.stream().pipeThrough(new CompressionStream('gzip'))).blob();
 }
@@ -48,7 +58,14 @@ function replaceEntry(entry,data) {
   return {...entry,replacement:[finalizeHeader(entry.header.slice(),data.length),data,padding(data.length)]};
 }
 
-async function filterResources(bytes,index,excluded,order) {
+const communityList = 'eddy/community_apps.txt';
+const communityDir = 'apps/Community';
+
+function manifestFile(name,data) {
+  return 'F:'+md5(data)+':'+data.length+':'+name;
+}
+
+async function filterResources(bytes,index,excluded,order,community) {
   const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
   const tar = new Uint8Array(await new Response(stream).arrayBuffer());
   const manifest = locateEntry(tar,index.manifest,'Manifest');
@@ -62,6 +79,29 @@ async function filterResources(bytes,index,excluded,order) {
   const layout = locateEntry(tar,index.launcherOrder,layoutPath);
   const layoutData = encoder.encode(order.map(id => id+'\n').join(''));
   edits.push(replaceEntry(layout,layoutData));
+  const communityRows = [];
+  let listRow;
+  if (community.length) {
+    const list = locateEntry(tar,index.communityList,communityList);
+    if (list.data.length) throw Error('Unexpected community apps in the base release.');
+    const listData = encoder.encode(community.map(({id})=>id+'\n').join(''));
+    edits.push(replaceEntry(list,listData));
+    listRow = manifestFile(communityList,listData);
+    communityRows.push('D:'+communityDir);
+    const additions = [packageHeader(communityDir+'/',0,true)];
+    for (const {id,data,license} of community) {
+      for (const [suffix,bytes] of [['.fap',data],['.LICENSE.txt',encoder.encode(license)]]) {
+        const path = communityDir+'/'+id+suffix;
+        communityRows.push(manifestFile(path,bytes));
+        additions.push(packageHeader(path,bytes.length),bytes,padding(bytes.length));
+      }
+    }
+    // Insert before the tar terminator, after all original parent directories.
+    const end = index.archiveEnd;
+    if (!Number.isSafeInteger(end) || end<block || end%block || end+2*block>tar.length ||
+        tar.subarray(end).some(Boolean)) throw Error('Invalid community app index in this release.');
+    edits.push({offset:end,end,replacement:additions});
+  }
   const keep = [];
   let hasLayout = false;
   for(const line of decoder.decode(manifest.data).split('\n')) {
@@ -70,11 +110,20 @@ async function filterResources(bytes,index,excluded,order) {
     if (row && row[1]===layoutPath) {
       if(hasLayout) throw Error('Duplicate launcher layout in this release.');
       hasLayout = true;
-      keep.push('F:'+md5(layoutData)+':'+layoutData.length+':'+layoutPath);
+      keep.push(manifestFile(layoutPath,layoutData));
+    } else if (community.length && row && row[1]===communityList) {
+      if (!listRow) throw Error('Duplicate community app list in this release.');
+      keep.push(listRow);
+      listRow = null;
     } else keep.push(line);
   }
   if (!hasLayout) throw Error('The launcher layout is missing from the resource manifest.');
   if (omit.size) throw Error('The installed-app manifest is incomplete.');
+  if (listRow) throw Error('The community app list is missing from the resource manifest.');
+  if (communityRows.length) {
+    if (keep.at(-1)==='') keep.pop();
+    keep.push(...communityRows,'');
+  }
   const updated = encoder.encode(keep.join('\n'));
   edits.push(replaceEntry(manifest,updated));
   const pieces = [];
@@ -90,7 +139,7 @@ async function filterResources(bytes,index,excluded,order) {
   return new Uint8Array(await compressed.arrayBuffer());
 }
 
-export async function prepareInstall(build,selectedIds,onPart,order=getAppOrder()) {
+export async function prepareInstall(build,selectedIds,onPart,order=getAppOrder(),communityIds=[]) {
   if (!build.resourceIndex?.apps || !Number.isSafeInteger(build.resourceIndex.launcherOrder) ||
       !build.parts.some(part=>part.name==='resources.tar.gz')) {
     throw Error('This release does not include an editable launcher. Refresh for the latest build.');
@@ -104,21 +153,33 @@ export async function prepareInstall(build,selectedIds,onPart,order=getAppOrder(
   const selected = new Set(selectedIds);
   if ([...selected].some(id=>!catalog.some(app=>app.id===id))) throw Error('Unknown app selection.');
   if (!validAppOrder(order)) throw Error('Invalid app order. Reload the installer to try again.');
+  const ids = [...communityIds];
+  if (new Set(ids).size!==ids.length || ids.some(id=>typeof id!=='string' ||
+      !/^[a-z][a-z0-9_-]{0,47}$/.test(id) || !Object.hasOwn(build.communityApps ?? {},id))) {
+    throw Error('A selected community app is unavailable in this release. Refresh the installer.');
+  }
   const excluded = catalog.filter(app=>!selected.has(app.id));
   const files = [];
   for (const part of build.parts) {
     onPart?.(part.name);
-    const response = await fetch(new URL(build.version+'/'+part.name,firmwareRoot));
-    if (!response.ok) throw Error('The build could not be downloaded. Try again.');
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    if (bytes.length!==part.size || await sha256(bytes)!==part.sha256) {
-      throw Error('The download failed verification.');
-    }
+    const bytes = await verifiedDownload(build.version+'/'+part.name,part);
     files.push({part,bytes});
   }
-  if (excluded.length || order.some((id,i)=>id!==defaultAppOrder[i])) {
+  const community = [];
+  for (const id of ids) {
+    const app = build.communityApps[id];
+    if (!Number.isSafeInteger(app.size) || app.size<=0 || !/^[a-f0-9]{64}$/.test(app.sha256) ||
+        typeof app.license!=='string' || !app.license.trim()) {
+      throw Error('This release is missing verified community app information.');
+    }
+    onPart?.(app.name);
+    const data = await verifiedDownload(build.version+'/community/'+id+'.fap',app);
+    community.push({id,data,license:app.license});
+  }
+  if (community.length || excluded.length || order.some((id,i)=>id!==defaultAppOrder[i])) {
     const resources = files.find(({part})=>part.name==='resources.tar.gz');
-    const bytes = await filterResources(resources.bytes,build.resourceIndex,excluded,order.filter(id => selected.has(id)));
+    const bytes = await filterResources(resources.bytes,build.resourceIndex,excluded,
+      order.filter(id => selected.has(id)),community);
     resources.bytes=bytes;
     resources.part={...resources.part,size:bytes.length,sha256:await sha256(bytes),md5:md5(bytes)};
   }

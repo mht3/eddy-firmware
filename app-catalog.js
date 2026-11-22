@@ -1,4 +1,3 @@
-import {spotifyConfigured} from './spotify/config.js';
 
 // The id opens the same app in the web preview. appId identifies its packaged FAP.
 export const catalog = [
@@ -8,7 +7,7 @@ export const catalog = [
   {id:'infrared', name:'Infrared', appId:'infrared', core:true, description:'Use a TV preset or learn buttons from your own remote.'},
   {id:'gpio', name:'GPIO', appId:'gpio', core:true, description:'Work with the Flipper’s pins or open a USB-to-UART bridge.'},
   {id:'ibutton', name:'iButton', appId:'eddy_ibutton', core:true, description:'Touch a contact key to the Flipper to identify its type.'},
-  {id:'spotify', name:'Spotify', appId:'eddy_spotify', core:false, description:spotifyConfigured ? 'Browse Liked Songs, playlists and albums. Account linking is available to invited testers.' : 'Try sample Liked Songs, playlists and albums. Personal account linking is currently unavailable.'},
+  {id:'spotify', name:'Spotify', appId:'eddy_spotify', core:false, description:'Explore sample playlists in the emulator. Live library access on the Flipper is in private development.'},
   {id:'pomodoro', name:'Pomodoro Timer', appId:'eddy_pomodoro', core:false, description:'Set focus and break timers by the minute or in five-second steps.'},
   {id:'metronome', name:'Metronome', appId:'eddy_metronome', core:false, description:'Tap a tempo and choose an audible click, vibration, both, or a silent visual beat.'},
   {id:'builder', name:'Remotes', appId:'eddy_remote_builder', core:false, description:'Save infrared remotes, add TV presets and arrange your own buttons.'},
