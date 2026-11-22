@@ -1,9 +1,10 @@
-qrcode-generator 2.0.4 by Kazuhiko Arase
-https://github.com/kazuhikoarase/qrcode-generator
+Voltage Calculator
+Flipper Lab: https://lab.flipper.net/apps/voltcalc_app
+Upstream source bundle: https://catalog.flipperzero.one/api/v0/application/version/65f7f7d00af8bb7787f3e282/bundle
 
 MIT License
 
-Copyright (c) 2009 Kazuhiko Arase
+Copyright (c) 2024 Andrew Diamond
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,3 +23,4 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+

@@ -27,7 +27,3 @@
 .registration-fields dd {margin:0 0 .5rem}
 .setup-steps figure img {display:block; max-width:100%; height:auto; border-radius:.5rem}
 #developer-setup {scroll-margin-top:6rem}
-
-.connection-states {display:grid;grid-template-columns:auto 1fr;gap:.35rem 1rem;margin:1rem 0}
-.connection-states dt {color:var(--muted)}
-.connection-states dd {margin:0;font-weight:600}

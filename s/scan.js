@@ -1,19 +1,14 @@
-import {scanQr} from '../spotify/session.js';
-
-function signIn() {
-  scanQr().catch(error => {
-    document.getElementById('status').textContent = error.name === 'SecurityError' || error.name === 'QuotaExceededError' ?
-      'Allow session storage in this browser and scan your Flipper’s QR code again.' : error.message;
-  });
-}
-
-const id = location.hash.slice(1);
-const applePhone = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
-  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-if (applePhone && !navigator.bluetooth?.requestDevice && /^[a-f0-9]{32}$/i.test(id)) {
-  document.getElementById('status').textContent =
-    'Open the installed Eddy iPhone prototype to link Spotify and use your Flipper over Bluetooth.';
-  document.getElementById('open-eddy').href = 'eddyspotify://setup?client_id=' + id;
-  document.getElementById('iphone-actions').hidden = false;
-  document.getElementById('browser-signin').onclick = signIn;
-} else signIn();
+// A QR on older firmware may carry a personal Client ID in the fragment.
+history.replaceState(null, '', location.pathname);
+try {
+  const account = JSON.parse(sessionStorage.getItem('eddy.spotify.library.session'));
+  if (/^eddy\.spotify\.shortcuts\.[A-Za-z0-9_-]{43}$/.test(account?.shortcuts)) {
+    for (let i = 0; i < 4; i++) localStorage.removeItem(account.shortcuts + '.' + i);
+  }
+} catch { /* Browser storage can be disabled. */ }
+try {
+  for (const key of ['eddy.spotify.scan', 'eddy.spotify.library.pkce', 'eddy.spotify.library.session']) {
+    sessionStorage.removeItem(key);
+  }
+} catch { /* Opening the companion does not require browser storage. */ }
+location.replace(new URL('../app/?open=1', import.meta.url).href);

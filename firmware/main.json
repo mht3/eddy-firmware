@@ -3,8 +3,8 @@
     {
       "name": "firmware.dfu",
       "size": 801417,
-      "sha256": "c77cff1e3232cfecbf021e75a5b5eb837d9d4c944f660189dfb5d16ecd9d62b1",
-      "md5": "e8e5ba40b7872467a0efd4d3a7549ab0"
+      "sha256": "cd69ccc54137f426df6f38cc511598c37a7882d472582cf06a044fc4f8b8cae3",
+      "md5": "df7b1363941bb45afa046cabe166b358"
     },
     {
       "name": "firstboot.bin",
@@ -20,9 +20,9 @@
     },
     {
       "name": "resources.tar.gz",
-      "size": 224623,
-      "sha256": "24deeff4bacf934d47f676bd3cf675d9c4a875125dbf270c223255ba3eb3a6d6",
-      "md5": "b492869a2d262c8597cfd2549d33e563"
+      "size": 218618,
+      "sha256": "ac2614c2a37bff0c52a7df9b42be92ea0a57d1fda0f2804c6536abc2d5ae2cc1",
+      "md5": "04d80107910be9723715b310e6dac6b2"
     },
     {
       "name": "splash.bin",
@@ -33,22 +33,21 @@
     {
       "name": "update.fuf",
       "size": 1589,
-      "sha256": "ba28c9c5970d46c41cf936c7ce48548100823fbfb9d6b97b3cf13e0da9f17eef",
-      "md5": "265f00cfab578a31ddd0628fb15217da"
+      "sha256": "5e50a076e250de22868a10b1fc0c8c3461100cfe64791f2faa0499cc5f18fefd",
+      "md5": "a7750789587cf0d03a87021b256d9fe6"
     },
     {
       "name": "updater.bin",
       "size": 120833,
-      "sha256": "fc01bc8d4b7b56fa69b637b3213052e9c5e23b13cd409ad2ecd51cc45ae79b0e",
-      "md5": "b6dc98711f5dcd958fee18ceec4c7f13"
+      "sha256": "4b291635cc1641a678ec77d64afd2bcbf49ccd88beed114a6249b1f39cf4dfcd",
+      "md5": "1ded963ea0b95c883974b4609b981be2"
     }
   ],
   "resourceIndex": {
     "manifest": 512,
-    "launcherOrder": 530432,
-    "communityList": 529920,
-    "spotifySignIn": true,
-    "archiveEnd": 531456,
+    "launcherOrder": 520192,
+    "communityList": 519680,
+    "archiveEnd": 521216,
     "apps": {
       "gpio": {
         "name": "apps/GPIO/gpio.fap",
@@ -116,31 +115,31 @@
       },
       "expansion_settings": {
         "name": "apps/assets/expansion_settings.fap",
-        "offset": 412672
+        "offset": 402432
       },
       "input_settings": {
         "name": "apps/assets/input_settings.fap",
-        "offset": 417280
+        "offset": 407040
       },
       "notification_settings": {
         "name": "apps/assets/notification_settings.fap",
-        "offset": 422912
+        "offset": 412672
       },
       "passport": {
         "name": "apps/assets/passport.fap",
-        "offset": 432128
+        "offset": 421888
       },
       "power_settings": {
         "name": "apps/assets/power_settings.fap",
-        "offset": 437248
+        "offset": 427008
       },
       "storage_settings": {
         "name": "apps/assets/storage_settings.fap",
-        "offset": 464896
+        "offset": 454656
       },
       "system_settings": {
         "name": "apps/assets/system_settings.fap",
-        "offset": 492544
+        "offset": 482304
       }
     }
   },
@@ -149,7 +148,7 @@
       "name": "Calendar",
       "alias": "techart_calendar",
       "size": 4188,
-      "sha256": "2e94be75512fda0b4dcc82959ad5d1fd646024be12e105016dbcad75f8497ec0",
+      "sha256": "a577ba1d0b80e9dd31cc41e356da3927c270ffbd06e4bb49029ff627853aca00",
       "license": "MIT License\n\nCopyright (c) 2024 TechArtDev\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n"
     }
   },
@@ -3343,11 +3342,11 @@
       4291153410,
       4294433683
     ],
-    "catalog": "eddy-dev-72cd9709/lab/index.json"
+    "catalog": "eddy-dev-d6760d4f/lab/index.json"
   },
   "target": "f7",
-  "version": "eddy-dev-72cd9709",
-  "file": "flipper-z-f7-update-eddy-dev-72cd9709.tgz",
-  "commit": "72cd9709f2fa5f581049fb9f83ab714740daafb5",
-  "sha256": "166940e545ff026e5ca02f3d5bce81f8e2b8293a5ee5a991656dc963dfecc5d3"
+  "version": "eddy-dev-d6760d4f",
+  "file": "flipper-z-f7-update-eddy-dev-d6760d4f.tgz",
+  "commit": "d6760d4f1cf1d028e8adde54f9a18be63be22b51",
+  "sha256": "69ca9d1250b44af47c818c5bc2f68ae88782e2683d7b0db4b81e59c3330fef61"
 }
