@@ -1,7 +1,6 @@
-// The original two apps are compiled with Eddy. Additional catalog apps carry their own FAP metadata.
+// Bundled apps are compiled with Eddy. Imported catalog apps carry their own FAP metadata.
 const bundled = [
   {id:'techart_calendar', name:'Calendar', description:'Browse months on your Flipper.', glyph:'31'},
-  {id:'resistors', name:'Resistance calculator', description:'Look up a resistor value from its color bands.', glyph:'Ω'},
 ];
 const selectionKey = 'eddy-community-apps-v1';
 const recordsKey = 'eddy-lab-records-v1';

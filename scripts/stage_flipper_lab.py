@@ -104,7 +104,7 @@ def notice_from_source(source):
     normalized = " ".join(notice.split()).lower()
     gpl = " ".join((ROOT / "LICENSE").read_text().split()).lower()
     terms = gpl[gpl.index("0. definitions.") : gpl.index("end of terms and conditions")]
-    mit = " ".join((ROOT / "website/community/resistors.LICENSE.txt").read_text().split()).lower()
+    mit = " ".join((ROOT / "website/community/techart_calendar.LICENSE.txt").read_text().split()).lower()
     if terms in normalized or mit[mit.index("permission is hereby granted") :] in normalized:
         return notice
     return None

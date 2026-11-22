@@ -9,16 +9,5 @@
     "license": "MIT",
     "licenseFile": "techart_calendar.LICENSE.txt",
     "sha256": "a577ba1d0b80e9dd31cc41e356da3927c270ffbd06e4bb49029ff627853aca00"
-  },
-  {
-    "id": "resistors",
-    "alias": "resistors",
-    "name": "Resistance calculator",
-    "author": "Lewis Westbury",
-    "source": "https://github.com/xMasterX/all-the-plugins/tree/1066d17ad1e8fbf75cea5c6612d79ba539ec8a33/apps_source_code/resistors",
-    "lab": "https://lab.flipper.net/apps/resistors",
-    "license": "MIT",
-    "licenseFile": "resistors.LICENSE.txt",
-    "sha256": "b7e01e4228b7c22b986da5b2524b2bfe1d6f9a255ad326afe78d4d51100554b3"
   }
 ]

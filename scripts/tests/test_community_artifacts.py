@@ -21,7 +21,7 @@ class CommunityArtifactsTest(unittest.TestCase):
         major, minor = map(int, sdk.split("."))
         target = (major << 16 | minor, 7)
         records = community_artifacts(directory, target)
-        self.assertEqual(set(records), {"techart_calendar", "resistors"})
+        self.assertEqual(set(records), {"techart_calendar"})
         for app_id, (meta, data) in records.items():
             self.assertEqual(meta["size"], len(data))
             self.assertEqual(

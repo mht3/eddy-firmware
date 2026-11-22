@@ -80,3 +80,32 @@ test('failed Infrared preview writes preserve the remote, its buttons and its sh
   assert.equal(layoutDemo.get('Desk lamp','remote'),undefined);
   assert.ok(!remoteDemo.pins.includes('Desk lamp'));
 });
+
+test('the library delete action cancels or removes just the selected remote and its pin', () => {
+  const savedName = layoutDemo.addPreset('Review TV',['Power']);
+  for (const [name,kind] of [['Lamp','layout'],['Lamp','remote'],[savedName,'remote']]) {
+    assert.equal(layoutDemo.setPinned(name,true,kind),'');
+  }
+  function select(state, label) {
+    for(let i=0;i<32 && builderStatus(state)!==label;i++) press(state,'down');
+    assert.equal(builderStatus(state),label);
+    press(state,'ok');
+  }
+  for (const [name,kind] of [['Lamp','remote'],[savedName,'remote'],['Lamp','layout']]) {
+    const state = openBuilder();
+    select(state,'Delete a remote');
+    const label = name+' ('+layoutDemo.source(name,kind)+')';
+    select(state,label);
+    assert.equal(state.step,'delete');
+    press(state,'back');
+    assert.equal(builderStatus(state),label);
+    assert.ok(layoutDemo.pinned(name,kind));
+    press(state,'ok'); press(state,'left');
+    assert.equal(builderStatus(state),label);
+    press(state,'ok'); press(state,'ok');
+    assert.equal(state.step,'library');
+    assert.equal(layoutDemo.get(name,kind),undefined);
+    assert.equal(layoutDemo.pinned(name,kind),false);
+    if (kind==='remote') assert.ok(layoutDemo.get('Lamp','layout'));
+  }
+});

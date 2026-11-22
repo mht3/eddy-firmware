@@ -16,11 +16,6 @@ APPS = {
         "author": "TechArtDev",
         "source": "https://github.com/techartdev/Calendar/tree/3f29994837002986dbf9afc117338d5ee633c1ee",
     },
-    "resistors": {
-        "name": "Resistance calculator",
-        "author": "Lewis Westbury",
-        "source": "https://github.com/xMasterX/all-the-plugins/tree/1066d17ad1e8fbf75cea5c6612d79ba539ec8a33/apps_source_code/resistors",
-    },
 }
 
 

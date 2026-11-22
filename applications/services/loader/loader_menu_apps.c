@@ -29,10 +29,6 @@ static const struct {
 } launcher_community[] = {
     {"techart_calendar",
      {"Calendar", &I_CommunityCalendar_16x16, EXT_PATH("apps/Community/techart_calendar.fap")}},
-    {"resistors",
-     {"Resistance calculator",
-      &I_CommunityResistor_16x16,
-      EXT_PATH("apps/Community/resistors.fap")}},
 };
 
 static size_t launcher_catalog_index(const char* name) {
@@ -111,7 +107,12 @@ static const FlipperExternalApplication* launcher_community_entry(CommunityApp* 
     for(size_t i = 0; i < COUNT_OF(launcher_community); ++i) {
         if(!strcmp(row, launcher_community[i].id)) return &launcher_community[i].app;
     }
-    if(!name) return NULL;
+    if(!name) {
+        // Previous releases used an ID-only row for this optional app.
+        static const FlipperExternalApplication legacy_resistors = {
+            "Resistance calculator", &A_Plugins_14, EXT_PATH("apps/Community/resistors.fap")};
+        return !strcmp(row, "resistors") ? &legacy_resistors : NULL;
+    }
     char* icon_hex = strchr(name, '\t');
     if(icon_hex) *icon_hex++ = 0;
     if(!*name || strlen(name) > CommunityNameMax || name[0] == ' ') return NULL;

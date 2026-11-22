@@ -34,7 +34,7 @@ with tarfile.open(fileobj=io.BytesIO(out.getvalue())) as tar:
 `,stock);
 const [base64,offsets,archiveEnd] = fixture;
 const resources = Buffer.from(base64,'base64');
-const extra = {techart_calendar:Buffer.from('calendar fixture'),resistors:Buffer.from('resistors fixture')};
+const extra = {techart_calendar:Buffer.from('calendar fixture'),sample_app:Buffer.from('sample app fixture')};
 const build = {
   version:'eddy-test',
   parts:[{name:'resources.tar.gz',size:resources.length,sha256:digest('sha256',resources)}],
@@ -64,7 +64,7 @@ test('selected community apps reach USB and qFlipper with an accurate resource m
   assert.deepEqual(fetched,['resources.tar.gz']);
   assert.deepEqual(Buffer.from(base[0].bytes),resources);
 
-  for (const ids of [['resistors'],['techart_calendar','resistors']]) {
+  for (const ids of [['sample_app'],['techart_calendar','sample_app']]) {
     const files = await prepareInstall(build,['music'],null,defaultAppOrder,ids);
     const bundle = unpack(await (await makeDownload(build,files)).arrayBuffer());
     const image = Object.values(bundle).find(value=>value!==null);
@@ -86,9 +86,9 @@ test('selected community apps reach USB and qFlipper with an accurate resource m
     }
   }
   await assert.rejects(prepareInstall(build,all,null,defaultAppOrder,['../bad']),/unavailable/);
-  await assert.rejects(prepareInstall(build,all,null,defaultAppOrder,['resistors','resistors']),/unavailable/);
-  responses.set('resistors.fap',Buffer.alloc(extra.resistors.length));
-  await assert.rejects(prepareInstall(build,all,null,defaultAppOrder,['resistors']),/verification/);
+  await assert.rejects(prepareInstall(build,all,null,defaultAppOrder,['sample_app','sample_app']),/unavailable/);
+  responses.set('sample_app.fap',Buffer.alloc(extra.sample_app.length));
+  await assert.rejects(prepareInstall(build,all,null,defaultAppOrder,['sample_app']),/verification/);
 });
 
 test('personal Spotify setup adds the ID only to the local package on either install path', async t => {
@@ -129,7 +129,7 @@ test('a verified Flipper Lab app reaches the SD launcher and survives preparing 
   const previousWindow = globalThis.window;
   globalThis.window = new EventTarget();
   t.after(() => { globalThis.window = previousWindow; });
-  const data = new Uint8Array(await readFile(new URL('../../website/community/resistors.fap',import.meta.url)));
+  const data = new Uint8Array(await readFile(new URL('../../website/community/techart_calendar.fap',import.meta.url)));
   const csv = await readFile(new URL('../../targets/f7/api_symbols.csv',import.meta.url),'utf8');
   const symbols = csv.split(/\r?\n/).filter(row => /^(?:Variable|Function),\+,/.test(row))
     .map(row => [...row.split(',')[2]].reduce((h,ch) => (Math.imul(h,33)+ch.charCodeAt(0))>>>0,5381));

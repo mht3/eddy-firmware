@@ -5,7 +5,11 @@ import {layoutDemo} from './remote-preview.js';
 const stock=['Power','Vol +','Vol -','Mute','Play/Pause','Channel +','Channel -','Input','Custom'];
 const marks=['⏻','+','−','M','▶Ⅱ','▲','▼','⇥','•'];
 function choices(s) {
-  if(s.step==='library') return ['New remote','TV presets',...layoutDemo.entries.map(([name,kind])=>name+' ('+layoutDemo.source(name,kind)+')')];
+  if(s.step==='library' || s.step==='deleteList') {
+    const saved=layoutDemo.entries.map(([name,kind])=>name+' ('+layoutDemo.source(name,kind)+')');
+    if(s.step==='deleteList') return saved.length ? saved : ['Back to Remotes'];
+    return saved.length ? ['New remote','TV presets','Delete a remote',...saved] : ['New remote','TV presets'];
+  }
   if(s.step==='presets') return tvPresetRows.map(([name])=>name);
   if(s.step==='stock') return stock;
   if(s.step==='options') {
@@ -42,7 +46,7 @@ export function drawBuilder(ctx,s) {
   const grid=['move','grid'].includes(s.step);
   const layout=grid?layoutDemo.get(s.name,s.kind):null;
   const total=grid?cellCount(s,layout):0;
-  const header={library:'Remotes',presets:'Add TV preset',delete:'Delete remote?',stock:'Choose a button',options:'Options',learn:'Learn button',
+  const header={library:'Remotes',deleteList:'Delete which remote?',presets:'Add TV preset',delete:'Delete remote?',stock:'Choose a button',options:'Options',learn:'Learn button',
     move:'Move button',remove:'Remove button?'};
   ctx.font='bold 9px sans-serif';
   ctx.fillText(header[s.step] || s.name,2,1,total>6?64:88);
@@ -86,7 +90,7 @@ export function drawBuilder(ctx,s) {
   }
   ctx.font='8px sans-serif';
   const copy=s.step==='learn'?['Point original remote','OK for demo signal']:
-    s.step==='remove'?['OK to remove','Left to cancel']:s.step==='delete'?[s.name+' ('+layoutDemo.source(s.name,s.kind)+')','Left cancel · OK delete']:[];
+    s.step==='remove'?['OK to remove','Left to cancel']:s.step==='delete'?[s.message || s.name+' ('+layoutDemo.source(s.name,s.kind)+')','Left cancel · OK delete']:[];
   copy.forEach((line,i)=>ctx.fillText(line,4,21+i*15,120));
   if(!copy.length) {
     const cell=layoutDemo.get(s.name,s.kind).cells[s.slot];
@@ -103,7 +107,10 @@ export function builderKey(s,key,render) {
   if(key==='back' || (key==='left' && ['delete','remove'].includes(s.step))) {
     if(s.step==='library' || (s.step==='grid' && s.shortcut)) return false;
     if(s.step==='move') s.slot=s.from;
-    go(s,['grid','presets'].includes(s.step)?'library':['remove','delete'].includes(s.step)?'options':'grid');
+    if(s.step==='delete' && s.deleteFromList) {
+      go(s,'deleteList');
+      s.row=Math.max(0,layoutDemo.entries.findIndex(([name,kind])=>s.name===name && s.kind===kind));
+    } else go(s,['grid','presets','deleteList'].includes(s.step)?'library':['remove','delete'].includes(s.step)?'options':'grid');
     return true;
   }
   s.message='';
@@ -124,8 +131,9 @@ export function builderKey(s,key,render) {
     const choice=rows[s.row];
     if(s.step==='library') {
       if(s.row===1) go(s,'presets');
-      else if(s.row>1) {
-        [s.name,s.kind]=layoutDemo.entries[s.row-2];
+      else if(s.row===2) go(s,'deleteList');
+      else if(s.row>2) {
+        [s.name,s.kind]=layoutDemo.entries[s.row-3];
         s.slot=0; go(s,'grid');
       }
       else askName('Remote name','',22,name=>{
@@ -133,6 +141,13 @@ export function builderKey(s,key,render) {
         if(!error) { s.name=name; s.kind='layout'; s.slot=0; go(s,'grid'); render(); }
         return error;
       });
+    } else if(s.step==='deleteList') {
+      const entry=layoutDemo.entries[s.row];
+      if(entry) {
+        [s.name,s.kind]=entry;
+        s.deleteFromList=true;
+        go(s,'delete');
+      } else go(s,'library');
     } else if(s.step==='presets') {
       const name=layoutDemo.addPreset(choice,presetButtons(s.row));
       if(name) { s.name=name; s.kind='remote'; s.slot=0; go(s,'grid'); }
@@ -160,7 +175,7 @@ export function builderKey(s,key,render) {
       update(s,cells);
     } else if(choice==='Learn again') { s.icon=cell.icon; go(s,'learn'); }
     else if(choice==='Move button') { s.from=s.slot; go(s,'move'); }
-    else if(choice==='Delete remote') go(s,'delete');
+    else if(choice==='Delete remote') { s.deleteFromList=false; go(s,'delete'); }
     else if(choice==='Remove button') go(s,'remove');
     else if(choice==='Add to Apps' || choice==='Remove from Apps') {
       const error=layoutDemo.setPinned(s.name,choice==='Add to Apps',s.kind);

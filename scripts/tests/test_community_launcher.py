@@ -55,7 +55,7 @@ static inline bool storage_file_exists(Storage* storage, const char* path) {
 MAIN = """
 #include "loader_menu_apps_i.h"
 #include <gui/icon_i.h>
-const Icon I_CommunityCalendar_16x16 = {.width=1}, I_CommunityResistor_16x16 = {.width=2}, A_Plugins_14 = {.width=3};
+const Icon I_CommunityCalendar_16x16 = {.width=1}, A_Plugins_14 = {.width=3};
 const FlipperExternalApplication FLIPPER_EXTERNAL_APPS[] = {
     {"Sub-GHz", NULL, "signal.fap"}, {"NFC", NULL, "nfc.fap"}, {"Extra", NULL, "extra.fap"}
 };
@@ -90,7 +90,7 @@ class CommunityLauncherTest(unittest.TestCase):
             (root / "applications.h").write_text(APPLICATIONS)
             (root / "furi.h").write_text("#include <assert.h>\n#define furi_check assert\n")
             (root / "assets_icons.h").write_text(
-                "extern const Icon I_CommunityCalendar_16x16, I_CommunityResistor_16x16, A_Plugins_14;"
+                "extern const Icon I_CommunityCalendar_16x16, A_Plugins_14;"
             )
             (root / "test.c").write_text(MAIN)
             executable = root / "test"
@@ -154,7 +154,7 @@ class CommunityLauncherTest(unittest.TestCase):
             self.assertEqual(
                 loaded("details"),
                 [*stock, "3 Claude Remote " + imported, "1 Calendar " + calendar,
-                 "2 Resistance calculator " + resistor],
+                 "3 Old bundled app " + resistor],
             )
             icon = "e4031201d9008900770066005500440033001100"
             manifest.write_text(f"f0_claude_remote\tClaude Remote\t{icon}\n")

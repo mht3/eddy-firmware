@@ -11,7 +11,7 @@ from zipfile import ZipFile
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import stage_flipper_lab as lab
 
-MIT = (lab.ROOT / "website/community/resistors.LICENSE.txt").read_text()
+MIT = (lab.ROOT / "website/community/techart_calendar.LICENSE.txt").read_text()
 
 
 def bundle(license_text):

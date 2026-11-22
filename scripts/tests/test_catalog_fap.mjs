@@ -24,10 +24,8 @@ function sectionHeader(file, name) {
 }
 const meta = calendar.readUInt32LE(sectionHeader(calendar, '.fapmeta') + 16);
 
-test('both shipped ARM apps pass the release symbol check, including compact relocations', () => {
-  for (const name of ['techart_calendar', 'resistors']) {
-    verifyCatalogFap(read('website/community/' + name + '.fap'), release);
-  }
+test('the shipped Calendar app passes the release symbol check, including compact relocations', () => {
+  verifyCatalogFap(calendar, release);
 });
 
 test('classic relocation-only packages are checked against the same firmware exports', () => {
@@ -76,8 +74,11 @@ test('rejects incomplete headers and truncated relocation data', () => {
 test('reads raw and compressed app icons as ten rows of XBM pixels', () => {
   // Expected bytes were generated from the original app PNGs.
   assert.equal(verifyCatalogFap(calendar, release).iconHex, '00008400fe0102012a0102012a010201fe010000');
-  const resistor = read('website/community/resistors.fap');
-  assert.equal(verifyCatalogFap(resistor, release).iconHex, 'fc00fe018703030303038703ce01cc00cf03cf03');
+  const raw = Buffer.from(calendar);
+  raw[meta + 53] = 0;
+  const pixels = Buffer.from('ff000001550100002a0102012a010301fe010000', 'hex');
+  pixels.copy(raw, meta + 54);
+  assert.equal(verifyCatalogFap(raw, release).iconHex, pixels.toString('hex'));
   const absent = Buffer.from(calendar);
   absent[meta + 52] = 0;
   assert.equal(verifyCatalogFap(absent, release).iconHex, '');

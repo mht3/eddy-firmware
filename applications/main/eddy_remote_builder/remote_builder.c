@@ -14,6 +14,7 @@
 
 typedef enum {
     Library,
+    DeleteList,
     NewName,
     Grid,
     Stock,
@@ -54,7 +55,9 @@ enum {
     PreviousPage = 20,
     NextPage,
     Retry,
-    ChoosePreset
+    ChoosePreset,
+    ChooseDelete,
+    ReturnLibrary
 };
 enum {
     RenameButton,
@@ -109,6 +112,7 @@ typedef struct {
     FuriEventLoopTimer* feedback_timer;
     bool receiving;
     bool direct;
+    bool delete_from_list;
 } Builder;
 
 static void draw_fit(Canvas* canvas, int x, int y, size_t width, const char* text) {
@@ -364,8 +368,8 @@ static void library_label(FuriString* path, FuriString* label, bool multiline) {
     furi_string_free(folder);
 }
 
-static void show_library(Builder* app) {
-    begin_menu(app, Library, "Remotes");
+static void show_remote_list(Builder* app, Screen list) {
+    begin_menu(app, list, list == DeleteList ? "Delete which remote?" : "Remotes");
     app->name_count = 0;
     bool ok = storage_simply_mkdir(app->storage, EXT_PATH("infrared")) &&
               storage_simply_mkdir(app->storage, EDDY_LAYOUT_DIR);
@@ -375,8 +379,10 @@ static void show_library(Builder* app) {
     dir_walk_set_recurse_filter(dir, excluded, COUNT_OF(excluded));
     ok = ok && dir_walk_open(dir, EXT_PATH("infrared"));
     if(ok) {
-        add_item(app, "New remote", 0);
-        add_item(app, "TV presets", ChoosePreset);
+        if(list == Library) {
+            add_item(app, "New remote", 0);
+            add_item(app, "TV presets", ChoosePreset);
+        }
         if(app->page) add_item(app, "Previous page", PreviousPage);
         FuriString* path = furi_string_alloc();
         FuriString* label = furi_string_alloc();
@@ -386,6 +392,7 @@ static void show_library(Builder* app) {
         while((result = dir_walk_read(dir, path, &info)) == DirWalkOK) {
             const char* file = furi_string_get_cstr(path);
             if(file_info_is_dir(&info) || !eddy_remote_path_valid(file)) continue;
+            if(seen == 0 && list == Library) add_item(app, "Delete a remote", ChooseDelete);
             if(seen++ < app->page * PageSize) continue;
             if(app->name_count == PageSize) {
                 add_item(app, "Next page", NextPage);
@@ -395,16 +402,21 @@ static void show_library(Builder* app) {
             library_label(path, label, false);
             add_item(app, furi_string_get_cstr(label), ++app->name_count);
         }
+        if(list == DeleteList && !app->name_count) add_item(app, "Back to Remotes", ReturnLibrary);
         ok = result != DirWalkError;
         furi_string_free(label);
         furi_string_free(path);
     }
     dir_walk_free(dir);
     if(!ok) {
-        begin_menu(app, Library, "Check microSD card");
+        begin_menu(app, list, "Check microSD card");
         add_item(app, "Try again", Retry);
     }
     view_dispatcher_switch_to_view(app->dispatcher, MenuView);
+}
+
+static void show_library(Builder* app) {
+    show_remote_list(app, Library);
 }
 
 static void show_dialog(
@@ -588,6 +600,57 @@ static void refresh_saved(Builder* app, bool saved, const char* notice) {
     }
 }
 
+static void confirm_delete(Builder* app) {
+    app->delete_from_list = app->screen == DeleteList;
+    FuriString* label = furi_string_alloc();
+    library_label(app->path, label, true);
+    show_dialog(app, ConfirmDelete, "Delete remote?", furi_string_get_cstr(label), "Delete");
+    furi_string_free(label);
+}
+
+static void delete_remote(Builder* app) {
+    const char* path = furi_string_get_cstr(app->path);
+    const char assets[] = EXT_PATH("infrared/assets/");
+    Screen previous = app->delete_from_list ? DeleteList : Grid;
+    if(!eddy_remote_path_valid(path) || !strncasecmp(path, assets, sizeof(assets) - 1)) {
+        show_error(app, "Invalid remote file.", previous);
+        return;
+    }
+    // Remove recovery copies before the target so the remote cannot reappear.
+    bool layout = eddy_layout_path_valid(path);
+    FuriString* copy = furi_string_alloc_printf("%s%s", path, layout ? ".part" : ".eddy-part");
+    bool ok = storage_simply_remove(app->storage, furi_string_get_cstr(copy));
+    furi_string_printf(copy, "%s%s", path, layout ? ".ready" : EDDY_IR_BACKUP);
+    ok = ok && storage_simply_remove(app->storage, furi_string_get_cstr(copy));
+    furi_string_free(copy);
+    if(!ok) {
+        show_error(app, "Could not delete remote.", previous);
+        return;
+    }
+    // Persist the shortcut removal first. A power loss can leave a usable file
+    // unpinned, but a later remote created under this name never inherits its pin.
+    EddyRemotePins original = {0};
+    bool readable = eddy_remote_pins_read(app->storage, &original, NULL);
+    bool pinned = eddy_remote_pin_index(&original, path) < original.count;
+    const char* error = NULL;
+    if(!readable || (pinned && eddy_remote_pins_update(app->storage, path, NULL) != EddyPinOk)) {
+        error = "Could not save shortcuts.\nRemote kept.";
+    } else if(!storage_simply_remove(app->storage, path)) {
+        bool restored = !pinned || eddy_remote_pins_write(app->storage, &original, false);
+        error = restored ? "Could not delete remote." : "Remote kept.\nRe-add its Apps shortcut.";
+    }
+    eddy_remote_pins_clear(&original);
+    if(error) {
+        show_error(app, error, previous);
+        return;
+    }
+    app->page = 0;
+    if(app->direct)
+        view_dispatcher_stop(app->dispatcher);
+    else
+        show_library(app);
+}
+
 static void select_option(Builder* app, uint32_t event) {
     bool pinned;
     const char* path = furi_string_get_cstr(app->path);
@@ -608,13 +671,9 @@ static void select_option(Builder* app, uint32_t event) {
         app->pending = button_at(app, app->slot);
         show_dialog(app, ConfirmRemove, "Remove button?", app->pending.label, "Remove");
         break;
-    case DeleteRemote: {
-        FuriString* label = furi_string_alloc();
-        library_label(app->path, label, true);
-        show_dialog(app, ConfirmDelete, "Delete remote?", furi_string_get_cstr(label), "Delete");
-        furi_string_free(label);
+    case DeleteRemote:
+        confirm_delete(app);
         break;
-    }
     case PinRemote:
         if(pin_state(app, &pinned)) {
             EddyPinResult result =
@@ -642,6 +701,10 @@ static bool go_back(void* context) {
         if(app->direct) return false;
         show_library(app);
         break;
+    case DeleteList:
+        app->page = 0;
+        show_library(app);
+        break;
     case Presets:
     case NewName:
         show_library(app);
@@ -654,6 +717,8 @@ static bool go_back(void* context) {
         if(app->error_return == Library && app->direct) return false;
         if(app->error_return == Library)
             show_library(app);
+        else if(app->error_return == DeleteList)
+            show_remote_list(app, DeleteList);
         else if(app->error_return == SaveLabel || app->error_return == RenameLabel)
             ask_name(app, app->error_return, "Name & save button", app->pending.label);
         else
@@ -663,8 +728,19 @@ static bool go_back(void* context) {
         app->slot = app->move_from;
         show_grid(app, false, NULL);
         break;
-    case RenameLabel:
     case ConfirmDelete:
+        if(app->delete_from_list) {
+            show_remote_list(app, DeleteList);
+            for(size_t i = 0; i < app->name_count; ++i) {
+                if(furi_string_equal(app->path, app->paths[i])) {
+                    submenu_set_selected_item(app->menu, i + 1);
+                    break;
+                }
+            }
+        } else
+            show_options(app);
+        break;
+    case RenameLabel:
     case ConfirmRemove:
         show_options(app);
         break;
@@ -679,30 +755,36 @@ static bool handle_event(void* context, uint32_t event) {
     Builder* app = context;
     const char* path = furi_string_get_cstr(app->path);
     if(event == CancelEvent && (app->screen == ConfirmRemove || app->screen == ConfirmDelete)) {
-        show_options(app);
-        return true;
+        return go_back(app);
     }
     switch(app->screen) {
+    case DeleteList:
     case Library:
         if(event == Retry) {
             app->page = 0;
-            show_library(app);
+            show_remote_list(app, app->screen);
         } else if(event == PreviousPage && app->page) {
             --app->page;
-            show_library(app);
+            show_remote_list(app, app->screen);
         } else if(event == NextPage) {
             ++app->page;
-            show_library(app);
+            show_remote_list(app, app->screen);
+        } else if(event == ChooseDelete || event == ReturnLibrary) {
+            app->page = 0;
+            show_remote_list(app, event == ChooseDelete ? DeleteList : Library);
         } else if(event == ChoosePreset) {
             begin_menu(app, Presets, "Add TV preset");
             for(size_t i = 0; i < COUNT_OF(presets); i++)
                 add_item(app, presets[i].model, i);
             view_dispatcher_switch_to_view(app->dispatcher, MenuView);
-        } else if(event == 0)
+        } else if(event == 0 && app->screen == Library)
             ask_name(app, NewName, "Name your remote", "");
-        else if(event <= app->name_count) {
+        else if(event > 0 && event <= app->name_count) {
             furi_string_set(app->path, app->paths[event - 1]);
-            open_layout(app);
+            if(app->screen == DeleteList)
+                confirm_delete(app);
+            else
+                open_layout(app);
         }
         break;
     case Presets:
@@ -795,30 +877,7 @@ static bool handle_event(void* context, uint32_t event) {
                 "Button removed");
         break;
     case ConfirmDelete:
-        if(event == ConfirmEvent) {
-            bool ok = true;
-            if(!app->standard) {
-                // Do not let an interrupted older replacement resurrect the deleted remote.
-                FuriString* ready = furi_string_alloc_printf("%s.ready", path);
-                ok = storage_simply_remove(app->storage, furi_string_get_cstr(ready));
-                furi_string_free(ready);
-            }
-            if(ok)
-                ok = app->standard ? infrared_remote_remove(app->ir) == InfraredErrorCodeNone :
-                                     storage_common_remove(app->storage, path) == FSE_OK;
-            if(!ok)
-                show_error(app, "Could not delete remote.", Grid);
-            else {
-                EddyPinResult cleanup = eddy_remote_pins_update(app->storage, path, NULL);
-                app->page = 0;
-                if(cleanup != EddyPinOk)
-                    show_error(app, "Deleted. Could not\nclear shortcut.", Library);
-                else if(app->direct)
-                    view_dispatcher_stop(app->dispatcher);
-                else
-                    show_library(app);
-            }
-        }
+        if(event == ConfirmEvent) delete_remote(app);
         break;
     case Error:
         if(event == ConfirmEvent && !go_back(app)) view_dispatcher_stop(app->dispatcher);
