@@ -18,7 +18,8 @@ test('public guide links to the demo and offers no account login', async () => {
   assert.match(demo, /<details id="spotify-buttons" hidden>/);
   assert.match(demo, /<summary>Using the Flipper buttons<\/summary>/);
   assert(html.indexOf('id="developer-setup"') < html.indexOf('id="try-spotify-preview"'));
-  assert.match(html, /href="\.\.\/\?demo=spotify#home-screen"/);
+  assert.match(html, /href="\.\.\/\?demo=spotify&amp;tour=1#home-screen">Start guided tour<\/a>/);
+  assert.doesNotMatch(html, /Try the sample library/i);
   assert.doesNotMatch(html, /href="[^"]*view=now-playing/);
   assert.doesNotMatch(html, /<input|startBridge|accounts\.spotify\.com|id="link"|eddy-personal-companion\.zip/);
   const config = await import('../../website/spotify/config.js');
