@@ -1,4 +1,5 @@
 import {catalog, getAppOrder, launcherColumns, launcherPageSize} from './app-catalog.js';
+import {importedRecord,drawLabIcon} from './community-apps.js';
 // Icons and positions match the device launcher in loader_menu.c.
 export const launcherArt = new Image();
 launcherArt.src = new URL('launcher.png', import.meta.url).href;
@@ -58,7 +59,10 @@ export function drawLauncher(ctx, page, selected, gridItems = layoutApps(apps)) 
       ctx.globalCompositeOperation = 'destination-out';
     } else ctx.stroke();
     const appIndex = grid ? apps.findIndex(([,id])=>id===items[i][1]) : -1;
-    if (grid && appIndex<0) {
+    const icon = grid && id.startsWith('lab:') && importedRecord(id.slice(4))?.iconHex;
+    if (icon) {
+      drawLabIcon(ctx,icon,x-5,y-5);
+    } else if (grid && appIndex<0) {
       let label='';
       for(const char of name) {
         if(ctx.measureText(label+char).width>21) break;

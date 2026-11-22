@@ -1,5 +1,5 @@
 import {getAppOrder, getSelectedApps, restoreAppOrder, launcherColumns, launcherPageSize} from './app-catalog.js';
-import {communityApps,savedCommunity} from './community-apps.js';
+import {communityApps,savedCommunity,previewId} from './community-apps.js';
 import {openSpotifyDemo, openSpotifyPlayer, drawSpotify, spotifyStatus, spotifyKey, spotifyHit, spotifyVolumeAt} from './spotify-preview.js';
 import {startSpotifyTour, spotifyTourSteps} from './spotify-tour.js';
 import {openMusicDemo, drawMusic, musicStatus, musicKey} from './music-preview.js';
@@ -86,15 +86,15 @@ function communitySelection() {
   return communityApps.filter(app=>ids.includes(app.id));
 }
 for(const app of communityApps) {
-  titles[app.id]=app.name;
-  samples[app.id]=['Community app','Opens on your Flipper'];
+  titles[previewId(app)]=app.name;
+  samples[previewId(app)]=['Community app','Opens on your Flipper'];
 }
 let visibleShortcuts = [];
 function refreshRemotes() {
   const saved=remoteDemo.rows;
   const enabled = requestedApps ?? getSelectedApps();
   visibleShortcuts = remoteDemo.shortcuts.filter(([,type])=>enabled.has('builder') || (type==='remote' && enabled.has('infrared')));
-  lists.apps=layoutApps([...apps.filter(([,id])=>enabled.has(id)),...communitySelection().map(app=>[app.name,app.id]),...visibleShortcuts],requestedOrder ?? getAppOrder());
+  lists.apps=layoutApps([...apps.filter(([,id])=>enabled.has(id)),...communitySelection().map(app=>[app.name,previewId(app)]),...visibleShortcuts],requestedOrder ?? getAppOrder());
   lists.remotes=saved.length ? saved : [['Learn a remote','learn']];
   titles.remotes=saved.length?'My remotes':'No remotes yet';
   delete samples.remotes;

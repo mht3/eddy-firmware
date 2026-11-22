@@ -1,0 +1,16 @@
+.companion {max-width:78rem;margin:auto;padding:clamp(2rem,7vw,6rem) clamp(1.25rem,5vw,4.5rem)}
+.app-hero {display:grid;grid-template-columns:1fr 1.18fr;align-items:center;gap:clamp(2rem,5vw,5rem)}
+.app-mark {padding:.55rem;border-radius:1.1rem;background:#112e48}
+.app-hero h1 {font-size:clamp(3rem,6vw,5.25rem);line-height:1;letter-spacing:-.065em;margin:1.3rem 0 1rem}
+.app-hero p {font-size:clamp(1.1rem,2vw,1.35rem);color:var(--muted);max-width:36ch}
+.app-hero .small-cta {display:inline-flex;margin-top:.6rem}
+.app-hero figure {margin:0;padding:1.4rem;background:#10273c;border-radius:1.6rem}
+.app-hero figure img {display:block;width:100%;height:auto;border-radius:.6rem}
+.app-hero figcaption {font-size:.9rem;color:var(--muted);margin-top:.8rem}
+.platforms {display:grid;grid-template-columns:1.2fr 1fr;gap:1rem;margin-top:clamp(2.6rem,6vw,5rem)}
+.platforms section {padding:clamp(1.3rem,3vw,2rem);border:1px solid var(--line);border-radius:1rem}
+.platforms h2 {margin:0;font-size:1.65rem}
+.platforms p {margin:.5rem 0 1rem}
+.platform-detail {color:var(--muted)}
+.platforms .source {color:var(--surf);text-decoration:underline;text-underline-offset:.2em}
+@media(max-width:680px) {.app-hero,.platforms {grid-template-columns:1fr}.app-hero {gap:1.75rem}}
