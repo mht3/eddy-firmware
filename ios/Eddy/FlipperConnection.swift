@@ -19,6 +19,7 @@ final class FlipperConnection: NSObject, ObservableObject, @preconcurrency CBCen
     @Published private(set) var connectedName: String?
     @Published private(set) var selectedID: UUID?
     @Published private(set) var isScanning = false
+    @Published private(set) var bluetoothState = CBManagerState.unknown
 
     var onConnect: (() -> Void)?
     var onCommand: ((Data) -> Void)?
@@ -46,7 +47,7 @@ final class FlipperConnection: NSObject, ObservableObject, @preconcurrency CBCen
     private var flowCharacteristic: CBCharacteristic?
     private var libraryEnabled = false
     private var libraryStarted = false
-    private var firmwareLibraryEnabled = false
+    @Published private(set) var firmwareLibraryEnabled = false
     private var wantsScan = false
     private var wantsConnection = false
     private var ready = false
@@ -407,7 +408,9 @@ final class FlipperConnection: NSObject, ObservableObject, @preconcurrency CBCen
     }
 
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
+        bluetoothState = central.state
         if central.state == .poweredOn {
+            if !ready && !wantsConnection { status = "Choose your Flipper." }
 #if os(iOS)
             central.registerForConnectionEvents(options: [.serviceUUIDs: Self.advertised + [Self.serial]])
 #endif

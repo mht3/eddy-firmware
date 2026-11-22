@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 
 globalThis.Image=class {};
-const {startSpotifyTour,spotifyTourSteps}=await import('../../website/spotify-tour.js');
-const {openSpotifyDemo,spotifyKey,spotifyStatus}=await import('../../website/spotify-preview.js');
-const {songs}=await import('../../website/spotify-demo-library.js');
+const {startSpotifyTour,spotifyTourSteps}=await import('../../applications/main/eddy_spotify/source/demo/spotify-tour.js');
+const {openSpotifyDemo,spotifyKey,spotifyStatus}=await import('../../applications/main/eddy_spotify/source/demo/spotify-preview.js');
+const {songs}=await import('../../applications/main/eddy_spotify/source/demo/spotify-demo-library.js');
 const perform=(tour,key)=>{spotifyKey(tour.state,key);return tour.observe(key);};
 const reach=(tour,id)=>{
   while(tour.step && tour.step.id!==id) assert(perform(tour,tour.step.key));

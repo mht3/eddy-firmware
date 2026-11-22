@@ -15,7 +15,7 @@ The installer includes ten apps by default. Use **Add to build** for Pomodoro Ti
 | Remotes | [eddy_remote_builder](main/eddy_remote_builder/) |
 | Bluetooth Remote | [eddy_bluetooth](main/eddy_bluetooth/) |
 | Music | [eddy_music](main/eddy_music/) |
-| Spotify | [eddy_spotify](main/eddy_spotify/) |
+| Spotify | [Flipper Spotify](https://github.com/mht3/flipper-spotify) |
 
 In **Pomodoro Timer**, press Left or Right for minutes, Up for seconds in five-second steps, Down to mute the alarm, and OK to start or pause. In **Metronome**, tap Up to set the tempo, use Left or Right for individual BPM changes, and press OK to start or stop. Down cycles through sound and vibration together, sound only, vibration only, and silent visual beats. Both apps use the Flipper’s volume setting.
 

@@ -1,5 +1,4 @@
-# The C sources, headers, and assets come from this revision of the standalone app.
-# https://github.com/mht3/flipper-spotify/tree/341bb5ce5ac7a82e09cf6144a5f1dafffeb2c4fc
+# Eddy registers the app in its launcher. Its implementation lives in the source submodule.
 App(
     appid="eddy_spotify",
     name="Spotify",
@@ -10,6 +9,7 @@ App(
     icon="I_Spotify_16x16",
     order=102,
     stack_size=3072,
-    fap_file_assets="assets",
+    sources=["*.c", "*.cpp"],
+    fap_file_assets="source/assets",
     fap_category="assets",
 )

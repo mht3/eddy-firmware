@@ -3,48 +3,55 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="description" content="Pair your iPhone with Eddy Firmware and browse Spotify from your Flipper Zero.">
+    <meta name="description" content="Try Spotify on a Flipper Zero, then connect your own library with Eddy for iPhone.">
     <title>Eddy for iPhone · Eddy Firmware</title>
     <link rel="icon" href="../eddy.svg">
     <link rel="stylesheet" href="../style.css">
-    <link rel="stylesheet" href="app.css">
+    <link rel="stylesheet" href="app.css?v=flipper">
     <script type="module" src="open-app.js"></script>
   </head>
   <body>
+    <a href="#content" class="skip">Skip to content</a>
     <header><div class="bar">
       <a class="brand" href="../"><img src="../eddy.svg" alt=""> Eddy <span>Firmware</span></a>
       <nav aria-label="Main"><a href="../resources/">Resources</a><a class="small-cta" href="../update/">Install firmware</a></nav>
     </div></header>
-    <main class="companion">
-      <div class="app-hero">
-        <div>
-          <img class="app-mark" src="../eddy.svg" width="72" height="72" alt="">
-          <h1>Eddy</h1>
-          <p>Pair your Flipper Zero, sign in to Spotify, and browse your playlists from the buttons on your Flipper.</p>
-          <a class="small-cta" href="#iphone">iPhone beta</a>
+    <main class="companion" id="content">
+      <section class="app-hero" aria-labelledby="app-title">
+        <div class="app-intro">
+          <h1 id="app-title">Your playlists on Flipper Zero.</h1>
+          <p>Eddy on your iPhone connects to Spotify. Use the buttons on your Flipper to queue a track or start a favorite playlist.</p>
+          <a class="setup-link" href="#iphone">Set up Eddy for iPhone</a>
         </div>
-        <figure>
-          <img src="../spotify/preview-playlists.webp" width="1080" height="540" alt="Flipper Zero displaying the Eddy Spotify playlist menu">
-          <figcaption>Spotify on the Flipper Zero</figcaption>
+        <figure class="flipper-demo">
+          <a class="demo-link" href="../spotify-demo/?tour=1">
+            <img src="../spotify/preview-playlists.webp" width="1080" height="540" alt="A Flipper Zero with Morning Swim selected and Dolphin Days playing.">
+            <span>Try the Spotify demo!</span>
+          </a>
         </figure>
-      </div>
-      <div class="platforms">
-        <section id="iphone">
-          <h2>iPhone</h2>
-          <p class="platform-detail">TestFlight beta · iOS 17 or later</p>
+      </section>
+      <div class="companion-setup">
+        <section class="get-eddy" id="iphone" aria-labelledby="iphone-title">
+          <h2 id="iphone-title">Eddy for iPhone</h2>
+          <p>Already installed? <a href="eddyspotify://setup">Open Eddy</a>. The <strong>Demo</strong> tab lets you try sample playlists offline before you connect your Flipper.</p>
           <p id="beta-availability">TestFlight invitations aren’t open yet.</p>
-          <ol>
-            <li>Already installed? <a href="eddyspotify://setup">Open Eddy</a> on your iPhone.</li>
-            <li>For a first install, get <a href="https://apps.apple.com/app/testflight/id899247664">Apple TestFlight</a> on your iPhone. Once invitations open, follow the beta link on this page and tap <strong>Accept → Install → Open</strong>.</li>
-            <li>In Eddy, tap <strong>Connect device</strong> and select your Flipper. Paste your Client ID on <strong>Log in to Spotify</strong>. <a href="../spotify/">Spotify setup guide</a></li>
-          </ol>
-          <a class="source" href="https://github.com/mht3/eddy-firmware/tree/dev/ios">View the iPhone prototype</a>
+          <p>For a first install, get <a href="https://apps.apple.com/app/testflight/id899247664">Apple TestFlight</a> on your iPhone. When an invitation is available here, use it to install Eddy.</p>
+          <p class="platform-detail">Requires iOS 17 or later. Android isn’t supported yet.</p>
         </section>
-        <section>
-          <h2>Android</h2>
-          <p>The Eddy companion app isn’t available on Android yet.</p>
+        <section class="connect-library" aria-labelledby="connect-title">
+          <h2 id="connect-title">Connect your library</h2>
+          <dl>
+            <dt>On your Flipper</dt>
+            <dd>Open <strong>Apps → Spotify</strong> and leave it open. Scan the QR code with your iPhone to open Eddy or find its installation instructions.</dd>
+            <dt>In Eddy on your iPhone</dt>
+            <dd>Tap <strong>Connect device</strong> and choose your Flipper. Enter your Client ID, tap <strong>Log in to Spotify</strong>, and approve access.</dd>
+            <dt>Back on your Flipper</dt>
+            <dd>Open <strong>Playlists</strong> to browse, or press <strong>Right</strong> from your library for Now Playing.</dd>
+          </dl>
+          <a class="setup-link" href="../spotify/">Spotify setup guide</a>
         </section>
       </div>
+      <p class="app-sources">Source code <a href="https://github.com/mht3/flipper-spotify">Flipper app</a> <a href="https://github.com/mht3/eddy-firmware/tree/dev/ios">iPhone app</a></p>
     </main>
   </body>
 </html>

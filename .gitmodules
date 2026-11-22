@@ -38,3 +38,7 @@
 [submodule "lib/uzlib"]
 	path = lib/uzlib
 	url = https://github.com/pfalcon/uzlib.git
+[submodule "applications/main/eddy_spotify/source"]
+	path = applications/main/eddy_spotify/source
+	url = https://github.com/mht3/flipper-spotify.git
+	branch = main

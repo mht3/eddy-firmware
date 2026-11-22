@@ -1,16 +1,94 @@
-.companion {max-width:78rem;margin:auto;padding:clamp(2rem,7vw,6rem) clamp(1.25rem,5vw,4.5rem)}
-.app-hero {display:grid;grid-template-columns:1fr 1.18fr;align-items:center;gap:clamp(2rem,5vw,5rem)}
-.app-mark {padding:.55rem;border-radius:1.1rem;background:#112e48}
-.app-hero h1 {font-size:clamp(3rem,6vw,5.25rem);line-height:1;letter-spacing:-.065em;margin:1.3rem 0 1rem}
-.app-hero p {font-size:clamp(1.1rem,2vw,1.35rem);color:var(--muted);max-width:36ch}
-.app-hero .small-cta {display:inline-flex;margin-top:.6rem}
-.app-hero figure {margin:0;padding:1.4rem;background:#10273c;border-radius:1.6rem}
-.app-hero figure img {display:block;width:100%;height:auto;border-radius:.6rem}
-.app-hero figcaption {font-size:.9rem;color:var(--muted);margin-top:.8rem}
-.platforms {display:grid;grid-template-columns:1.2fr 1fr;gap:1rem;margin-top:clamp(2.6rem,6vw,5rem)}
-.platforms section {padding:clamp(1.3rem,3vw,2rem);border:1px solid var(--line);border-radius:1rem}
-.platforms h2 {margin:0;font-size:1.65rem}
-.platforms p {margin:.5rem 0 1rem}
-.platform-detail {color:var(--muted)}
-.platforms .source {color:var(--surf);text-decoration:underline;text-underline-offset:.2em}
-@media(max-width:680px) {.app-hero,.platforms {grid-template-columns:1fr}.app-hero {gap:1.75rem}}
+.companion {
+  max-width: 80rem;
+  margin-inline: auto;
+  padding: 0 clamp(1.2rem, 5vw, 4.5rem) 2rem;
+}
+.app-hero {
+  display: grid;
+  grid-template-columns: minmax(0, .85fr) minmax(0, 1.4fr);
+  align-items: center;
+  gap: clamp(1.5rem, 4vw, 4rem);
+  padding-block: clamp(3.5rem, 7vw, 7rem);
+}
+.app-intro h1 {
+  max-width: 11ch;
+  margin: 0;
+  font-size: clamp(3rem, 5.6vw, 5rem);
+  line-height: .98;
+  letter-spacing: -.06em;
+  text-wrap: balance;
+}
+.app-intro p {
+  max-width: 38ch;
+  margin: 1.25rem 0;
+  color: var(--muted);
+  font-size: clamp(1.08rem, 1.5vw, 1.3rem);
+}
+.companion a:not(.demo-link):not(.small-cta) {
+  color: var(--surf);
+  text-decoration: underline;
+  text-underline-offset: .2em;
+}
+.flipper-demo {
+  position: relative;
+  isolation: isolate;
+  margin: 0;
+  padding-block: .5rem;
+}
+.flipper-demo::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -4% 3% 8%;
+  border-radius: 48% 52% 46% 54%;
+  background: radial-gradient(ellipse at 56% 58%, #1c4467, #102f50 64%, #0b233d);
+  box-shadow: 0 0 0 1px #1e4160, 0 0 0 .7rem #0b2037, 0 0 0 calc(.7rem + 1px) #18344f;
+  transform: rotate(-5deg);
+}
+.demo-link {
+  display: grid;
+  justify-items: center;
+  border-radius: 1.2rem;
+}
+.demo-link img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.demo-link span {
+  display: inline-block;
+  padding: .62rem 1.2rem;
+  border-radius: 2rem;
+  background: var(--surf);
+  color: var(--ink);
+  font-weight: 700;
+}
+.demo-link:hover {text-decoration: none}
+.demo-link:hover span {background: #d6edff}
+.companion-setup {
+  display: grid;
+  grid-template-columns: minmax(0, .9fr) minmax(0, 1.3fr);
+  gap: clamp(2.5rem, 7vw, 7rem);
+  padding-block: 2rem;
+  border-block: 1px solid var(--line);
+}
+.companion-setup h2 {
+  margin: 0 0 1rem;
+  font-size: clamp(1.6rem, 2.6vw, 2.2rem);
+  line-height: 1.15;
+  letter-spacing: -.04em;
+}
+.companion-setup p, .connect-library dd {margin: 0 0 1rem}
+.get-eddy {scroll-margin-top: 1rem}
+.get-eddy .platform-detail, .app-sources {color: var(--muted); font-size: .925rem}
+.connect-library dl {margin: 0 0 1rem}
+.connect-library dt {margin-bottom: .2rem; color: var(--surf); font-weight: 700}
+.app-sources {display: flex; align-items: baseline; flex-wrap: wrap; gap: .5rem 1.1rem; margin: 1.25rem 0 0}
+@media (max-width: 700px) {
+  .app-hero, .companion-setup {grid-template-columns: 1fr}
+  .app-hero {gap: 2.5rem; padding-block: 2.75rem 3rem}
+  .app-intro h1 {max-width: 14ch}
+  .app-intro p {max-width: 42ch}
+  .companion-setup {gap: 1.75rem}
+  .connect-library {padding-top: 1.5rem; border-top: 1px solid var(--line)}
+}

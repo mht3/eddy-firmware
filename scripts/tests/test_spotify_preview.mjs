@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 globalThis.Image=class {};
-const {openSpotifyDemo,openSpotifyPlayer,spotifyKey,spotifyHit,spotifyStatus,spotifyVolumeAt,drawSpotify}=await import('../../website/spotify-preview.js');
-const {songs}=await import('../../website/spotify-demo-library.js');
+const {openSpotifyDemo,openSpotifyPlayer,spotifyKey,spotifyHit,spotifyStatus,spotifyVolumeAt,drawSpotify}=await import('../../applications/main/eddy_spotify/source/demo/spotify-preview.js');
+const {songs}=await import('../../applications/main/eddy_spotify/source/demo/spotify-demo-library.js');
 const view=s=>s.views.at(-1);
 function tapRow(s,row) { assert.equal(spotifyHit(s,20,13+12*row),true); }
 function key(s,...keys) { for(const k of keys) assert.equal(spotifyKey(s,k),true); }

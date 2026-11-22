@@ -60,17 +60,20 @@ private let surf = Color(red: 0.58, green: 0.81, blue: 1)
 
 @MainActor
 private struct ConnectionView: View {
+    private enum Tab { case devices, demo }
     @ObservedObject var phone: EddyPhone
     @ObservedObject var account: SpotifyAccount
     @ObservedObject var flipper: FlipperConnection
     @AppStorage("eddy.onboarded") private var onboarded = false
     @State private var step = 0
+    @State private var tab = Tab.devices
     @State private var chooser = false
     @State private var accountSheet = false
     @State private var diagnosticsSheet = false
     @State private var didLaunch = false
     @FocusState private var editingClientID: Bool
     @Environment(\.scenePhase) private var phase
+    @Environment(\.openURL) private var openURL
 
     private var nextLabel: String {
         if step == 4 { return "View devices" }
@@ -82,7 +85,22 @@ private struct ConnectionView: View {
 
     var body: some View {
         Group {
-            if onboarded { devicesPage } else { welcomeFlow }
+            if onboarded {
+                TabView(selection: $tab) {
+                    devicesPage
+                        .tabItem { Label("Devices", systemImage: "dot.radiowaves.left.and.right") }
+                        .tag(Tab.devices)
+                    NavigationStack {
+                        SpotifyDemoView()
+                            .navigationTitle("Spotify demo")
+                            .navigationBarTitleDisplayMode(.inline)
+                    }
+                    .tabItem {
+                        Label { Text("Demo") } icon: { Image("EddyMark").renderingMode(.template) }
+                    }
+                    .tag(Tab.demo)
+                }
+            } else { welcomeFlow }
         }
         .tint(surf)
         .preferredColorScheme(.dark)
@@ -106,8 +124,9 @@ private struct ConnectionView: View {
         }
         .onOpenURL { url in
             if account.handleSpotifyCallback(url) { return }
-            if url.scheme == "eddyspotify", url.host == "setup", onboarded, !account.isSignedIn {
-                accountSheet = true
+            if url.scheme == "eddyspotify", url.host == "setup", onboarded {
+                tab = .devices
+                if !account.isSignedIn { accountSheet = true }
             }
         }
         .sheet(isPresented: $diagnosticsSheet) {
@@ -243,48 +262,123 @@ private struct ConnectionView: View {
         .preferredColorScheme(.dark)
     }
 
+    private var otherFlippers: [FlipperConnection.Device] {
+        let nearby = flipper.devices.filter { device in
+            flipper.systemConnectedIDs.contains(device.id) && !flipper.savedDevices.contains { $0.id == device.id }
+        }
+        return (flipper.savedDevices + nearby).filter { $0.id != flipper.connectedID }
+    }
+
+    private var flipperCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 14) {
+                Image("EddyMark").resizable().scaledToFit().frame(width: 42, height: 42)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(flipper.connectedName ?? "Flipper Zero")
+                        .font(.title2.bold()).accessibilityAddTraits(.isHeader)
+                    if flipper.connectedID != nil {
+                        Label("Bluetooth connected", systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(surf)
+                    } else {
+                        Text(flipper.status).foregroundStyle(.secondary)
+                    }
+                }
+                .font(.subheadline)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                if let device = flipper.connectedID {
+                    Menu {
+                        Button("Connect another device", systemImage: "plus") { openChooser() }
+                        Button("Disconnect", systemImage: "antenna.radiowaves.left.and.right.slash") {
+                            flipper.disconnect()
+                        }
+                        Button("Forget device", systemImage: "trash", role: .destructive) { flipper.forget(device) }
+                    } label: {
+                        Image(systemName: "ellipsis.circle").frame(minWidth: 44, minHeight: 44)
+                    }
+                    .accessibilityLabel("Manage connected Flipper")
+                }
+            }
+            if flipper.connectedID == nil {
+                Group {
+                    switch flipper.bluetoothState {
+                    case .unauthorized:
+                        Button("Open Settings", systemImage: "gear") {
+                            if let settings = URL(string: UIApplication.openSettingsURLString) { openURL(settings) }
+                        }
+                    case .unsupported:
+                        Button("Try the demo", systemImage: "play") { tab = .demo }
+                    default:
+                        Button("Connect device", systemImage: "plus") { openChooser() }
+                    }
+                }
+                .buttonStyle(ConnectionButtonStyle())
+            } else if account.isSignedIn {
+                Text(flipper.firmwareLibraryEnabled
+                     ? "Open Apps → Spotify on your Flipper."
+                     : "Connecting your Spotify library…")
+                    .font(.callout)
+            }
+        }
+        .padding(18)
+        .listRowInsets(EdgeInsets())
+        .listRowBackground(LinearGradient(colors: [Color(red: 0.08, green: 0.22, blue: 0.34), ocean],
+                                           startPoint: .topLeading, endPoint: .bottomTrailing))
+    }
+
     private var devicesPage: some View {
         NavigationStack {
             List {
-                Section {
-                    let known = flipper.savedDevices + flipper.devices.filter { nearby in
-                        flipper.systemConnectedIDs.contains(nearby.id) && !flipper.savedDevices.contains { $0.id == nearby.id }
-                    }
-                    if known.isEmpty { Text("Connect your Flipper to see it here.").foregroundStyle(.secondary) }
-                    ForEach(known) { device in
-                        let active = flipper.connectedID == device.id
-                        HStack {
-                            Image(systemName: "dot.radiowaves.left.and.right").foregroundStyle(surf)
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(device.name)
-                                Text(active ? (account.isSignedIn ? "Connected · Spotify linked" : "Connected") :
-                                     flipper.systemConnectedIDs.contains(device.id) ? "Connected to iPhone" : "Saved")
-                                    .font(.caption).foregroundStyle(.secondary)
+                Section { flipperCard }
+                if !otherFlippers.isEmpty {
+                    Section(flipper.connectedID == nil ? "Saved and nearby" : "Other devices") {
+                        ForEach(otherFlippers) { device in
+                            Button { flipper.select(device.id) } label: {
+                                LabeledContent {
+                                    Text("Connect")
+                                } label: {
+                                    Text(device.name).foregroundStyle(.primary)
+                                    Text(flipper.systemConnectedIDs.contains(device.id) ? "Connected to iPhone" : "Saved")
+                                        .foregroundStyle(.secondary)
+                                }
                             }
-                            Spacer()
-                            if active {
-                                Button("Disconnect") { flipper.disconnect() }
-                            } else {
-                                Button("Connect") { flipper.select(device.id) }
+                            .swipeActions {
+                                if flipper.savedDevices.contains(where: { $0.id == device.id }) {
+                                    Button("Forget", role: .destructive) { flipper.forget(device.id) }
+                                }
                             }
-                        }.buttonStyle(.borderless)
-                        .swipeActions {
-                            Button("Forget", role: .destructive) { flipper.forget(device.id) }
                         }
                     }
-                    Button { openChooser() } label: { Label("Connect device", systemImage: "plus") }
                 }
                 Section {
-                    NavigationLink("Diagnostics") { DiagnosticsView() }
                     Button { accountSheet = true } label: {
-                        LabeledContent("Spotify", value: account.isSignedIn ? "Linked" : "Log in")
+                        LabeledContent {
+                            Text(account.isSignedIn ? "Linked" : "Log in").foregroundStyle(surf)
+                        } label: {
+                            Label("Spotify", systemImage: "music.note.list")
+                        }
                     }
                     Link(destination: URL(string: "https://ko-fi.com/mhtaylor")!) {
                         Label("Buy me a Coffee", systemImage: "cup.and.saucer")
                     }
+                    NavigationLink { DiagnosticsView() } label: {
+                        Label("Diagnostics", systemImage: "stethoscope")
+                    }
                 }
+                .listRowBackground(Color(red: 0.065, green: 0.15, blue: 0.23))
             }
+            .scrollContentBackground(.hidden)
+            .background(ocean)
             .navigationTitle("Devices")
         }
+    }
+}
+
+private struct ConnectionButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.headline).foregroundStyle(ocean)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .background(surf.opacity(configuration.isPressed ? 0.7 : 1), in: RoundedRectangle(cornerRadius: 12))
     }
 }

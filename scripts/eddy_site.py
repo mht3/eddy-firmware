@@ -322,7 +322,20 @@ def stage(package=None):
     site = ROOT / "dist/eddy-site"
     if site.exists():
         shutil.rmtree(site)
-    shutil.copytree(ROOT / "website", site, ignore=shutil.ignore_patterns("*.fap"))
+    spotify_source = ROOT / "applications/main/eddy_spotify/source"
+    # Windows can check out symlinks as text. Publish the pinned demo files on every OS.
+    shutil.copytree(
+        ROOT / "website",
+        site,
+        ignore=shutil.ignore_patterns(
+            "*.fap", "spotify-demo", "preview-playlists.webp"
+        ),
+    )
+    shutil.copytree(spotify_source / "demo", site / "spotify-demo")
+    shutil.copy2(
+        site / "spotify-demo/preview-playlists.webp",
+        site / "spotify/preview-playlists.webp",
+    )
     invite = os.environ.get("EDDY_TESTFLIGHT_URL", "").strip()
     if invite:
         if not re.fullmatch(
@@ -365,6 +378,9 @@ def stage(package=None):
         version=version,
         file=package.name,
         commit=commit,
+        spotifyCommit=subprocess.check_output(
+            ["git", "-C", str(spotify_source), "rev-parse", "HEAD"], text=True
+        ).strip(),
         sha256=hashlib.sha256(package.read_bytes()).hexdigest(),
     )
     (site / "firmware/main.json").write_text(json.dumps(build, indent=2) + "\n")

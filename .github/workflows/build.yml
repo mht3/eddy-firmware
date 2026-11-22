@@ -5,23 +5,78 @@ on:
     branches: [dev, main]
     tags: ['eddy-*']
   workflow_dispatch:
+  schedule:
+    - cron: "17 * * * *"
 
 permissions:
   contents: read
 
 jobs:
+  spotify:
+    if: github.ref == 'refs/heads/dev' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: eddy-spotify-pin
+      cancel-in-progress: false
+    outputs:
+      revision: ${{ steps.pin.outputs.revision }}
+      changed: ${{ steps.pin.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+      - name: Pin the current Spotify app
+        id: pin
+        env:
+          app_path: applications/main/eddy_spotify/source
+        run: |
+          current=$(git rev-parse "HEAD:$app_path")
+          upstream=$(git ls-remote --exit-code https://github.com/mht3/flipper-spotify.git refs/heads/main | cut -f1)
+          if [[ "$current" != "$upstream" ]]; then
+            git update-index --cacheinfo "160000,$upstream,$app_path"
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m "Update Flipper Spotify to ${upstream:0:12}"
+            git push origin HEAD:dev
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "revision=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  iphone_demo:
+    needs: spotify
+    if: needs.spotify.outputs.changed == 'true'
+    uses: ./.github/workflows/iphone.yml
+    with:
+      revision: ${{ needs.spotify.outputs.revision }}
+
   build:
+    needs: [spotify, iphone_demo]
+    if: >-
+      !cancelled() && (needs.spotify.result == 'success' || needs.spotify.result == 'skipped') &&
+      (needs.iphone_demo.result == 'success' || needs.iphone_demo.result == 'skipped') &&
+      (github.event_name != 'schedule' || needs.spotify.outputs.changed == 'true')
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pages: read
     outputs:
       pages_mode: ${{ steps.hosting.outputs.mode }}
+      revision: ${{ steps.checkout.outputs.commit }}
     steps:
       - uses: actions/checkout@v4
+        id: checkout
         with:
+          ref: ${{ needs.spotify.outputs.revision }}
           fetch-depth: 0
           persist-credentials: false
+      - name: Check out the pinned Spotify sources and demo
+        run: |
+          if [[ "$GITHUB_REF" == refs/heads/dev ]]; then
+            git switch -C dev HEAD
+          fi
+          git submodule update --init -- applications/main/eddy_spotify/source
       - name: Check radio restrictions, remote storage and the Spotify device interface
         run: python3 -m unittest discover -s scripts/tests
       - uses: actions/setup-node@v4
@@ -52,15 +107,18 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mode=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq '.build_type' || true)
+          mode=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq '.build_type')
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-pages-artifact@v3
-        if: steps.hosting.outputs.mode == 'workflow' && (github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/tags/eddy-'))
+        if: (steps.hosting.outputs.mode == 'workflow' || steps.hosting.outputs.mode == 'legacy') && (github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/tags/eddy-'))
         with:
           path: dist/eddy-site
 
   publish:
-    if: needs.build.outputs.pages_mode == 'workflow' && (github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/tags/eddy-'))
+    if: >-
+      !cancelled() && needs.build.result == 'success' &&
+      needs.build.outputs.pages_mode == 'workflow' &&
+      (github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/tags/eddy-'))
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -76,3 +134,49 @@ jobs:
       - name: Deploy website and matching main build
         id: deploy
         uses: actions/deploy-pages@v4
+
+  publish_branch:
+    if: >-
+      !cancelled() && needs.build.result == 'success' &&
+      needs.build.outputs.pages_mode == 'legacy' &&
+      (github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/tags/eddy-'))
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+    concurrency:
+      group: eddy-pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: published
+      - uses: actions/download-artifact@v4
+        with:
+          name: github-pages
+          path: artifact
+      - name: Publish the verified installer and demo
+        env:
+          GH_TOKEN: ${{ github.token }}
+          revision: ${{ needs.build.outputs.revision }}
+        run: |
+          if [[ "$GITHUB_REF" == refs/heads/dev ]]; then
+            latest=$(git -C published ls-remote --exit-code origin refs/heads/dev | cut -f1)
+            if [[ "$latest" != "$revision" ]]; then exit 0; fi
+          fi
+          mkdir site
+          tar -xf artifact/artifact.tar -C site
+          test "$(jq -r .commit site/firmware/main.json)" = "$revision"
+          touch site/.nojekyll
+          rsync -a --delete --exclude=/.git/ --exclude=/CNAME --exclude=/firmware/ site/ published/
+          rsync -a site/firmware/ published/firmware/
+          git -C published add --all
+          if ! git -C published diff --cached --quiet; then
+            git -C published config user.name 'github-actions[bot]'
+            git -C published config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git -C published commit -m "Publish Eddy ${revision:0:12}"
+            git -C published push origin HEAD:gh-pages
+          fi
+          gh api --method POST "repos/$GITHUB_REPOSITORY/pages/builds" --silent

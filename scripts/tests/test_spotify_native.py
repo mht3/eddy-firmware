@@ -7,7 +7,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-APP = ROOT / "applications/main/eddy_spotify"
+APP = ROOT / "applications/main/eddy_spotify/source"
 
 HARNESS = r"""
 #include <assert.h>

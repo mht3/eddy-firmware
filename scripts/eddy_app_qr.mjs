@@ -21,5 +21,5 @@ function appBitmap(url) {
   return bytes;
 }
 
-const resource = new URL('../applications/main/eddy_spotify/assets/iphone_app.xbm', import.meta.url);
+const resource = new URL('../applications/main/eddy_spotify/source/assets/iphone_app.xbm', import.meta.url);
 writeFileSync(resource, appBitmap('https://mht3.github.io/eddy-firmware/app/?open=1'));
