@@ -62,7 +62,7 @@ function makeCard(app,community=false) {
     const setup = document.createElement('a');
     setup.className = 'app-preview';
     setup.href = '../spotify/#developer-setup';
-    setup.textContent = 'About library access';
+    setup.textContent = 'Spotify setup';
     card.append(setup);
   }
   toggle.addEventListener('click', () => {
