@@ -92,11 +92,21 @@ async function install() {
   let sent = 0;
   for (const {part,bytes} of files) {
     connection.textContent = 'Copying '+part.name+' to the microSD card…';
-    await flipper.upload(folder+'/'+part.name,bytes,part.md5,n=>{progress.value=sent+n;});
+    try {
+      await flipper.upload(folder+'/'+part.name,bytes,part.md5,n=>{progress.value=sent+n;});
+    } catch (error) {
+      if (error.name === 'TimeoutError') throw Error('The Flipper stopped answering while copying '+part.name+'. Return to the home screen and reconnect to resume the transfer.');
+      throw error;
+    }
     sent += bytes.length;
   }
   connection.textContent = 'Checking the package on your Flipper…';
-  await flipper.install(folder);
+  try {
+    await flipper.install(folder);
+  } catch (error) {
+    if (error.name === 'TimeoutError') throw Error('The package was copied, but the Flipper did not confirm installation. Check its screen for update progress before retrying.');
+    throw error;
+  }
 }
 
 async function releasePort() {

@@ -9,30 +9,61 @@ export class FlipperUpdater {
     this.pending = '';
   }
 
-  async open() {
+  async openPort() {
     try {
       await this.port.open({baudRate:115200,bufferSize:16384});
     } catch (error) {
       if (error.name !== 'NetworkError' && error.name !== 'InvalidStateError') throw error;
       throw Error('Could not open the Flipper USB port. Quit qFlipper, close other Flipper tabs, then click Connect Flipper Zero again.');
     }
+    this.isOpen = true;
+    this.pending = '';
     this.reader = this.port.readable.getReader();
     this.writer = this.port.writable.getWriter();
-    await this.port.setSignals({dataTerminalReady:true});
-    await this.until(prompt);
-    const info = await this.command('device_info');
+  }
+
+  async open() {
+    let info;
+    for (let attempt=0; attempt<2; attempt++) {
+      await this.openPort();
+      try {
+        if (attempt) {
+          await this.port.setSignals({dataTerminalReady:false});
+          await new Promise(resolve=>setTimeout(resolve,250));
+        }
+        await this.port.setSignals({dataTerminalReady:true});
+        // The firmware debounces transient sessions before starting the CLI.
+        await new Promise(resolve=>setTimeout(resolve,180));
+        // A resumed USB session may never print a welcome prompt. Synchronize on
+        // device_info output so a late banner cannot be mistaken for the reply.
+        await this.writer.write(encoder.encode('device_info\r'));
+        const prefix = await this.until('hardware_model',4000);
+        info = prefix+'hardware_model'+await this.until(prompt);
+        break;
+      } catch (error) {
+        await this.close();
+        if (error.name !== 'TimeoutError') throw error;
+        if (attempt) throw Error('The USB port opened, but the Flipper did not answer. Unlock it, return to the home screen, reconnect the USB cable, and try again.');
+      }
+    }
     if (!/^hardware_target\s*:\s*7\s*$/m.test(info) || !/^hardware_model\s*:/m.test(info)) {
       throw Error('This device did not identify itself as a supported Flipper Zero.');
     }
-    const sd = await this.command('storage stat "/ext"');
+    let sd;
+    try {
+      sd = await this.command('storage stat "/ext"');
+    } catch (error) {
+      if (error.name === 'TimeoutError') throw Error('The Flipper answered, but the microSD check timed out. Return to the home screen and check the card in Settings → Storage.');
+      throw error;
+    }
     if (!/KiB free/i.test(sd)) throw Error('Insert a working microSD card and reconnect.');
   }
 
-  async until(marker) {
+  async until(marker, timeoutMs=20000) {
     const decoder = new TextDecoder();
     let timer;
     const timeout = new Promise((_, reject) => {
-      timer = setTimeout(() => reject(Error('The Flipper stopped responding. Reconnect it and try again.')),20000);
+      timer = setTimeout(() => reject(new DOMException('Timed out waiting for the Flipper.', 'TimeoutError')),timeoutMs);
     });
     try {
       while (!this.pending.includes(marker)) {
@@ -107,6 +138,9 @@ export class FlipperUpdater {
       this.reader.releaseLock();
     }
     this.writer?.releaseLock();
-    if (this.reader || this.writer) await this.port.close().catch(()=>{});
+    this.reader = null;
+    this.writer = null;
+    if (this.isOpen) await this.port.close().catch(()=>{});
+    this.isOpen = false;
   }
 }
