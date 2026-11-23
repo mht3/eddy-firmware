@@ -300,7 +300,7 @@ def stage_pages(site, spotify_source):
     tour_html = re.sub(
         r'(<meta name="description" content=")[^"]+',
         r"\g<1>Try Spotify on a Flipper Zero with Eddy’s interactive tour. "
-        "Browse sample playlists, queue a song, follow its lyrics and save a playlist shortcut.",
+        "Browse sample playlists, queue a song and save a playlist shortcut.",
         tour_html,
         count=1,
     )

@@ -59,50 +59,48 @@ test('all four playlist holds are opt-in, persistent, replaceable and clearable'
     assert.equal(view(next).kind,'player'); assert.equal(next.track,p.tracks[0]);
     assert.deepEqual(next.queue.map(x=>x.id),p.tracks.slice(1));
   }
-  key(next,'back','down','down','down','down','ok','ok');
+  key(next,'back','down','down','down','down','down','ok','ok');
   assert.equal(view(next).kind,'presetSlot');
-  key(next,'down','down','down','ok'); assert.equal(next.presets.up,undefined);
+  key(next,'down','down','ok'); assert.equal(next.presets.up,undefined);
   assert.equal(openSpotifyDemo().presets.up,undefined);
 });
 
-test('lyrics follow the playback clock while navigation and taps leave the text alone',t=>{
+test('Now playing accepts only the controls available on the handheld',t=>{
   let seconds=0;
   t.mock.method(performance,'now',()=>seconds*1000);
   const s=openSpotifyPlayer(openSpotifyDemo());
-  key(s,'up'); assert.match(spotifyStatus(s),/one more wave/); // starts at 0:21
-  seconds+=8; assert.match(spotifyStatus(s),/salt on my face/);
   const before=spotifyStatus(s);
-  key(s,'up','ok');
-  assert.equal(spotifyHit(s,12,18),false);
-  assert.equal(spotifyHit(s,65,43),false);
+  key(s,'up');
   assert.equal(spotifyStatus(s),before);
-  drawSpotify(ctx,s);
-  key(s,'down'); assert.equal(view(s).kind,'player');
-  key(s,'ok','up'); seconds+=45; assert.match(spotifyStatus(s),/salt on my face/);
-  key(s,'back'); assert.equal(view(s).kind,'player');
-  spotifyHit(s,2+123*70/songs[0].seconds,34); key(s,'up');
-  assert.match(spotifyStatus(s),/harbor ringing/);
-  key(s,'left'); assert.equal(view(s).kind,'lyrics'); assert.match(spotifyStatus(s),/Two fins/);
-  assert.equal(s.playing,false);
-  key(s,'right'); assert.equal(view(s).kind,'lyrics'); assert.match(spotifyStatus(s),/Low Tide.*Low tide at the landing/);
-  key(s,'left'); assert.equal(view(s).kind,'lyrics'); assert.match(spotifyStatus(s),/Dolphin Days.*Two fins/);
-  seconds+=songs[0].seconds+6; assert.match(spotifyStatus(s),/Low Tide.*boats lean/);
-  seconds+=songs[1].seconds+2; assert.match(spotifyStatus(s),/High Tide.*One rung/);
-  spotifyHit(s,65,57); assert.equal(view(s).kind,'player');
-  key(s,'back'); assert.equal(view(s).kind,'home');
-  for(const song of songs) {
-    assert.equal(song.cues[0][0],0);
-    assert(song.cues.every(([at,line],i)=>line.length>0 && at<song.seconds && (!i||at>song.cues[i-1][0])));
-  }
+  assert.equal(view(s).kind,'player');
+  assert.equal(spotifyHit(s,80,34),false);
+  assert.equal(s.elapsed,21);
+  assert(spotifyHit(s,64,57)); assert.equal(s.playing,false);
+  assert(spotifyHit(s,64,57)); assert.equal(s.playing,true);
+  assert(spotifyHit(s,34,57)); assert.equal(s.elapsed,0);
+  assert(spotifyHit(s,92,57)); assert.match(spotifyStatus(s),/Low Tide/);
+  key(s,'left'); assert.match(spotifyStatus(s),/Dolphin Days/);
+  seconds+=songs[0].seconds+1; assert.match(spotifyStatus(s),/Low Tide/);
+  assert(spotifyHit(s,120,57)); assert.equal(view(s).kind,'destinations');
+  key(s,'back','back'); assert.equal(view(s).kind,'home');
 });
 
-test('a stale queue row cannot remove another song after a natural transition',()=>{
+test('Queue offers the three handheld track actions, even if playback advances',()=>{
   const s=openSpotifyDemo();
   tapRow(s,2); tapRow(s,0); assert.equal(view(s).title,'Low Tide');
   s.elapsed=209; drawSpotify(ctx,s);
-  assert.equal(s.track,1);
-  const pending=[...s.queue]; tapRow(s,1);
-  assert.deepEqual(s.queue,pending); assert.match(spotifyStatus(s),/already played/);
+  const pending=[...s.queue];
+  key(s,'up'); assert.match(spotifyStatus(s),/Add to playlist/);
+  key(s,'up'); assert.match(spotifyStatus(s),/Add to queue/);
+  key(s,'ok'); assert.deepEqual(s.queue,[...pending,{id:1}]);
+});
+
+test('Albums offer both browse and play from the collection menu',()=>{
+  const s=openSpotifyDemo();
+  key(s,'down','down','down','ok','ok','ok');
+  assert.equal(view(s).kind,'album'); assert.equal(view(s).title,'Open Water');
+  key(s,'back','down','ok'); assert.equal(view(s).kind,'player');
+  assert.equal(s.track,0); assert.deepEqual(s.queue,[{id:4}]);
 });
 
 test('the demo describes how the device opens the iPhone companion',()=>{
@@ -140,7 +138,7 @@ test('Liked Songs shortcuts work from Home, its track list and the Presets edito
   key(next,'holdUp');
   assert.equal(view(next).kind,'player');
   assert.equal(next.queue.length,songs.length-1);
-  key(next,'back','down','down','down','down','ok','down','ok','down','ok');
+  key(next,'back','down','down','down','down','down','ok','up','ok','down','ok');
   assert.equal(next.presets.right,'liked-songs');
   key(next,'back','holdRight');
   assert.equal(next.track,0);
