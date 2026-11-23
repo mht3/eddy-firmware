@@ -19,8 +19,7 @@ class TestFlightInviteTest(unittest.TestCase):
 
             configure_testflight(site, "")
             for page in pages:
-                self.assertIn("Coming soon", page.read_text())
-                self.assertNotIn("testflight.apple.com/join/", page.read_text())
+                self.assertEqual(page.read_text().count('href="https://testflight.apple.com/join/9vUqxk8j"'), 1)
 
             with self.assertRaises(ValueError):
                 configure_testflight(site, "https://example.com/join/abcd1234")
@@ -28,6 +27,6 @@ class TestFlightInviteTest(unittest.TestCase):
             configure_testflight(site, invite)
             for page in pages:
                 self.assertEqual(page.read_text().count(invite), 1)
-                self.assertNotIn("Coming soon", page.read_text())
+                self.assertEqual(page.read_text().count("testflight.apple.com/join/"), 1)
             self.assertIn("eddyspotify://setup", pages[0].read_text())
             self.assertIn("id899247664", pages[0].read_text())

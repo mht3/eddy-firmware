@@ -264,10 +264,11 @@ def configure_testflight(site, invite):
         return
     if not re.fullmatch(r"https://testflight\.apple\.com/join/[A-Za-z0-9]{8}", invite):
         raise ValueError("Expected an Apple TestFlight public invitation")
-    link = f'<a class="small-cta" href="{invite}">Join the Eddy beta on TestFlight</a>'
     for page in (site / "app/index.html", site / "spotify/index.html"):
         html, count = re.subn(
-            r"<span data-testflight-invite>.*?</span>", link, page.read_text()
+            r'data-testflight-invite href="[^"]+"',
+            f'data-testflight-invite href="{invite}"',
+            page.read_text(),
         )
         if count != 1:
             raise ValueError(f"Expected one TestFlight invitation in {page}")
