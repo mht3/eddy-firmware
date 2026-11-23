@@ -307,6 +307,8 @@ def stage_pages(site, spotify_source):
     )
     (tour / "index.html").write_text(tour_html)
     for name in (
+        "lcd.js",
+        "lcd-fonts.js",
         "spotify-demo-library.js",
         "spotify-preview.js",
         "spotify-tour.js",

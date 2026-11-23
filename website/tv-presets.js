@@ -1,3 +1,6 @@
+import {text} from './lcd.js';
+import {box,circle,line,inverted} from './utility-pixels.js';
+import {bitmap} from './lcd-widgets.js';
 const profiles = [
   ['Samsung TV','Samsung TV'], ['LG TV','LG TV'],
   ['TCL (RC3000E02)','TCL TV'], ['TCL Roku (32S327)','TCL Roku TV'],
@@ -36,34 +39,38 @@ export function tvPadKey(state,key) {
 export function drawTvPad(ctx,state) {
   const isRoku=state.profile===3;
   const labels=isRoku?roku:standard;
-  const marks=['⏻',isRoku?'⌂':'×','−','+',isRoku?'↩':'▾',isRoku?'●':'▴'];
-  ctx.save();
-  ctx.font='bold 9px sans-serif';
-  ctx.fillText(profiles[state.profile][1],3,1);
+  text(ctx,profiles[state.profile][1],3,10,'primary');
   const remaining=(state.sentUntil||0)-performance.now();
   if(state.navigation) {
-    ctx.font='8px sans-serif'; ctx.textAlign='center';
     arrows.forEach(([,label,x,y])=>{
-      ctx.beginPath(); ctx.roundRect(x-13.5,y-5.5,27,12,3);
       const lit=remaining>0 && state.lastKey===label;
-      if(lit) ctx.fill(); else ctx.stroke();
-      ctx.fillStyle=lit?'#ffbe70':'#432a14'; ctx.fillText(label,x,y-4); ctx.fillStyle='#432a14';
+      box(ctx,x-14,y-6,28,13,3,lit);
+      inverted(ctx,lit,()=>text(ctx,label,x,y+4,'secondary','center'));
     });
-    ctx.fillText('Arrows / OK send  Back exits',64,55); ctx.restore();
-    return Math.max(0,Math.ceil(remaining));
+    text(ctx,'Arrows / OK send  Back exits',64,63,'secondary','center');
+  } else {
+    const glyphs=[null,['Muted',4,4],['Voldwn',3,3],['Volup',4,3],isRoku?['back',5,5]:['ButtonDown',3,2],isRoku?['ButtonCenter',3,3]:['ButtonUp',3,2]];
+    labels.forEach((label,i)=>{
+      const x=3+i%2*62,y=13+Math.floor(i/2)*14;
+      box(ctx,x,y,59,13,3,i===state.row);
+      inverted(ctx,i===state.row,()=>{
+        if(i===0) {
+          circle(ctx,x+10,y+7,3);
+          line(ctx,x+10,y+2,x+10,y+6);
+        } else if(i===1 && isRoku) {
+          line(ctx,x+6,y+6,x+10,y+2);
+          line(ctx,x+10,y+2,x+14,y+6);
+          box(ctx,x+7,y+6,7,5);
+        } else {
+          const [icon,dx,dy]=glyphs[i];
+          bitmap(ctx,icon,x+10-dx,y+6-dy);
+        }
+        text(ctx,label,x+35,y+10,'secondary','center');
+      });
+    });
+    const hint=isRoku && state.row===5?'OK: open D-pad':'Choose a key   OK: send';
+    text(ctx,remaining>0?'Sent: '+labels[state.row]:hint,64,63,'secondary','center');
   }
-  labels.forEach((label,i)=>{
-    const x=3+i%2*62,y=13+Math.floor(i/2)*14;
-    ctx.beginPath(); ctx.roundRect(x+.5,y+.5,58,12,3);
-    if(i===state.row) ctx.fill(); else ctx.stroke();
-    ctx.fillStyle=i===state.row?'#ffbe70':'#432a14';
-    ctx.textAlign='center'; ctx.font='bold 9px sans-serif'; ctx.fillText(marks[i],x+10,y+1);
-    ctx.font='8px sans-serif'; ctx.fillText(label,x+35,y+2);
-    ctx.fillStyle='#432a14';
-  });
-  const hint=isRoku && state.row===5?'OK: open D-pad':'Choose a key   OK: send';
-  ctx.fillText(remaining>0?'Demo sent: '+labels[state.row]:hint,64,55);
-  ctx.restore();
   return Math.max(0,Math.ceil(remaining));
 }
 

@@ -19,6 +19,7 @@ test('players, playlist editing, and navigation work from each list page',()=>{
   assert.equal(view(s).kind,'playlist'); tapRow(s,0);
   tapRow(s,2); tapRow(s,0);
   assert.ok(s.playlists[0].tracks.includes(1));
+  assert.equal(view(s).kind,'playlist'); tapRow(s,0);
   tapRow(s,2); tapRow(s,0);
   assert.equal(s.playlists[0].tracks.filter(id=>id===1).length,1);
   while(s.views.length>1) key(s,'back');
@@ -39,8 +40,8 @@ test('all four playlist holds are opt-in, persistent, replaceable and clearable'
   t.after(()=>{delete globalThis.localStorage;});
   const s=openSpotifyDemo();
   assert.deepEqual(s.presets,{});
-  key(s,'holdUp'); assert.equal(view(s).kind,'home'); assert.match(spotifyStatus(s),/Set a preset/);
-  key(s,'ok');
+  key(s,'holdUp'); assert.equal(view(s).kind,'home'); assert.match(spotifyStatus(s),/No playlist on this button/);
+  key(s,'ok','ok');
   const presets=['up','right','down','left'];
   for(let i=0;i<4;i++) {
     key(s,'hold'+presets[i][0].toUpperCase()+presets[i].slice(1));
@@ -99,7 +100,8 @@ test('Albums offer both browse and play from the collection menu',()=>{
   const s=openSpotifyDemo();
   key(s,'down','down','down','ok','ok','ok');
   assert.equal(view(s).kind,'album'); assert.equal(view(s).title,'Open Water');
-  key(s,'back','down','ok'); assert.equal(view(s).kind,'player');
+  key(s,'back'); assert.equal(view(s).kind,'albums');
+  key(s,'ok','down','ok'); assert.equal(view(s).kind,'player');
   assert.equal(s.track,0); assert.deepEqual(s.queue,[{id:4}]);
 });
 
@@ -142,4 +144,84 @@ test('Liked Songs shortcuts work from Home, its track list and the Presets edito
   assert.equal(next.presets.right,'liked-songs');
   key(next,'back','holdRight');
   assert.equal(next.track,0);
+});
+
+test('the fourth result is selectable on the LCD and scrolls into the next four-row page',()=>{
+  const s=openSpotifyDemo();
+  key(s,'down','ok');
+  assert.equal(view(s).kind,'liked');
+  assert(spotifyHit(s,4,47));
+  assert.equal(view(s).title,songs[3].title);
+  key(s,'back','down');
+  assert.equal(view(s).row,4);
+  assert(spotifyHit(s,4,21));
+  assert.equal(view(s).title,songs[5].title);
+  key(s,'back','down');
+  assert.equal(view(s).row,4);
+  key(s,'left');
+  assert.equal(view(s).row,3);
+});
+
+test('the demo phone setup code matches the QR shipped with the Flipper app',async()=>{
+  const {readFile}=await import('node:fs/promises');
+  const {setupQr}=await import('../../applications/main/eddy_spotify/source/demo/spotify-demo-library.js');
+  assert.deepEqual(Buffer.from(setupQr),await readFile(new URL('../../applications/main/eddy_spotify/source/assets/iphone_app.xbm',import.meta.url)));
+});
+
+// The browser draws integer rectangles into a 128×64 monochrome LCD. Keep this
+// tiny Canvas implementation in the firmware's native vertical-page byte order.
+function lcdFramebuffer() {
+  const bytes = new Uint8Array(128 * 8);
+  let bounds = [0, 0, 128, 64], path;
+  const stack = [];
+  return {
+    bytes,
+    globalCompositeOperation: 'source-over',
+    save() { stack.push([bounds, this.globalCompositeOperation]); },
+    restore() { [bounds, this.globalCompositeOperation] = stack.pop(); },
+    beginPath() { path = undefined; },
+    rect(x, y, w, h) { path = [x, y, x + w, y + h]; },
+    clip() {
+      bounds = [Math.max(bounds[0], path[0]), Math.max(bounds[1], path[1]),
+        Math.min(bounds[2], path[2]), Math.min(bounds[3], path[3])];
+    },
+    fillRect(x, y, w, h) {
+      const clear = this.globalCompositeOperation === 'destination-out';
+      for (let py = Math.max(y, bounds[1]); py < Math.min(y + h, bounds[3]); py++) {
+        for (let px = Math.max(x, bounds[0]); px < Math.min(x + w, bounds[2]); px++) {
+          const index = (py >> 3) * 128 + px, mask = 1 << (py % 8);
+          if (clear) bytes[index] &= ~mask;
+          else bytes[index] |= mask;
+        }
+      }
+    },
+  };
+}
+
+test('Spotify paints the same framebuffer as the stock firmware renderer', async t => {
+  const {createHash} = await import('node:crypto');
+  t.mock.method(performance, 'now', () => 0);
+  // SHA-256 of the 1,024 output bytes from spotify_screen_draw with u8g2,
+  // default fonts, the demo library and Dolphin Days at 0:21. Battery is
+  // composited by the system outside this view on both platforms.
+  const frames = [
+    ['Home', [], '7e122ddea66814cce85e31185d4558f978c7759d28c60865b7656010b49da794'],
+    ['Playlists', ['ok','down'], '8fdbf5e0d05600c25d92aedfddbec77c77fd48c135763b9a075221e74ec2f218'],
+    ['Collection actions', ['ok','ok','down'], 'c915c684d539bcb04f621b81cc0e83dfb505d3868f65135fc16d58f93454b7c7'],
+    ['Playlist tracks', ['ok','ok','ok','down'], '7f5a3752d2417f29c1545947e07568e521c865e1d7a2620f5204086d134f169b'],
+    ['Track actions', ['down','ok','ok','down','down'], 'ee534f5c836c8432ab5b343220092e108a716b709ff28fe972d3567797be418e'],
+    ['Playing', ['right'], '3500a87e41db7905e8d2ddbbf37f727f9df836a44eabe7dd88ab1ec9d707c2fe'],
+    ['Paused', ['right','ok'], '39fedb018158cf64b24fec83cf66b7567f8a3299000c021124b3faae402a3246'],
+    ['Sign in QR', ['up','ok'], '1ae792b0f69b6ebacc9fdf735308973033703a651d8cb2ded8df227bd8bf6d41'],
+    ['Presets', ['up','up','ok'], '19114d51cdd95eed341862b25d76a45d8adee76ddb078d3141ac727728191a2c'],
+    ['Missing preset', ['holdDown'], '45947f132c8f132a49a47296bdb25f14f7868232048eb8849eadc9facce78cf6'],
+    ['Preset saved', ['down','holdUp'], 'c4440742e44f25ad5c543b68be88443dc19e561a3bc2123a070250fc78c1aa84'],
+  ];
+  for (const [name, keys, reference] of frames) {
+    const session = openSpotifyDemo(null, {persistPresets:false});
+    keys.forEach(k => spotifyKey(session,k));
+    const lcd = lcdFramebuffer();
+    drawSpotify(lcd,session);
+    assert.equal(createHash('sha256').update(lcd.bytes).digest('hex'),reference,name);
+  }
 });

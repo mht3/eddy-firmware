@@ -17,13 +17,15 @@ const {openBuilder, builderKey, builderStatus, drawBuilder} = await import('../.
 const {layoutDemo, remoteDemo} = await import('../../website/remote-preview.js');
 const press = (state,key)=>builderKey(state,key,()=>{});
 function renderedButtons(state) {
-  let buttons = 0;
+  const pixels=Array.from({length:64},()=>new Uint8Array(128));
   const canvas = new Proxy({
-    roundRect(){ buttons++; },
-    measureText(text){ return {width:text.length * 5}; },
+    fillRect(x,y,w,h){
+      for(let i=y;i<y+h;i++) if(pixels[i]) pixels[i].fill(1,Math.max(0,x),Math.min(x+w,128));
+    },
   }, {get:(context,key)=>context[key] ?? (()=>{})});
   drawBuilder(canvas,state);
-  return buttons;
+  return [12,29].reduce((count,y)=>count+
+    pixels[y].reduce((runs,pixel,x)=>runs+Number(Boolean(pixel && !pixels[y][x-1])),0),0);
 }
 
 test('a sparse custom layout and a learned IR remote with the same name stay distinct', () => {

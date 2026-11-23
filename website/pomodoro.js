@@ -1,7 +1,25 @@
+import {text} from './lcd.js';
+import {line} from './utility-pixels.js';
 const step = 5000;
 const maxMinutes = 99;
 const durations = [25 * 60000, 5 * 60000];
 export const focus = {rest:false, left:durations[0], deadline:0, muted:false};
+
+const preference='eddy-preview-pomodoro';
+try {
+  const saved=JSON.parse(localStorage.getItem(preference));
+  const validDuration=value=>Number.isInteger(value) && value>0 && value<6000000;
+  if(saved && Array.isArray(saved.durations) && saved.durations.length===2 && saved.durations.every(validDuration)
+      && typeof saved.rest==='boolean' && typeof saved.muted==='boolean' && validDuration(saved.left)
+      && saved.left<=saved.durations[Number(saved.rest)] && Number.isSafeInteger(saved.deadline) && saved.deadline>=0) {
+    durations.splice(0,2,...saved.durations);
+    Object.assign(focus,{rest:saved.rest,left:saved.left,deadline:saved.deadline,muted:saved.muted});
+  }
+} catch {}
+
+function persist() {
+  try {localStorage.setItem(preference,JSON.stringify({...focus,durations}));} catch {}
+}
 
 let audio;
 let alarm;
@@ -36,7 +54,7 @@ export function remaining() {
       focus.left=durations[0];
       focus.deadline=0;
     }
-    arm();
+    persist();arm();
   }
   return focus.deadline ? Math.min(focus.left,focus.deadline-now) : focus.left;
 }
@@ -65,29 +83,21 @@ export function pomodoroKey(key) {
       durations[Number(focus.rest)]=adjusted;
     }
   }
+  persist();
 }
+if(focus.deadline) {remaining();arm();}
+
 export function drawPomodoro(ctx) {
   const left=remaining(), sec=Math.ceil(left/1000);
-  ctx.save();
-  ctx.font='8px sans-serif';
-  ctx.textAlign='left';
-  ctx.fillText(focus.rest?'Short break':'Focus session',3,1);
-  ctx.textAlign='center';
-  ctx.font='bold 24px monospace';
+  text(ctx,focus.rest?'Short break':'Focus session',3,9);
   const clock=String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0');
-  ctx.fillText(clock,64,17);
+  text(ctx,clock,64,41,'big','center');
   if (!focus.deadline) {
-    ctx.beginPath();
-    if (sec>=60) { ctx.moveTo(18,26); ctx.lineTo(12,32); ctx.lineTo(18,38); }
-    if (Math.floor(sec/60)<maxMinutes) { ctx.moveTo(109,26); ctx.lineTo(115,32); ctx.lineTo(109,38); }
-    ctx.stroke();
+    if (sec>=60) { line(ctx,12,32,18,26); line(ctx,12,32,18,38); }
+    if (Math.floor(sec/60)<maxMinutes) { line(ctx,115,32,109,26); line(ctx,115,32,109,38); }
+    text(ctx,'L/R: minutes   Up: +5s',64,51,'secondary','center');
   }
-  ctx.font='8px sans-serif';
-  if (!focus.deadline) ctx.fillText('L/R: minutes   Up: +5s',64,44);
-  ctx.textAlign='left';
-  ctx.fillText(focus.muted?'Down: muted':'Down: sound on',2,53);
-  ctx.textAlign='right';
+  text(ctx,focus.muted?'Down: muted':'Down: sound on',2,61);
   const verb=focus.deadline?'pause':focus.left<durations[Number(focus.rest)]?'resume':'start';
-  ctx.fillText('OK '+verb,126,53);
-  ctx.restore();
+  text(ctx,'OK '+verb,126,61,'secondary','right');
 }

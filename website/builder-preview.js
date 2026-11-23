@@ -1,15 +1,49 @@
+import {text,textWidth,button,submenu} from './lcd.js';
+import {line,circle,box,inverted} from './utility-pixels.js';
 import {askName} from './preview-name.js';
 import {presetButtons,tvPresetRows} from './tv-presets.js';
 import {layoutDemo} from './remote-preview.js';
 
 const stock=['Power','Vol +','Vol -','Mute','Play/Pause','Channel +','Channel -','Input','Custom'];
-const marks=['⏻','+','−','M','▶Ⅱ','▲','▼','⇥','•'];
-function choices(s) {
-  if(s.step==='library' || s.step==='deleteList') {
-    const saved=layoutDemo.entries.map(([name,kind])=>name+' ('+layoutDemo.source(name,kind)+')');
-    if(s.step==='deleteList') return saved.length ? saved : ['Back to Remotes'];
-    return saved.length ? ['New remote','TV presets','Delete a remote',...saved] : ['New remote','TV presets'];
+function glyph(ctx,id,x,y) {
+  const stroke=(a,b,c,d)=>line(ctx,x+a,y+b,x+c,y+d);
+  switch(id) {
+    case 0: circle(ctx,x,y+1,4); stroke(0,-5,0,0); break;
+    case 1: case 2: stroke(-4,0,4,0); if(id===1) stroke(0,-4,0,4); break;
+    case 3:
+      ctx.fillRect(x-5,y-1,3,3); stroke(-2,-1,0,-3); stroke(0,-3,0,3);
+      stroke(0,3,-2,1); stroke(2,-2,5,1); stroke(2,1,5,-2); break;
+    case 4:
+      stroke(-5,-3,-5,3); stroke(-5,-3,0,0); stroke(0,0,-5,3);
+      stroke(2,-3,2,3); stroke(4,-3,4,3); break;
+    case 5: case 6: {
+      const dy=id===5?-2:2;
+      stroke(-4,-dy,0,dy); stroke(0,dy,4,-dy); break;
+    }
+    case 7: box(ctx,x,y-4,5,9); stroke(-5,0,2,0); stroke(0,-2,2,0); stroke(2,0,0,2); break;
+    default: box(ctx,x-4,y-4,9,9,2); ctx.fillRect(x,y,1,1);
   }
+}
+
+function fitted(ctx,label,x,y,width,font='secondary') {
+  while(label.length && textWidth(label,font)>width) label=label.slice(0,-1);
+  text(ctx,label,x,y,font);
+}
+function library(s) {
+  const rows=[], page=s.libraryPage || 0;
+  const entries=layoutDemo.entries;
+  if(s.step==='library') rows.push(['New remote'],['TV presets']);
+  if(page) rows.push(['Previous page']);
+  if(entries.length && s.step==='library') rows.push(['Delete a remote']);
+  entries.slice(page*8,page*8+8).forEach(([name,kind])=>{
+    rows.push([name+' ('+layoutDemo.source(name,kind)+')',name,kind]);
+  });
+  if(entries.length>(page+1)*8) rows.push(['Next page']);
+  if(s.step==='deleteList' && !entries.length) rows.push(['Back to Remotes']);
+  return rows;
+}
+function choices(s) {
+  if(s.step==='library' || s.step==='deleteList') return library(s).map(([label])=>label);
   if(s.step==='presets') return tvPresetRows.map(([name])=>name);
   if(s.step==='stock') return stock;
   if(s.step==='options') {
@@ -33,72 +67,54 @@ function update(s,cells) {
 }
 export function builderStatus(s) {
   const rows=choices(s);
-  if(s.message) return s.message;
+  if(s.message) return s.message==='Sent'?'Demo sent: '+layoutDemo.get(s.name,s.kind).cells[s.slot].name:s.message;
   if(rows.length) return rows[s.row];
   const button=layoutDemo.get(s.name,s.kind)?.cells[s.slot];
-  if(s.step==='learn') return 'Point remote at Flipper. OK for a sample IR signal.';
+  if(s.step==='learn') return 'Point remote at Flipper. Use Present sample to supply an IR button press.';
   if(s.step==='delete') return 'Delete '+s.name+' ('+layoutDemo.source(s.name,s.kind)+')? OK deletes. Left cancels.';
   if(s.step==='remove') return 'Remove button? OK removes. Left cancels.';
   if(s.step==='move') return 'Choose a position, then press OK.';
   return (button?.name || 'Add button')+'. '+(button?'OK sends.':'OK adds a button.')+' Hold OK for options.';
 }
 export function drawBuilder(ctx,s) {
-  const grid=['move','grid'].includes(s.step);
-  const layout=grid?layoutDemo.get(s.name,s.kind):null;
-  const total=grid?cellCount(s,layout):0;
-  const header={library:'Remotes',deleteList:'Delete which remote?',presets:'Add TV preset',delete:'Delete remote?',stock:'Choose a button',options:'Options',learn:'Learn button',
-    move:'Move button',remove:'Remove button?'};
-  ctx.font='bold 9px sans-serif';
-  ctx.fillText(header[s.step] || s.name,2,1,total>6?64:88);
-  ctx.fillRect(1,11,126,1);
-  const rows=choices(s);
-  if(rows.length) {
-    const start=Math.max(0,s.row-2);
-    rows.slice(start,start+3).forEach((label,i)=>{
-      const y=15+i*16,selected=start+i===s.row;
-      if(selected) ctx.fillRect(1,y,126,14);
-      ctx.fillStyle=selected?'#ffbe70':'#432a14';
-      ctx.fillText(label,5,y+2,117); ctx.fillStyle='#432a14';
-    });
+  const layout=layoutDemo.get(s.name,s.kind);
+  const cell=layout?.cells[s.slot];
+  const headers={library:'Remotes',deleteList:'Delete which remote?',presets:'Add TV preset',stock:'Choose a button',options:cell?.name || 'Remote options'};
+  if(headers[s.step]) {
+    submenu(ctx,headers[s.step],choices(s),s.row);
     return;
   }
-  if(grid) {
-    const first=Math.floor(s.slot/6)*6;
-    if(total>6) {
-      ctx.textAlign='right'; ctx.font='8px sans-serif';
-      ctx.fillText((first/6+1)+'/'+Math.ceil(total/6),94,1);
-      ctx.textAlign='start';
+  if(s.step==='learn' || s.step==='remove' || s.step==='delete') {
+    const learn=s.step==='learn', remove=s.step==='remove';
+    text(ctx,learn?'Learn button':remove?'Remove button?':'Delete remote?',64,20,'primary','center');
+    if(remove) text(ctx,cell.name,64,35,'secondary','center');
+    else {
+      text(ctx,learn?'Point the original remote':s.name,64,29,'secondary','center');
+      text(ctx,learn?'at Flipper and press once.':layoutDemo.source(s.name,s.kind),64,39,'secondary','center');
     }
-    for(let i=0;i<Math.min(6,total-first);i++) {
-      const cell=layout.cells[first+i];
-      const columns=Math.min(3,total-first), width=Math.floor(126/columns)-2;
-      const x=2+(width+2)*(i%columns), y=12+17*Math.floor(i/columns);
-      const selected=first+i===s.slot;
-      ctx.beginPath(); ctx.roundRect(x+.5,y+.5,width-1,15,3);
-      if(selected) ctx.fill(); else ctx.stroke();
-      ctx.fillStyle=selected?'#ffbe70':'#432a14';
-      ctx.font='bold 10px sans-serif'; ctx.textAlign='center';
-      ctx.fillText(cell?marks[cell.icon]:(width>50?'+ Add button':'+'),x+(cell?8:width/2),y+2,cell?12:width-4);
-      if(cell) {
-        ctx.font='8px sans-serif'; ctx.textAlign='start';
-        let short=cell.name;
-        while(short && ctx.measureText(short).width>width-17) short=short.slice(0,-1);
-        ctx.fillText(short,x+15,y+3);
-      }
-      ctx.fillStyle='#432a14'; ctx.textAlign='start';
-    }
+    if(!learn) {button(ctx,'left','Cancel');button(ctx,'center',remove?'Remove':'Delete');}
+    return;
   }
-  ctx.font='8px sans-serif';
-  const copy=s.step==='learn'?['Point original remote','OK for demo signal']:
-    s.step==='remove'?['OK to remove','Left to cancel']:s.step==='delete'?[s.message || s.name+' ('+layoutDemo.source(s.name,s.kind)+')','Left cancel · OK delete']:[];
-  copy.forEach((line,i)=>ctx.fillText(line,4,21+i*15,120));
-  if(!copy.length) {
-    const cell=layoutDemo.get(s.name,s.kind).cells[s.slot];
-    ctx.textAlign='center';
-    ctx.fillText(s.message || (s.step==='move'?'Choose destination':cell?.name || 'Add button'),64,45,122);
-    ctx.fillText(s.step==='move'?'OK place · Back cancel':cell?'OK send · Hold OK menu':'OK add · Hold OK menu',64,55,124);
-    ctx.textAlign='start';
+  if(!layout) return;
+  const total=cellCount(s,layout), first=Math.floor(s.slot/6)*6;
+  fitted(ctx,s.name,2,9,total>6?64:92,'primary');
+  if(total>6) text(ctx,(first/6+1)+'/'+Math.ceil(total/6),94,9,'secondary','right');
+  const count=Math.min(6,total-first), columns=Math.min(3,count);
+  const width=Math.floor(126/columns)-2;
+  for(let i=0;i<count;i++) {
+    const entry=layout.cells[first+i];
+    const x=2+(width+2)*(i%columns), y=12+17*Math.floor(i/columns);
+    const selected=first+i===s.slot;
+    box(ctx,x,y,width,16,3,selected);
+    inverted(ctx,selected,()=>{
+      if(entry) {
+        glyph(ctx,entry.icon,x+8,y+8);
+        fitted(ctx,entry.name,x+15,y+11,width-17);
+      } else text(ctx,width>50?'+ Add button':'+',x+Math.floor(width/2),y+11,'secondary','center');
+    });
   }
+  text(ctx,s.message || (s.step==='move'?'Choose destination':cell?.name || 'Add button'),64,53,'secondary','center');
+  text(ctx,s.step==='move'?'OK: place    Back: cancel':cell?'OK: send    Hold OK: menu':'OK: add    Hold OK: menu',64,63,'secondary','center');
 }
 export function builderKey(s,key,render) {
   const rows=choices(s);
@@ -107,9 +123,10 @@ export function builderKey(s,key,render) {
   if(key==='back' || (key==='left' && ['delete','remove'].includes(s.step))) {
     if(s.step==='library' || (s.step==='grid' && s.shortcut)) return false;
     if(s.step==='move') s.slot=s.from;
+    if(s.step==='learn') { go(s,'grid'); return true; }
     if(s.step==='delete' && s.deleteFromList) {
       go(s,'deleteList');
-      s.row=Math.max(0,layoutDemo.entries.findIndex(([name,kind])=>s.name===name && s.kind===kind));
+      s.row=Math.max(0,library(s).findIndex(([,name,kind])=>s.name===name && s.kind===kind));
     } else go(s,['grid','presets','deleteList'].includes(s.step)?'library':['remove','delete'].includes(s.step)?'options':'grid');
     return true;
   }
@@ -127,27 +144,24 @@ export function builderKey(s,key,render) {
   else if(s.step==='remove' && key==='ok') {
     const cells=layout.cells.slice(); cells.splice(s.slot,1);
     update(s,cells);
-  } else if(key==='ok') {
+  } else if((key==='ok' && s.step!=='learn') || (key==='sample' && s.step==='learn')) {
     const choice=rows[s.row];
-    if(s.step==='library') {
-      if(s.row===1) go(s,'presets');
-      else if(s.row===2) go(s,'deleteList');
-      else if(s.row>2) {
-        [s.name,s.kind]=layoutDemo.entries[s.row-3];
-        s.slot=0; go(s,'grid');
-      }
+    if(s.step==='library' || s.step==='deleteList') {
+      const [,name,kind]=library(s)[s.row];
+      if(name) {
+        s.name=name; s.kind=kind; s.slot=0;
+        s.deleteFromList=s.step==='deleteList';
+        go(s,s.deleteFromList?'delete':'grid');
+      } else if(choice==='Next page' || choice==='Previous page') {
+        s.libraryPage=(s.libraryPage || 0)+(choice==='Next page'?1:-1); s.row=0;
+      } else if(choice==='TV presets') go(s,'presets');
+      else if(choice==='Delete a remote') {s.libraryPage=0;go(s,'deleteList');}
+      else if(choice==='Back to Remotes') {s.libraryPage=0;go(s,'library');}
       else askName('Remote name','',22,name=>{
         const error=layoutDemo.create(name);
         if(!error) { s.name=name; s.kind='layout'; s.slot=0; go(s,'grid'); render(); }
         return error;
       });
-    } else if(s.step==='deleteList') {
-      const entry=layoutDemo.entries[s.row];
-      if(entry) {
-        [s.name,s.kind]=entry;
-        s.deleteFromList=true;
-        go(s,'delete');
-      } else go(s,'library');
     } else if(s.step==='presets') {
       const name=layoutDemo.addPreset(choice,presetButtons(s.row));
       if(name) { s.name=name; s.kind='remote'; s.slot=0; go(s,'grid'); }
@@ -155,15 +169,19 @@ export function builderKey(s,key,render) {
     } else if(s.step==='delete') {
       if(!layoutDemo.remove(s.name,s.kind)) s.message='Could not delete';
       else if(s.shortcut) { s.exit=true; return false; }
-      else { s.name=undefined; go(s,'library'); }
+      else { s.name=undefined; s.libraryPage=0; go(s,'library'); }
     } else if(s.step==='grid') {
-      if(cell) s.message=cell.name+' · Demo sent';
+      if(cell) {
+        s.message='Sent';
+        clearTimeout(s.feedbackTimer);
+        s.feedbackTimer=setTimeout(()=>{s.message='';render();},950);
+      }
       else go(s,'stock');
     } else if(s.step==='stock') {
       s.icon=s.row; go(s,'learn');
     } else if(s.step==='learn' || choice==='Rename button') {
       const icon=s.step==='learn'?s.icon:cell.icon;
-      askName('Button name',cell?.name || stock[icon],16,name=>{
+      askName(s.step==='learn'?'Signal read. Name & save':'Rename button',cell?.name || stock[icon],16,name=>{
         const cells=layout.cells.slice(); cells[s.slot]={icon,name};
         if(!update(s,cells)) return s.message;
         render(); return '';

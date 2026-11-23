@@ -25,6 +25,8 @@ class SpotifyDemoSiteTest(unittest.TestCase):
             self.assertIn('id="lesson-step"', demo)
             self.assertEqual(demo.split("<body>")[1], home.split("<body>")[1])
             for name in (
+                "lcd.js",
+                "lcd-fonts.js",
                 "spotify-demo-library.js",
                 "spotify-preview.js",
                 "spotify-tour.js",

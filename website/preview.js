@@ -1,3 +1,7 @@
+import {drawInfrared, infraredKey, infraredButtonName} from './infrared-preview.js';
+import {text as lcdText, button as lcdButton, submenu} from './lcd.js';
+import {boxText, frame} from './lcd-widgets.js';
+import {editor, editorKey, drawEditor, openEditor} from './lcd-input.js';
 import {getAppOrder, getSelectedApps, restoreAppOrder, launcherColumns, launcherPageSize} from './app-catalog.js';
 import {previewCommunity,savedCommunity,previewId} from './community-apps.js';
 import {openSpotifyDemo, openSpotifyPlayer, drawSpotify, spotifyStatus, spotifyKey, spotifyHit} from './spotify-demo/spotify-preview.js';
@@ -9,17 +13,19 @@ import {bluetoothKey, bluetoothStatus, drawBluetooth} from './bluetooth-preview.
 import {focus, remaining, drawPomodoro, pomodoroKey} from './pomodoro.js';
 import {drawMetronome, metronomeInput, metronomeStatus} from './metronome.js';
 import {drawLauncher, layoutApps, verticalApp, sections, apps, launcherArt} from './launcher.js';
-import {settingsRows, settingsSamples, drawQuick, quickStatus, adjustQuick} from './quick-settings.js';
+import {settingsRows, drawQuick, quickStatus, adjustQuick} from './quick-settings.js';
 import {listNotes, nameNote} from './observation-preview.js';
 import {drawGpio, gpioKey, gpioStatus} from './gpio-preview.js';
 import {layoutDemo, remoteDemo} from './remote-preview.js';
+import {drawSettings,settingsKey,settingsArt,settingsStatus,radioOn,clockOn} from './device-settings.js';
 import {powerLists, powerSamples, powerTitles, powerAction} from './power-preview.js';
-import {drawCloseUpHome, drawBattery, sampleCharge} from './home-screen.js';
+import {drawHome, ocean, overlayBattery, sampleCharge} from './home-screen.js';
 
 const panel = document.querySelector('#playable');
 const display = panel.querySelector('canvas');
 const ctx = display.getContext('2d');
 const status = document.querySelector('#preview-state');
+const presentSample=document.getElementById('present-sample');
 const previewIntro = document.querySelector('#preview-intro');
 const homeIntro = previewIntro.textContent;
 const lessonCard = document.getElementById('spotify-lesson');
@@ -32,7 +38,8 @@ let guidedDemo, freeDemo;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const ink = '#432a14';
 const titles = {
-  music:'Music', spotify:'Spotify', tvPresets:'Choose your TV', tvPad:'TV remote', builder:'Remotes', btRemote:'Bluetooth Remote', noteList:'Saved observations', noteDetail:'Saved observation',
+  irRenameButton:'Rename Button', irMoveButton:'Move Button', irDeleteButton:'Delete Button',
+  irLearnSuccess:'Signal decoded', music:'Music', spotify:'Spotify', tvPresets:'Choose your TV', tvPad:'TV remote', builder:'Remotes', btRemote:'Bluetooth Remote', noteList:'Saved observations', noteDetail:'Saved observation',
   home:'Home screen', menu:'Launcher', apps:'Apps', settings:'Settings', power:'Power',
   signal:'Sub-GHz', rfid:'RFID', nfc:'NFC', infrared:'Infrared', gpio:'GPIO', ibutton:'iButton',
   metronome:'Metronome', pomodoro:'Pomodoro Timer', battery:'Battery info', restart:'Restart?', shutdown:'Power off?',
@@ -47,19 +54,19 @@ for (const kind of ['card','contact']) {
   readerArt[kind] = image;
 }
 const readers = {
-  rfid:['card','Hold tag to',"Flipper’s back"],
-  nfc:['card','Hold card to',"Flipper’s back"],
+  rfid:['card','Hold tag to',"Flipper's back"],
+  nfc:['card','Hold card to',"Flipper's back"],
   ibutton:['contact','Touch key to','the contacts'],
 };
-const readerTypes = {rfid:'EM4100', nfc:'ISO 14443-4A', ibutton:'Dallas'};
+const readerTypes = {rfid:'EM4100', nfc:'ISO14443-4A', ibutton:'DS1990'};
 const meterPresets = [310000,315000,390000,433920,868350,915000];
 const meterBands = [[300000,348000],[387000,464000],[779000,928000]];
 const meterLabel = khz => (khz/1000).toFixed(3)+' MHz';
 const samples = {
   remoteStorage:['Check browser storage.','Back to return.'],
   pinStorage:['Check browser storage.','Back to return'], pinsFull:['Unpin another remote.','Back to return'], deleteRemote:['Left: Cancel','Right: Delete'],
-  tester:['Try a demo IR button','OK for a sample signal'], detected:['Sample IR detected','OK to test another'],
-  remotes:['No remotes yet'],
+  tester:['Use the sample button beside the device.'], detected:['Sample IR detected','OK to test another'],
+  irLearnSuccess:['Left to retry. Right to save.'], remotes:['No remotes yet'],
   learn:['Point your remote','at the Flipper'],
   battery:[sampleCharge+'% charged','On battery power'], about:['Eddy Firmware','Flipper Zero'],
   passport:['Eddy the dolphin','Level 1'], restart:['OK to restart preview'], shutdown:['OK to power off preview'],
@@ -67,12 +74,13 @@ const samples = {
 };
 Object.assign(titles,Object.fromEntries(settingsRows.map(([name,page])=>[page,name])),powerTitles);
 titles.remoteStorage='Remote change not saved';
-Object.assign(samples,settingsSamples,powerSamples);
+Object.assign(samples,powerSamples);
 const lists = {
-  tuning:[...meterPresets.map(khz=>[meterLabel(khz)]),...meterBands.map(([lo,hi])=>[`Other: ${lo/1000}–${hi/1000} MHz`])],
+  tuning:[...meterPresets.map(khz=>[meterLabel(khz)]),...meterBands.map(([lo,hi])=>[`Other: ${lo/1000}-${hi/1000} MHz`])],
   menu:sections.map(([name,page])=>[name,page==='settings'?'quick':page]), apps, settings:settingsRows,
   infrared:[['My remotes','remotes'],['Learn a remote','learn'],['TV presets','tvPresets'],['Button tester','tester']], tvPresets:tvPresetRows,
-  editRemote:[['Rename remote','rename'],['Delete remote','deleteRemote']],
+  editRemote:[['Add Button','add'],['Rename Button','irRenameButton'],['Move Button','irMoveButton'],
+    ['Delete Button','irDeleteButton'],['Rename Remote','rename'],['Delete Remote','deleteRemote']],
   ...powerLists,
 };
 const previewParams = new URLSearchParams(location.search);
@@ -94,7 +102,7 @@ function refreshRemotes() {
   const community = communitySelection().map(app => {
     const id = previewId(app);
     titles[id] = app.name;
-    samples[id] = ['Community app','Opens on your Flipper'];
+
     return [app.name,id];
   });
   lists.apps=layoutApps([...apps.filter(([,id])=>enabled.has(id)),...community,...visibleShortcuts],requestedOrder ?? getAppOrder());
@@ -107,7 +115,7 @@ function refreshRemotes() {
     [remoteDemo.pins.includes(remoteDemo.active)?'Unpin from Apps':'Pin to Apps','pin'],
   ];
   samples.savedRemote=[remoteDemo.active || '', 'Left: Done', 'Right: Pin to Apps'];
-  samples.learn=['Try a sample TV button','OK to name your remote'];
+  samples.learn=['Use the sample button beside the device.'];
 }
 refreshRemotes();
 let history = [{page:'home',row:0}];
@@ -133,63 +141,44 @@ function browseNotes(page) {
   history.push({page:'noteList',row:0,notes,message});
 }
 
+function noteRows(state) {
+  if (!state.notes.length) return [['Back to scan','back']];
+  const start=(state.offset || 0);
+  return [...(start ? [['Previous page','previous']] : []),
+    ...state.notes.slice(start,start+8).map(note=>[note.name,note]),
+    ...(start+8<state.notes.length ? [['Next page','next']] : [])];
+}
+
 function drawNote(page,row) {
-  ctx.font='8px sans-serif';
-  if (page==='noteDetail') {
-    const {note}=current();
-    ctx.fillText(note.name,3,17,120);
-    ctx.fillRect(3,35,122,1);
-    ctx.fillText(note.detail,3,41,120);
+  const state=current();
+  if (page==='noteList') {
+    submenu(ctx,state.notes.length?'Saved readings':'No readings yet',noteRows(state).map(([label])=>label),row);
     return;
   }
-  const {notes,message}=current();
-  if (!notes.length) { ctx.fillText(message || 'No saved observations',3,26); return; }
-  const start=Math.max(0,row-2);
-  notes.slice(start,start+3).forEach((note,i) => {
-    const y=16+15*i, selected=start+i===row;
-    if(selected) ctx.fillRect(2,y,124,13);
-    ctx.fillStyle=selected?'#ffbe70':ink;
-    ctx.fillText(note.name,5,y+2,117);
-    ctx.fillStyle=ink;
-  });
+  lcdText(ctx,'Saved observation',2,9);
+  boxText(ctx,state.note.name,3,12,122,23);
+  ctx.fillRect(3,36,122,1);
+  boxText(ctx,state.note.detail,3,39,122,22);
 }
 
 function drawReader(page) {
+  lcdText(ctx,titles[page],2,9,'primary');
   if (current().detected) {
-    ctx.font='bold 8px sans-serif';
-    ctx.fillText('Type detected',3,16);
-    ctx.font='9px sans-serif';
-    ctx.fillText(readerTypes[page],3,34);
-    ctx.font='8px sans-serif';
-    ctx.fillText('‹ Scan',3,54);
-    ctx.fillText('OK Save',48,54);
-    ctx.fillText('Saved ›',96,54);
-    return;
+    lcdText(ctx,'Type detected',3,24);
+    boxText(ctx,readerTypes[page],3,26,122,25);
+    lcdButton(ctx,'left','Scan');
+    lcdButton(ctx,'center','Save');
+  } else {
+    const [kind,first,second]=readers[page], image=readerArt[kind];
+    if (image.naturalWidth) ctx.drawImage(image,1,64-image.naturalHeight);
+    lcdText(ctx,'Ready to scan',64,24);
+    lcdText(ctx,first,64,39);
+    lcdText(ctx,second,64,50);
   }
-  const [kind,first,second] = readers[page];
-  const image = readerArt[kind];
-  if (image.naturalWidth) ctx.drawImage(image,1,64-image.naturalHeight);
-  ctx.font = 'bold 8px sans-serif';
-  ctx.fillText('Ready to scan',64,17);
-  ctx.font = '8px sans-serif';
-  ctx.fillText(first,64,32);
-  ctx.fillText(second,64,42);
-  ctx.font='7px sans-serif';
-  ctx.fillText('OK sample  ·  Saved ›',64,55,62);
+  lcdButton(ctx,'right','Saved');
 }
 
-function drawList(page,row) {
-  const start=Math.max(0,row-2);
-  lists[page].slice(start,start+3).forEach(([label],offset) => {
-    const i=start+offset, y=17+15*offset;
-    if (i===row) ctx.fillRect(2,y-1,124,13);
-    ctx.fillStyle=i===row?'#ffbe70':ink;
-    ctx.fillText(label,6,y+1);
-    ctx.fillStyle=ink;
-  });
-}
-
-let signalDbm;
+let meterView;
 titles.tuning='Tune receiver';
 function tuneMeter(khz) {
   history.pop();
@@ -198,60 +187,58 @@ function tuneMeter(khz) {
   announce();
 }
 function enterFrequency(band) {
-  const dialog=document.querySelector('#frequency-dialog');
-  const input=dialog.querySelector('input');
-  [input.min,input.max]=band;
-  dialog.querySelector('label').textContent=`Receive frequency (${input.min}–${input.max} kHz)`;
-  input.value='';
-  dialog.querySelector('form').onsubmit=event=>{
-    event.preventDefault();
-    if(!input.reportValidity()) return;
-    dialog.close();
-    tuneMeter(input.valueAsNumber);
-  };
-  dialog.querySelector('[type=button]').onclick=()=>dialog.close();
-  dialog.showModal();
-  input.focus();
+  openEditor('Receive frequency (kHz)','',6,value=>tuneMeter(Number(value)),band);
 }
-function drawMeter(tick) {
-  ctx.font = '8px monospace';
-  ctx.strokeRect(2.5,14.5,123,24);
-  for (let x=0; x<120; x++) {
-    const t = (x + tick) * 0.11;
-    const height = 3 + Math.round(17 * Math.abs(Math.sin(t)*Math.cos(t*.23))**4);
-    ctx.fillRect(x+4,38-height,1,height);
-    if (x===119) signalDbm = -110+3*height;
+function drawMeter(now) {
+  const state=current();
+  if (meterView!==state) {
+    state.readings=[];
+    state.sampleTime=now;
+    meterView=state;
   }
-  ctx.fillText(signalDbm+' dBm',3,41);
-  ctx.fillText(meterLabel(current().frequency ?? 433920),71,41);
-  ctx.fillText('◀ Tune',3,54);
-  ctx.fillText('Saved ▶',89,54);
-  ctx.fillText('OK Save',50,54);
+  const count=Math.floor((now-state.sampleTime)/100);
+  if (count>0) {
+    for (let n=Math.min(count,120)-1;n>=0;n--) {
+      const t=(now-n*100)*0.0009;
+      state.readings.push(-102+Math.round(8*Math.sin(t)+48*Math.abs(Math.cos(t*.63))**16));
+    }
+    state.readings=state.readings.slice(-120);
+    state.sampleTime+=count*100;
+  }
+  lcdText(ctx,'Signal Meter',2,10,'primary');
+  lcdText(ctx,meterLabel(state.frequency ?? 433920),125,49,'secondary','right');
+  frame(ctx,2,13,124,27);
+  state.readings.forEach((v,i)=>{
+    const height=Math.max(1,Math.min(24,Math.trunc((v+110)/3)));
+    ctx.fillRect(i+4,39-height,1,height);
+  });
+  if(state.readings.length) {
+    lcdText(ctx,state.readings.at(-1)+' dBm',3,49);
+    lcdButton(ctx,'center','Save');
+  }
+  lcdButton(ctx,'left','Tune');
+  lcdButton(ctx,'right','Saved');
 }
 
 function draw() {
   clearTimeout(timer);
   if (panel.hidden || !inView || document.hidden) return;
-  const bounds = display.getBoundingClientRect();
-  const width = Math.max(1,Math.round(bounds.width * window.devicePixelRatio));
-  const height = Math.max(1,Math.round(bounds.height * window.devicePixelRatio));
-  if (display.width !== width || display.height !== height) {
-    display.width = width;
-    display.height = height;
-  }
-  ctx.setTransform(width/128,0,0,height/64,0,0);
+  // The physical screen always has 128 by 64 dots, at every browser zoom and pixel density.
+  ctx.setTransform(1,0,0,1,0,0);
   const {page,row} = current();
   display.classList.toggle('selectable',['menu','apps','quick','tvPad','pomodoro','spotify'].includes(page));
   const tick = reducedMotion.matches ? 4 : Math.floor(performance.now()/167);
   ctx.clearRect(0,0,128,64);
   ctx.fillStyle = ctx.strokeStyle = ink;
   ctx.imageSmoothingEnabled = false;
-  ctx.font = 'bold 10px monospace';
-  ctx.textBaseline = 'top';
+  if(page!=='signal' || editor) meterView=undefined;
+  if (editor) { drawEditor(ctx); overlayBattery(ctx); return; }
   if (page === 'home') {
-    drawCloseUpHome(ctx,tick % 16);
+    drawHome(ctx,tick % 16,false,radioOn(),clockOn());
   } else if (page === 'menu' || page === 'apps') {
     drawLauncher(ctx,page,row,lists.apps);
+  } else if (drawSettings(ctx,current(),settingsRows)) {
+    // Native device settings screens draw their own header and controls.
   } else if (page === 'quick') {
     drawQuick(ctx,row);
   } else if (page === 'tvPad') {
@@ -264,7 +251,7 @@ function draw() {
   } else if (page === 'gpio') {
     drawGpio(ctx,current());
   } else if (page === 'spotify') {
-    if(drawSpotify(ctx,current())) timer=setTimeout(draw,500);
+    if(drawSpotify(ctx,current())) timer=setTimeout(draw,70);
   } else if (page === 'music') {
     if(drawMusic(ctx,current())) timer=setTimeout(draw,500);
   } else if (page === 'metronome') {
@@ -272,38 +259,40 @@ function draw() {
     if (delay) timer=setTimeout(draw,delay);
   } else if (page === 'pomodoro') {
     drawPomodoro(ctx);
+  } else if (page==='noteDetail' || page==='noteList') {
+    drawNote(page,row);
+  } else if (readers[page]) {
+    drawReader(page);
+  } else if (page==='signal') {
+    drawMeter(performance.now());
+    timer=setTimeout(draw,100);
+  } else if (page==='tuning') {
+    submenu(ctx,titles.tuning,lists.tuning.map(([label])=>label),row);
   } else {
-    if (readers[page]) ctx.font = 'bold 8px monospace';
-    const sent = page==='remote' && current().sentUntil > performance.now();
-    ctx.fillText(sent?'Button sent':titles[page],3,readers[page]?0:2,88);
-    if (sent) timer=setTimeout(draw,Math.ceil(current().sentUntil-performance.now()));
-    if (!readers[page]) ctx.fillRect(0,13,128,1);
-    ctx.font = 'bold 9px monospace';
-    if (page==='noteDetail' || page==='noteList') drawNote(page,row);
-    else if (readers[page]) drawReader(page);
-    else if (lists[page]) drawList(page,row);
-    else if (page === 'signal') drawMeter(tick);
-    else if (page === 'savedRemote') {
-      ctx.textAlign='center';
-      ctx.fillText(remoteDemo.active,64,26,120);
-      ctx.textAlign='left';
-      ctx.fillText('‹ Done',3,52);
-      ctx.textAlign='right';
-      ctx.fillText('Pin to Apps ›',125,52);
-      ctx.textAlign='left';
+    if(!drawInfrared(ctx,current(),titles[page],lists[page])) {
+      if(lists[page]) submenu(ctx,page==='editRemote'?'':titles[page],lists[page].map(([label])=>label),row);
+      else if(page!=='off') {
+        lcdText(ctx,titles[page],2,10,'primary');
+        const lines=page==='clock' ? [new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})] : (samples[page] ?? []);
+        lines.forEach((line,i)=>lcdText(ctx,line,3,29+i*12));
+      }
     }
-    else if (page === 'clock') ctx.fillText(new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}),5,24);
-    else samples[page]?.forEach((line,i) => ctx.fillText(line,4,22+i*14));
   }
-  if (page !== 'home' && page !== 'off') drawBattery(ctx);
+  if (!['home','off','remote'].includes(page)) overlayBattery(ctx);
   if (page === 'clock' || (page === 'pomodoro' && focus.deadline)) timer=setTimeout(draw,250);
-  else if (!reducedMotion.matches && (page==='signal' || page==='home')) {
+  else if (!reducedMotion.matches && page==='home') {
     timer=setTimeout(draw,167);
   }
 }
 
 function announce() {
   const {page,row} = current();
+  const reader=readers[page] && !current().detected;
+  const ir=['learn','tester'].includes(page) || (page==='builder' && current().step==='learn');
+  presentSample.hidden=Boolean(editor) || !(reader || ir);
+  if(ir) presentSample.textContent='Send sample infrared signal';
+  if(reader) presentSample.textContent='Present sample '+({rfid:'tag',nfc:'card',ibutton:'key'}[page]);
+  if(editor) {status.textContent=editor.error || editor.label+'. '+editor.value;return;}
   spotifyButtons.hidden = page !== 'spotify';
   if(!pickerPreview) previewIntro.textContent=page==='spotify'
     ? 'Press Right in your library for Now Playing. Back returns you to the same list.'
@@ -311,11 +300,12 @@ function announce() {
   let text = titles[page];
   if (readers[page]) {
     text += current().detected ? '. Type detected. '+readerTypes[page]+'. OK to name and save, or Left to scan again.' :
-      '. Ready to scan. '+readers[page].slice(1).join(' ')+'. OK for a sample.';
+      '. Ready to scan. '+readers[page].slice(1).join(' ')+'. Use the sample button beside the device.';
     text += ' Right for saved observations.';
   }
   if (page==='noteDetail') text += '. '+current().note.name+'. '+current().note.detail;
-  if (page==='noteList') text += '. '+(current().notes[row]?.name || current().message || 'No saved observations');
+  if (page==='noteList') text += '. '+(noteRows(current())[row]?.[0] || current().message || 'No saved observations');
+  if(['irRenameButton','irMoveButton','irDeleteButton'].includes(page)) text+=' '+(current().notice || remoteDemo.buttons[row] || '');
   if (samples[page]) text += '. '+samples[page].join('. ');
   if (lists[page]) text += ', '+(lists[page][row]?.[0] ?? 'No apps installed');
   if (page==='remote' && current().sentUntil > performance.now()) text += '. Demo button pressed.';
@@ -333,11 +323,24 @@ function announce() {
   if (page==='music') text += '. '+musicStatus(current());
   if (page==='metronome') text += '. '+metronomeStatus(current());
   if (page==='pomodoro') text += '. '+Math.ceil(remaining()/1000)+' seconds. '+(focus.deadline?'Running. OK to pause.':'Paused. Left or Right for minutes, Up cycles seconds in five-second steps, OK to start.')+' Down toggles sound. '+(focus.muted?'Muted.':'Sound on.');
+  const setting=settingsStatus(current());
+  if(setting) text += '. '+setting;
+  if(current().notice) text += '. '+current().notice;
   status.textContent=text;
 }
 
 function press(key) {
   const state=current(), page=state.page, rows=lists[page];
+  document.getElementById('device-preview-notice').textContent='';
+  if(editor) {editorKey(key);draw();announce();return;}
+  if (infraredKey(state,key,(destination='remote')=>{
+    if(current()!==state) return;
+    while(history.length>1 && current().page!==destination) history.pop();
+    refreshHistory();draw();announce();
+  })) {draw();announce();return;}
+  if(page==='irLearnSuccess' && key==='right') {
+    openRemoteForm(state.adding?'add':'create');return;
+  }
   if(page==='gpio' && gpioKey(state,key)) { draw(); announce(); return; }
   if (guidedDemo && state === guidedDemo.state) {
     if (guidedDemo.complete || key !== guidedDemo.step.key) {
@@ -367,6 +370,7 @@ function press(key) {
   }
   if(page==='btRemote' && bluetoothKey(state,key,()=>{draw(); announce();})) { draw(); announce(); return; }
   if(page==='remote') state.sentUntil=0;
+  if(settingsKey(state,key)) { draw(); announce(); return; }
   const action = page==='menu' && key==='ok' && rows[state.row][1]==='off'
     ? 'off' : powerAction(page,state.row,key);
   if (action!==undefined) {
@@ -387,7 +391,7 @@ function press(key) {
     tvPadKey(state,key);
   } else if(page==='signal') {
     if(key==='left') history.push({page:'tuning',row:state.tuningRow ?? 3});
-    if(key==='ok' && Number.isFinite(signalDbm)) beginNote(page,signalDbm+' dBm at '+meterLabel(state.frequency ?? 433920));
+    if(key==='ok' && state.readings?.length) beginNote(page,state.readings.at(-1)+' dBm at '+meterLabel(state.frequency ?? 433920));
     if(key==='right') browseNotes(page);
   } else if(page==='tuning' && key==='ok') {
     history[history.length-2].tuningRow=state.row;
@@ -396,22 +400,20 @@ function press(key) {
   } else if(readers[page]) {
     if(key==='left') state.detected=false;
     if(key==='right') browseNotes(page);
+    if(key==='ok' && state.detected) beginNote(page,readerTypes[page]);
+  } else if(page==='noteList') {
+    const items=noteRows(state);
+    if(key==='up' || key==='down') state.row=(state.row+(key==='up'?-1:1)+items.length)%items.length;
     if(key==='ok') {
-      if(state.detected) beginNote(page,readerTypes[page]);
-      else state.detected=true;
+      const [,action]=items[state.row];
+      if(action==='back') history.pop();
+      else if(action==='previous' || action==='next') {state.offset=(state.offset || 0)+(action==='next'?8:-8);state.row=0;}
+      else history.push({page:'noteDetail',row:0,note:action});
     }
-  } else if(page==='noteList' && state.notes.length) {
-    if(key==='up') state.row=(state.row+state.notes.length-1)%state.notes.length;
-    if(key==='down') state.row=(state.row+1)%state.notes.length;
-    if(key==='ok') history.push({page:'noteDetail',row:0,note:state.notes[state.row]});
   } else if(page==='quick') {
     if(key==='left' || key==='right') state.row=(state.row+(key==='left'?2:1))%3;
     if(key==='up' || key==='down') adjustQuick(state.row,key==='up'?5:-5);
     if(key==='ok' && state.row===2) history.push({page:'settings',row:0});
-  } else if((page==='tester' || page==='detected') && key==='ok') {
-    state.page=page==='tester'?'detected':'tester';
-  } else if(page==='learn' && key==='ok') {
-    openRemoteForm('create');
   } else if(page==='savedRemote') {
     if(key==='left') history.pop();
     if(key==='right') {
@@ -443,7 +445,9 @@ function press(key) {
         refreshHistory();
       } else if(next==='command') {
         state.sentUntil=performance.now()+700;
-      } else if(next==='rename' || next==='add') openRemoteForm(next);
+      } else if(next==='rename') openRemoteForm('rename');
+      else if(next==='add') history.push({page:'learn',row:0,adding:true});
+      else if(next?.startsWith('lab:')) showCommunityNotice(name);
       else {
         if(next==='remote') { remoteDemo.select(name); refreshRemotes(); }
         if(page==='apps' && next==='remote' && (requestedApps ?? getSelectedApps()).has('builder')) history.push(openBuilder(name,'remote'));
@@ -460,7 +464,7 @@ function press(key) {
     }
     else if(page==='apps' && (key==='up' || key==='down')) {
       state.row=verticalApp(rows,state.row,key);
-    } else if(page!=='menu' || key==='left' || key==='right') {
+    } else if ((page==='menu' || page==='apps') ? ['left','right'].includes(key) : ['up','down'].includes(key)) {
       state.row=(state.row+(key==='left'||key==='up'?-1:1)+rows.length)%rows.length;
     }
   }
@@ -472,7 +476,8 @@ function showAppPreview(id, standaloneSample = false) {
   const index=lists.apps.findIndex(([,page])=>page===id);
   history=[{page:'home',row:0},{page:'apps',row:Math.max(0,index)}];
   if(index>=0 || standaloneSample) {
-    if(id==='builder') history.push(openBuilder());
+    if(id?.startsWith('lab:')) showCommunityNotice(titles[id]);
+    else if(id==='builder') history.push(openBuilder());
     else if(id==='music') history.push(openMusicDemo());
     else if(id==='spotify') enterSpotify();
     else history.push({page:id,row:0});
@@ -583,21 +588,36 @@ window.addEventListener('eddy-apps-changed', () => {
   draw(); announce();
 });
 
-const nameDialog=document.getElementById('remote-name-dialog');
-const nameInput=document.getElementById('remote-name');
-const buttonInput=document.getElementById('remote-button');
-let formAction;
 function openRemoteForm(action) {
-  formAction=action;
-  nameInput.value=action==='create'?'':remoteDemo.active;
-  buttonInput.value=action==='create'?'Power':'';
-  for (const [input,label,show] of [[nameInput,'remote-name-label',action!=='add'],[buttonInput,'remote-button-label',action!=='rename']]) {
-    input.disabled=input.hidden=!show;
-    document.getElementById(label).hidden=!show;
-    input.setCustomValidity('');
+  const learning=current();
+  const save=(name,button)=>{
+    const error=remoteDemo.edit(action,name,button);
+    if(error) return error;
+    refreshHistory();
+    if(action==='create') {
+      history[history.length-1]={page:'remote',row:0};
+      history.push({page:'savedRemote',row:0});
+    } else if(action==='add') {
+      while(history.length>1 && current().page!=='remote') history.pop();
+    } else if(action==='rename') history.pop();
+    draw();announce();
+  };
+  const buttonForm=name=>openEditor('Name the button',infraredButtonName(learning),22,button=>save(name,button));
+  if(action==='rename') openEditor('Name the remote',remoteDemo.active,22,name=>save(name,''));
+  else if(action==='add') buttonForm(remoteDemo.active);
+  else {
+    let name='TV';
+    const used=new Set(remoteDemo.rows.map(([value])=>value.toLowerCase()));
+    for(let i=1;used.has(name.toLowerCase());i++) name='TV'+i;
+    openEditor('Name your remote',name,22,value=>{
+      if(used.has(value.toLowerCase())) return 'Name already exists';
+      buttonForm(value);
+    });
   }
-  nameDialog.showModal();
-  (nameInput.disabled?buttonInput:nameInput).focus();
+}
+
+function showCommunityNotice(name) {
+  document.getElementById('device-preview-notice').textContent=name+' opens on your Flipper. This website previews the built-in apps.';
 }
 function refreshHistory() {
   refreshRemotes();
@@ -605,34 +625,13 @@ function refreshHistory() {
     if(lists[entry.page]) entry.row=Math.max(0,Math.min(entry.row,lists[entry.page].length-1));
   }
 }
-for(const field of [nameInput,buttonInput]) field.addEventListener('input',()=>field.setCustomValidity(''));
-document.getElementById('remote-cancel').addEventListener('click',()=>nameDialog.close());
-nameDialog.querySelector('form').addEventListener('submit',event=>{
-  event.preventDefault();
-  const error=remoteDemo.edit(formAction,nameInput.value,buttonInput.value);
-  if(error) {
-    const field=formAction==='add' || error.includes('button')?buttonInput:nameInput;
-    field.setCustomValidity(error);
-    field.reportValidity();
-    return;
-  }
-  nameDialog.close();
-  refreshHistory();
-  if(formAction==='create') {
-    history[history.length-1]={page:'remote',row:0};
-    history.push({page:'savedRemote',row:0});
-  }
-  else if(formAction==='rename') history.pop();
-  draw();
-  announce();
-});
-
 function lcdPoint(event) {
   const box=display.getBoundingClientRect();
   return [(event.clientX-box.left)*128/box.width,(event.clientY-box.top)*64/box.height];
 }
 
 display.addEventListener('click', event=>{
+  if (editor) return;
   if (guidedDemo) {
     lessonHint.textContent = guidedDemo.complete ? 'Choose Explore freely to keep playing.' : 'Use the highlighted button on the Flipper.';
     return;
@@ -703,6 +702,7 @@ for (const key of ['left','right']) {
 }
 // Delay long-press actions until the threshold and consume the following click.
 function holdAction(key, state) {
+  if(editor) return key==='ok' ? ()=>press('holdOk') : undefined;
   if (state.page === 'spotify' && key !== 'back') {
     return () => press('hold' + key[0].toUpperCase() + key.slice(1));
   }
@@ -777,7 +777,7 @@ panel.addEventListener('click', event => {
 new IntersectionObserver(([entry]) => { inView = entry.isIntersecting; draw(); }).observe(panel);
 new ResizeObserver(draw).observe(display);
 window.addEventListener('resize',draw);
-launcherArt.addEventListener('load',draw);
+for(const art of [launcherArt,settingsArt,ocean]) art.addEventListener('load',draw);
 document.addEventListener('visibilitychange',draw);
 reducedMotion.addEventListener('change',draw);
 
@@ -787,3 +787,13 @@ export function setPreviewVisible(visible) {
   if (visible) announce();
   draw();
 }
+
+document.addEventListener('eddy-preview-notice',event=>{
+  document.getElementById('device-preview-notice').textContent=event.detail;
+});
+document.addEventListener('eddy-editor-change',()=>{draw();announce();});
+presentSample.addEventListener('click',()=>{
+  if(editor) return;
+  if(readers[current().page]) {current().detected=true;draw();announce();}
+  else press('sample');
+});
