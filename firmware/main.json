@@ -3,8 +3,8 @@
     {
       "name": "firmware.dfu",
       "size": 801509,
-      "sha256": "112048443c5aeff1b68fba4236b34f42460c86a5c400da36be1b3c594689832d",
-      "md5": "87d3103443d6391c60cf0874dd619d3d"
+      "sha256": "917110f04687ef2157972d80326eb2ce4b43884624475461089a130241b71f90",
+      "md5": "88f3b4005ab5a280abd87bcfa39b557c"
     },
     {
       "name": "firstboot.bin",
@@ -20,9 +20,9 @@
     },
     {
       "name": "resources.tar.gz",
-      "size": 218182,
-      "sha256": "2dc8e4914079bb7a0af09ec5c15aeef6f2d67e97de6a769a9cafcc02173840b6",
-      "md5": "23d11a770ebf121fbae9402706b07c75"
+      "size": 218167,
+      "sha256": "a0c3e221b82c801fb1e0da6e2a8de94df0df74f93c544b8127e6e9755c55eeff",
+      "md5": "a64658b49cbc040b8828f2e60175b3e1"
     },
     {
       "name": "splash.bin",
@@ -33,14 +33,14 @@
     {
       "name": "update.fuf",
       "size": 1589,
-      "sha256": "e20f8fd37deec26ce49b78fe1b84f09c1a5cfb5c4f24e3e317c23844f999f752",
-      "md5": "51653f6494b4a0c525c1fee25baa336d"
+      "sha256": "0530ea82a2b7a5a3e13c73b38c90fafc82d7255aeaf2652d03054ddd1d6c9f62",
+      "md5": "f06d34aa56d5a96d82436e8d78af63b1"
     },
     {
       "name": "updater.bin",
       "size": 120833,
-      "sha256": "7379f63cd3d880cdcf177e3c638195e96bc43bae7a5a546ca09e6581e2f46d88",
-      "md5": "c3643b84f932984f058c490690bbfc4a"
+      "sha256": "bca809c34eb6a4dcc91047e41df098f8b563f6fc9df267ab4bc16c1cd50aaa55",
+      "md5": "1d02d571d0aeab31553d6d458fa2d780"
     }
   ],
   "resourceIndex": {
@@ -3342,12 +3342,12 @@
       4291153410,
       4294433683
     ],
-    "catalog": "eddy-dev-4c5281af/lab/index.json"
+    "catalog": "eddy-dev-7e44c6be/lab/index.json"
   },
   "target": "f7",
-  "version": "eddy-dev-4c5281af",
-  "file": "flipper-z-f7-update-eddy-dev-4c5281af.tgz",
-  "commit": "4c5281af84de819a6d9b91eefb30f346095abf92",
+  "version": "eddy-dev-7e44c6be",
+  "file": "flipper-z-f7-update-eddy-dev-7e44c6be.tgz",
+  "commit": "7e44c6be681a6d90ebacf8b4afa7f060e0ddea4a",
   "spotifyCommit": "a0fcbdf57037470b45bfacb01c37da95d50e0c55",
-  "sha256": "904511869fff8f4462c18f3f86bb064f9af9fa17c6df4b1e287dee67067b96d9"
+  "sha256": "e177717ab15cf899dca94513922899affd6bbb70b38cfd3175e3f3af3d623635"
 }
