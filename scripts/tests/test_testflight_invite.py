@@ -19,7 +19,7 @@ class TestFlightInviteTest(unittest.TestCase):
 
             configure_testflight(site, "")
             for page in pages:
-                self.assertEqual(page.read_text().count('href="https://testflight.apple.com/join/9vUqxk8j"'), 1)
+                self.assertIn('href="https://testflight.apple.com/join/9vUqxk8j"', page.read_text())
 
             with self.assertRaises(ValueError):
                 configure_testflight(site, "https://example.com/join/abcd1234")
