@@ -1,3 +1,5 @@
+import {text} from './lcd.js';
+import {line,box} from './utility-pixels.js';
 const outputs = ['Sound + buzz','Sound','Vibration','Silent'];
 const outputPreference = 'eddy-metronome-output';
 let output = 0;
@@ -82,29 +84,14 @@ export function drawMetronome(ctx, state, now) {
     state.lastBeat=step;
     playBeat();
   }
-  ctx.save();
-  ctx.font='bold 9px monospace';
-  ctx.fillText('Metronome',2,0);
-  ctx.textAlign='center';
-  ctx.font='bold 19px monospace';
-  ctx.fillText(String(bpm),59,12);
-  ctx.font='8px sans-serif';
-  ctx.fillText('BPM',91,24);
-  function arrow(x, dx) {
-    ctx.beginPath(); ctx.moveTo(x+dx,21); ctx.lineTo(x,25); ctx.lineTo(x+dx,29); ctx.stroke();
-  }
-  if (bpm>40) arrow(10,4);
-  if (bpm<220) arrow(117,-4);
-  for (let i=0;i<4;i++) {
-    ctx.beginPath();
-    ctx.roundRect(30.5+18*i,34.5,13,5,2);
-    if (playing && i===step%4) ctx.fill(); else ctx.stroke();
-  }
-  ctx.fillText('Down: '+outputs[output],64,42);
-  ctx.textAlign='left';
-  ctx.fillText(state.taps?.length===1?'Tap Up again':'Up: tap tempo',3,53);
-  ctx.textAlign='right';
-  ctx.fillText(playing?'OK: stop':'OK: start',125,53);
-  ctx.restore();
+  text(ctx,'Metronome',2,9,'primary');
+  text(ctx,String(bpm),59,32,'big','center');
+  text(ctx,'BPM',83,32);
+  if (bpm>40) { line(ctx,10,25,14,21); line(ctx,10,25,14,29); }
+  if (bpm<220) { line(ctx,117,25,113,21); line(ctx,117,25,113,29); }
+  for (let i=0;i<4;i++) box(ctx,30+18*i,34,14,6,2,playing && i===step%4);
+  text(ctx,'Down: '+outputs[output],64,50,'secondary','center');
+  text(ctx,state.taps?.length===1?'Tap Up again':'Up: tap tempo',3,62);
+  text(ctx,playing?'OK: stop':'OK: start',125,62,'secondary','right');
   return playing ? Math.max(1,Math.ceil((step+1)*period-elapsed)) : 0;
 }

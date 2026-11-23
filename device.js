@@ -1,6 +1,8 @@
-import {drawHome, drawCloseUpHome, drawBattery, ocean} from './home-screen.js';
+import {drawHome, ocean} from './home-screen.js';
 import {DeviceRenderer, loadGeometry} from './models/renderer.js';
 
+import {text} from './lcd.js';
+import {bitmap} from './lcd-widgets.js';
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 const compact = matchMedia('(max-width:760px), (max-width:960px) and (max-height:500px)');
 
@@ -9,20 +11,20 @@ function screen(ctx, phase, frame) {
   ctx.clearRect(0, 0, 128, 64);
   ctx.fillStyle = '#432a14';
   ctx.strokeStyle = ctx.fillStyle;
-  ctx.lineWidth = 1.6;
-  ctx.textBaseline = 'top';
-  ctx.font = 'bold 8px monospace';
   if (phase < 0.65 || phase >= 1.55) {
-    if (phase >= 1.55) drawCloseUpHome(ctx,frame,phase < 1.72);
-    else drawHome(ctx,frame,phase >= 0.64);
+    drawHome(ctx,frame,phase >= 0.64 && phase < 1.72);
   } else if (phase < 1.55) {
     const progress = Math.round(clamp((phase - 0.65) / 0.9, 0, 1) * 100);
-    drawBattery(ctx,true);
-    ctx.fillText('EDDY UPDATER', 8, 9);
-    ctx.fillRect(8, 21, 110, 1);
-    ctx.fillText('Writing ' + progress + '%', 8, 30);
-    ctx.strokeRect(8.5, 46.5, 109, 8);
-    ctx.fillRect(11, 49, Math.round(progress * 1.04), 3);
+    const label=progress<10?'Loading update manifest':progress<65?'Writing flash':'Extracting resources';
+    text(ctx,'Installing',82,12,'secondary','center');
+    text(ctx,label+' '+progress+'%',64,58,'secondary','center');
+    bitmap(ctx,'Updating',4,5);
+    bitmap(ctx,'Updating_Logo',50,16);
+    ctx.fillRect(45,36,74,1); ctx.fillRect(45,44,74,1);
+    ctx.fillRect(43,37,2,1);ctx.fillRect(119,37,2,1);
+    ctx.fillRect(43,43,2,1);ctx.fillRect(119,43,2,1);
+    ctx.fillRect(42,38,1,5);ctx.fillRect(121,38,1,5);
+    ctx.fillRect(43,37,Math.round(progress*.78),7);
   }
 }
 
@@ -209,11 +211,6 @@ class EddyDevice extends HTMLElement {
       if (this.canvas.height !== h) this.canvas.height = h;
       this.canvas.hidden = false;
       const frame = still ? 4 : Math.floor(performance.now()*0.006)%16;
-      const lcdWidth = phase >= 1.55 ? Math.max(128,Math.ceil(w*.45)) : 128;
-      if (this.lcd.width !== lcdWidth) {
-        this.lcd.width = lcdWidth;
-        this.lcd.height = Math.round(lcdWidth/2);
-      }
       screen(this.lcd.getContext('2d'),phase,frame);
       this.renderer.draw(this.lcd,phase,still);
       this.poster.hidden = true;

@@ -1,3 +1,5 @@
+import {text} from './lcd.js';
+import {icon,rounded} from './launcher-graphics.js';
 const labels = ['Brightness', 'Volume', 'Settings'];
 export const settingsRows = [
   ['Bluetooth','bluetooth'], ['LCD and Notifications','notifications'], ['Storage','storage'],
@@ -5,13 +7,7 @@ export const settingsRows = [
   ['Expansion Modules','expansion'], ['Clock & Alarm','clock'], ['Input','input'], ['About','about'],
 ];
 
-export const settingsSamples = {
-  bluetooth:['Bluetooth: ON','Paired demo phone'], notifications:['Backlight and sound'], storage:['microSD card','Space available: 12 GB'],
-  desktop:['Eddy home screen'], system:['Firmware: Eddy','Hardware: Flipper Zero'],
-  expansion:['Expansion modules'], input:['Device buttons'],
-};
-
-const defaults = [75,50];
+const defaults = [100,100];
 let levels = defaults.slice();
 try {
   const saved = JSON.parse(localStorage.getItem('eddy-quick-settings'));
@@ -29,29 +25,18 @@ export function adjustQuick(row, change) {
 }
 
 export function drawQuick(ctx, row) {
-  ctx.save();
-  ctx.textAlign='center';
   labels.forEach((label,i)=>{
     const x=21+42*i;
-    const width = i===2 ? 27 : 15;
-    ctx.beginPath();
-    ctx.roundRect(x-width/2,12,width,27,4);
-    ctx.stroke();
-    if (row===i) {
-      ctx.beginPath();
-      ctx.roundRect(x-width/2-2,10.5,width+4,30,5);
-      ctx.stroke();
-    }
-    if (i<2) {
+    const width=i===2 ? 27 : 15;
+    const left=x-Math.floor(width/2);
+    rounded(ctx,left,12,width,27,4);
+    if(row===i) rounded(ctx,left-2,10,width+4,31,5);
+    if(i<2) {
       const height=Math.round(19*levels[i]/100);
       ctx.fillRect(x-4,35-height,9,height);
-    } else {
-      ctx.font='18px sans-serif';
-      ctx.fillText('⚙',x,14);
-    }
-    ctx.font='7px sans-serif';
-    ctx.fillText(label,x,41);
+    } else icon(ctx,'gear',x,24);
+    text(ctx,label,x,49,'secondary','center');
   });
-  ctx.fillText(row===2?'OK for device settings':levels[row]+'%   Up / Down',64,54);
-  ctx.restore();
+  text(ctx,row===2?'OK for device settings':levels[row]+'%   Up / Down',64,62,'secondary','center');
 }
+export const quickPercent = row => levels[row];

@@ -409,7 +409,7 @@ footer {
   position:absolute;
   left:7.58%;top:22.36%;
   width:44.17%;height:44.17%;
-  image-rendering:auto;
+  image-rendering:pixelated;
 }
 #playable button {
   position:absolute;
@@ -468,11 +468,6 @@ nav [aria-current=page] {color:var(--surf)}
 .updater progress {width:100%;accent-color:var(--surf);margin-bottom:1rem}
 
 #preview-lcd.selectable {cursor:pointer}
-.name-dialog {background:#11263b;color:#eaf5ff;border:1px solid #55708a;border-radius:1rem;padding:1.5rem;font:inherit}
-.name-dialog::backdrop {background:#051223b8}
-.name-dialog form {display:grid;gap:1rem}
-.name-dialog input, .name-dialog button {font:inherit;padding:.5rem .75rem;border-radius:.5rem}
-.name-dialog form div {display:flex;gap:.5rem;justify-content:flex-end}
 
 #return-to-picker {margin-top:1.35rem}
 #return-to-picker[hidden], .picker-preview .chapters section:not(#home-screen),
@@ -491,7 +486,7 @@ nav [aria-current=page] {color:var(--surf)}
   .picker-preview .chapters #home-screen {scroll-margin:0;height:auto}
 }
 
-#lesson-start[hidden], #spotify-lesson[hidden], #preview-intro[hidden] {display:none}
+#device-preview-notice:empty, #present-sample[hidden], #lesson-start[hidden], #spotify-lesson[hidden], #preview-intro[hidden] {display:none}
 #spotify-buttons {width:min(100%,29rem); margin:.75rem 0}
 #spotify-buttons summary {cursor:pointer; color:var(--surf); padding:.55rem 0; font-weight:600}
 #spotify-buttons .controls-guide {margin:.25rem 0 1rem}

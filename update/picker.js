@@ -1,6 +1,6 @@
 import {catalog, getAppOrder, getSelectedApps, setAppOrder, setAppSelected, setSelectedApps} from '../app-catalog.js';
 import {drawLauncher, layoutApps, launcherArt} from '../launcher.js';
-import {drawBattery} from '../home-screen.js';
+import {overlayBattery} from '../home-screen.js';
 import {communityApps, communityAliases, communityAvailable, getCommunitySelection, selectCommunity, labAlias,
   catalogCompatibility, setImportBusy, importInProgress, rememberLabApp, communityLimit, previewId, drawLabIcon} from '../community-apps.js';
 import {fetchLabApp, LabFileRequired} from './flipper-lab.js';
@@ -132,7 +132,7 @@ function drawSelected() {
   ctx.imageSmoothingEnabled = false;
   const position = Math.max(0, rows.findIndex(([,id]) => id === lastAdded));
   drawLauncher(ctx, 'apps', position, rows);
-  drawBattery(ctx);
+  overlayBattery(ctx);
 }
 
 function sync() {

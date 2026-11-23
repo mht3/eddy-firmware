@@ -1,4 +1,4 @@
-const delays = ['Off','5 min','10 min','15 min','30 min','45 min','60 min','90 min','2 h','6 h','12 h','24 h','48 h'];
+const delays = ['OFF','5min','10min','15min','30min','45min','60min','90min','2h','6h','12h','24h','48h'];
 const settingKey = 'eddy-preview-power';
 
 function readPreferences() {
@@ -33,10 +33,15 @@ export const powerSamples = {
 };
 
 function updateLabels() {
-  powerLists.power[2][0] = 'Auto off  '+delays[prefs.delay];
+  powerLists.power[2][0] = 'Auto power off  '+delays[prefs.delay];
   powerLists.power[3][0] = 'Charge limit  '+prefs.limit+'%';
 }
 updateLabels();
+
+export function powerValues() {
+  return [['Restart'],['Battery info'],['Auto power off',delays,prefs.delay],
+    ['Charge limit',Array.from({length:20},(_,i)=>(i+1)*5+'%'),prefs.limit/5-1]];
+}
 
 // undefined delegates to normal navigation. null consumes the input without changing pages.
 export function powerAction(page, row, key) {

@@ -155,6 +155,8 @@
               Meet Eddy.
             </h2>
             <p id="preview-intro">Play around with the Flipper Zero emulator to see Eddy in action! Start by pressing the center or down button.</p>
+            <p id="device-preview-notice" role="status"></p>
+            <button type="button" id="present-sample" class="cta" hidden>Present sample</button>
             <div id="spotify-lesson" hidden>
               <div aria-live="polite" aria-atomic="true">
                 <p id="lesson-step"></p>
@@ -206,36 +208,6 @@
           <a class="cta" href="update/">Open Eddy updater</a>
         </div>
       </section>
-      <dialog id="frequency-dialog" class="name-dialog" aria-labelledby="frequency-label">
-        <form method="dialog">
-          <label id="frequency-label" for="receive-frequency">Receive frequency (kHz)</label>
-          <input type="number" id="receive-frequency" inputmode="numeric" step="1" required>
-          <div><button type="button">Cancel</button><button type="submit">Tune</button></div>
-        </form>
-      </dialog>
-      <dialog id="observation-dialog" class="name-dialog" aria-label="Save observation">
-        <form method="dialog">
-          <label for="observation-name">Name observation</label>
-          <input id="observation-name" maxlength="22" required>
-          <div><button type="button">Cancel</button><button type="submit">Save</button></div>
-        </form>
-      </dialog>
-      <dialog id="layout-name-dialog" class="name-dialog" aria-labelledby="layout-name-label">
-        <form method="dialog">
-          <label for="layout-name" id="layout-name-label">Remote name</label>
-          <input id="layout-name" maxlength="22" required>
-          <div><button type="button">Cancel</button><button type="submit">Save</button></div>
-        </form>
-      </dialog>
-      <dialog id="remote-name-dialog" class="name-dialog">
-        <form method="dialog">
-          <label for="remote-name" id="remote-name-label">Remote name</label>
-          <input id="remote-name" maxlength="22" placeholder="Living room TV" required>
-          <label for="remote-button" id="remote-button-label">Button name</label>
-          <input id="remote-button" maxlength="22" value="Power" required>
-          <div><button type="button" id="remote-cancel">Cancel</button><button type="submit">Save</button></div>
-        </form>
-      </dialog>
     </main>
     <footer>
       <a class="brand" href="./">

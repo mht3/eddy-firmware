@@ -1,8 +1,8 @@
 import {catalog, getAppOrder, launcherColumns, launcherPageSize} from './app-catalog.js';
 import {importedRecord,drawLabIcon} from './community-apps.js';
-// Icons and positions match the device launcher in loader_menu.c.
-export const launcherArt = new Image();
-launcherArt.src = new URL('launcher.png', import.meta.url).href;
+import {text, textWidth} from './lcd.js';
+import {icon, rounded} from './launcher-graphics.js';
+export {launcherArt} from './launcher-graphics.js';
 export const sections = [
   ['Apps','apps'], ['Settings','settings'], ['Power off','off'],
 ];
@@ -32,67 +32,35 @@ export function verticalApp(items,index,key) {
 export function drawLauncher(ctx, page, selected, gridItems = layoutApps(apps)) {
   const grid = page === 'apps';
   const items = grid ? gridItems : sections;
-  ctx.font = '7px sans-serif';
-  ctx.textAlign = 'center';
   if (!items.length) {
-    ctx.font = '10px sans-serif';
-    ctx.fillText('No apps installed',64,26);
-    ctx.textAlign = 'start';
+    text(ctx,'No apps installed',64,39,'secondary','center');
     return;
   }
   const pageNumber = grid ? Math.floor(items[selected][2]/launcherPageSize) : 0;
   const pageCount = grid ? Math.floor(items.at(-1)[2]/launcherPageSize)+1 : 1;
-  if (pageCount>1) {
-    ctx.textAlign = 'left';
-    ctx.fillText('Apps '+(pageNumber+1)+'/'+pageCount,2,0);
-    ctx.textAlign = 'center';
-  }
+  if (pageCount>1) text(ctx,'Apps '+(pageNumber+1)+'/'+pageCount,2,7);
   items.forEach(([name,id,cell],i) => {
     if (grid && Math.floor(cell/launcherPageSize)!==pageNumber) return;
     const x = grid ? 21 + 42*(cell%launcherColumns) : 21 + 42*i;
     const y = grid ? 18 + 20*Math.floor((cell%launcherPageSize)/launcherColumns) : 26;
     ctx.save();
-    ctx.beginPath();
-    ctx.roundRect(x-12,y-(grid?9:10),25,grid?19:21,4);
-    if (i === selected) {
-      ctx.fill();
-      ctx.globalCompositeOperation = 'destination-out';
-    } else ctx.stroke();
-    const appIndex = grid ? apps.findIndex(([,id])=>id===items[i][1]) : -1;
-    const icon = grid && id.startsWith('lab:') && importedRecord(id.slice(4))?.iconHex;
-    if (icon) {
-      drawLabIcon(ctx,icon,x-5,y-5);
-    } else if (grid && id.startsWith('lab:')) {
-      if (id === 'lab:techart_calendar') ctx.fillText('31',x,y-3);
-      else for (let r=0;r<2;r++) for (let c=0;c<2;c++) ctx.fillRect(x-5+c*6,y-5+r*6,4,4);
-    } else if (grid && appIndex<0) {
-      let label='';
-      for(const char of name) {
-        if(ctx.measureText(label+char).width>21) break;
-        label+=char;
+    rounded(ctx,x-12,y-(grid?9:10),25,grid?19:21,4,i===selected);
+    if (i===selected) ctx.globalCompositeOperation='destination-out';
+    const labIcon = id.startsWith('lab:') && importedRecord(id.slice(4))?.iconHex;
+    if (labIcon) drawLabIcon(ctx,labIcon,x-5,y-5);
+    else if (!icon(ctx,id,x,y)) {
+      if(id.startsWith('lab:')) icon(ctx,'apps',x,y);
+      else {
+        let label=name;
+        while(textWidth(label)>21) label=label.slice(0,-1);
+        text(ctx,label,x,y+3,'secondary','center');
       }
-      ctx.fillText(label,x,y-3);
-    } else if (grid && ['builder','btRemote'].includes(items[i][1])) {
-      ctx.beginPath();
-      if (items[i][1]==='btRemote') {
-        ctx.moveTo(x-4,y-4); ctx.lineTo(x+4,y+3); ctx.lineTo(x,y+7);
-        ctx.lineTo(x,y-7); ctx.lineTo(x+4,y-3); ctx.lineTo(x-4,y+4);
-      } else {
-        for (let r=0;r<2;r++) for (let c=0;c<3;c++) ctx.rect(x-7+c*5,y-4+r*5,3,3);
-      }
-      ctx.stroke();
-    } else if (launcherArt.naturalWidth) {
-      const extraGlyphs = {music:10,spotify:11,metronome:12,pomodoro:9};
-      const index = grid ? (extraGlyphs[id] ?? appIndex+sections.length) : i;
-      ctx.drawImage(launcherArt,index*18,0,18,18,x-9,y-9,18,18);
     }
     ctx.restore();
-    if (!grid) ctx.fillText(name,x,40);
+    if (!grid) text(ctx,name,x,49,'secondary','center');
   });
   if (grid) {
     ctx.fillRect(4,49,120,1);
-    ctx.font = 'bold 10px sans-serif';
-    ctx.fillText(items[selected][0],64,51,120);
+    text(ctx,items[selected][0],64,63,'primary','center');
   }
-  ctx.textAlign = 'start';
 }

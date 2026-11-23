@@ -26,8 +26,8 @@ framed face-on at 108 × 54 mm at the end. The interactive device and README
 images use this same projection. Rebuild the two meshes from the included
 sources using Python 3 and KiCad CLI 10.0.7.
     python3 models/convert.py --kicad-cli /path/to/kicad-cli
-The live renderer is models/renderer.js. The enlarged dolphin in home-screen.js
-redraws the Eddy firmware sprite with scalable paths for high-density displays.
+The live renderer is models/renderer.js. The interactive home screen uses
+Eddy’s original 128 × 50 firmware animation frames.
 
 Launcher preview
 The grid uses the same launcher icons as the device, from assets/icons in this

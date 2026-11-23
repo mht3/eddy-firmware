@@ -1,3 +1,5 @@
+import {text} from './lcd.js';
+import {box,inverted} from './utility-pixels.js';
 // Sample titles for the website's local demo. The player never connects to a listener's account.
 const tracks = [
   {title:'Low Tide', artist:'Eddy demo', length:208},
@@ -26,7 +28,8 @@ export function musicKey(s,key) {
     s.started=performance.now();
   } else if(key==='up' || key==='down') {
     s.volume=Math.max(0,Math.min(100,s.volume+(key==='up' ? 5 : -5)));
-    s.volumeUntil=performance.now()+1500;
+    s.volumeHint=key==='up'?'Vol +':'Vol -';
+    s.volumeUntil=performance.now()+1200;
   } else if(key==='ok') {
     const at=position(s);
     s.playing=!(s.playing && at<tracks[s.index].length);
@@ -51,25 +54,18 @@ export function drawMusic(ctx,s) {
   const track=tracks[s.index];
   const at=position(s);
   const playing=s.playing && at<track.length;
-  ctx.save();
-  ctx.textBaseline='alphabetic';
-  ctx.font='7px sans-serif';
-  ctx.fillText('Music demo',2,8);
   const showVolume=performance.now()<s.volumeUntil;
-  ctx.fillText(showVolume?'Volume '+s.volume+'%':playing?'Playing':'Paused',45,8);
-  ctx.font='bold 11px sans-serif';
-  ctx.fillText(track.title,2,22);
-  ctx.font='8px sans-serif';
-  ctx.fillText(track.artist,2,32);
-  ctx.strokeRect(2.5,36.5,123,3);
-  ctx.fillRect(3,37,122*at/track.length,2);
-  ctx.fillText(clock(at),2,49);
-  ctx.textAlign='right'; ctx.fillText(clock(track.length),126,49);
-  ctx.fillText('Next >',126,61);
-  ctx.textAlign='left'; ctx.fillText('< Prev',2,61);
-  ctx.beginPath(); ctx.roundRect(43,51,42,13,5); ctx.fill();
-  ctx.globalCompositeOperation='destination-out';
-  ctx.textAlign='center'; ctx.fillText(playing?'Pause':'Play',64,61);
-  ctx.restore();
+  text(ctx,'Music',2,8);
+  text(ctx,showVolume?s.volumeHint:playing?'Playing':'Paused',88,8,'secondary','right');
+  text(ctx,track.title,2,22,'primary');
+  text(ctx,track.artist,2,32);
+  box(ctx,2,36,124,4);
+  ctx.fillRect(3,37,Math.floor(122*at/track.length),2);
+  text(ctx,clock(at),2,49);
+  text(ctx,clock(track.length),126,49,'secondary','right');
+  text(ctx,'< Prev',2,61);
+  text(ctx,'Next >',99,61);
+  box(ctx,43,51,42,13,5,true);
+  inverted(ctx,true,()=>text(ctx,playing?'Pause':'Play',64,61,'secondary','center'));
   return playing || showVolume;
 }
