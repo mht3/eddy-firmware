@@ -11,7 +11,7 @@ APP = ROOT / "applications/main/eddy_spotify/source"
 
 HARNESS = r"""
 #include <assert.h>
-#include "spotify_screen.h"
+#include "spotify_playback.h"
 #include <string.h>
 
 static void companion_setup(void) {
@@ -31,6 +31,51 @@ static void companion_setup(void) {
 }
 
 
+static void paused_playback(void) {
+    SpotifyScreen screen = {0};
+    SpotifyPlayback clock = {0};
+    SpotifyLibrary status = {0};
+    spotify_playback_update(&clock, &screen, &status, 0);
+    assert(!screen.now_playing[0]);
+    status = (SpotifyLibrary){.count = 1, .play_state = 1, .duration_ms = 60000,
+                              .progress_ms = 10000, .rows = {"Low Tide - Eddy"}};
+    spotify_playback_update(&clock, &screen, &status, 100);
+    spotify_playback_tick(&clock, &screen, 5100, 1000);
+    spotify_playback_toggle(&clock, &screen, 5100);
+    assert(screen.elapsed_s == 15 && screen.play_state == 2);
+    spotify_playback_update(&clock, &screen, &status, 6400); // Stale playing snapshot.
+    spotify_playback_tick(&clock, &screen, 7100, 1000);
+    assert(screen.elapsed_s == 15 && screen.play_state == 2);
+    status.count = 0;
+    spotify_playback_update(&clock, &screen, &status, 8100);
+    status.error = SpotifyOffline;
+    spotify_playback_update(&clock, &screen, &status, 18100);
+    status.error = SpotifyNoPlayer;
+    spotify_playback_update(&clock, &screen, &status, 608100);
+    spotify_playback_tick(&clock, &screen, 608100, 1000);
+    assert(!strcmp(screen.now_playing, "Low Tide - Eddy"));
+    assert(screen.play_state == 2 && screen.elapsed_s == 15 && !clock.expected_state);
+    spotify_playback_toggle(&clock, &screen, 608100);
+    spotify_playback_tick(&clock, &screen, 610100, 1000);
+    assert(screen.play_state == 1 && screen.elapsed_s == 17);
+    spotify_playback_reject(&clock, &screen);
+    spotify_playback_tick(&clock, &screen, 615100, 1000);
+    assert(screen.play_state == 2 && screen.elapsed_s == 15);
+    spotify_playback_toggle(&clock, &screen, 615100);
+    status.error = SpotifyOk;
+    status.count = 1;
+    status.progress_ms = 16000;
+    spotify_playback_update(&clock, &screen, &status, 616100);
+    assert(screen.play_state == 1 && screen.elapsed_s == 16 && !clock.expected_state);
+    spotify_playback_toggle(&clock, &screen, 616100);
+    strcpy(status.rows[0], "Dolphin Days");
+    spotify_playback_update(&clock, &screen, &status, 617100);
+    assert(!strcmp(screen.now_playing, "Dolphin Days") && screen.play_state == 1);
+    status.error = SpotifyLogin;
+    spotify_playback_update(&clock, &screen, &status, 618100);
+    assert(!screen.now_playing[0] && !screen.duration_s && !clock.expected_state);
+}
+
 static void reply(SpotifyLibrary* lib, uint8_t op, uint8_t row) {
     spotify_library_begin(lib, op, 0x1234);
     const uint8_t ack[] = {0x14, 0x34, 0x12, row};
@@ -40,6 +85,7 @@ static void reply(SpotifyLibrary* lib, uint8_t op, uint8_t row) {
 
 int main(void) {
     companion_setup();
+    paused_playback();
     SpotifyLibrary lib = {.count = 4, .page = 8};
     for(int direction = 0; direction < 4; ++direction) {
         for(int row = 0; row < 4; ++row) {
@@ -124,6 +170,7 @@ class NativeSpotifyTests(unittest.TestCase):
                     str(ROOT / "lib"),
                     str(work / "test.c"),
                     str(APP / "spotify_library.c"),
+                    str(APP / "spotify_playback.c"),
                     "-o",
                     str(executable),
                 ],
