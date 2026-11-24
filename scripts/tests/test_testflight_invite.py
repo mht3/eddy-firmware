@@ -34,4 +34,5 @@ class TestFlightInviteTest(unittest.TestCase):
                     page.read_text().count("testflight.apple.com/join/"), 1
                 )
             self.assertIn("eddyspotify://setup", pages[0].read_text())
-            self.assertIn("id899247664", pages[0].read_text())
+            for page in pages:
+                self.assertNotIn("id899247664", page.read_text())
