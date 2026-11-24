@@ -26,7 +26,7 @@ test('public guide links to the demo and offers no account login', async () => {
   assert.equal(config.spotifyConfigured, false);
 });
 
-test('the installer never asks for a Spotify ID and the companion guide covers a closed beta', async () => {
+test('the installer never asks for a Spotify ID and the companion guide links to the public beta', async () => {
   const installer = await file('../update/index.html');
   assert.doesNotMatch(installer, /spotify-client-id|Spotify Client ID/i);
   const setup = await file('index.html');
@@ -39,7 +39,7 @@ test('the installer never asks for a Spotify ID and the companion guide covers a
   const app = await file('../app/index.html');
   assert.match(app, /href="eddyspotify:\/\/setup"/);
   assert.match(app, /id="beta-availability"/);
-  assert.match(app, /href="https:\/\/apps.apple.com\/app\/testflight\/id899247664"/);
+  assert.doesNotMatch(app, /href="https:\/\/apps.apple.com\/app\/testflight\/id899247664"/);
 });
 
 test('previous QR codes and saved browser connections open Eddy and discard the old sign-in', async () => {
